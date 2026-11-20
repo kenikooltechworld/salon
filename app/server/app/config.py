@@ -11,11 +11,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def normalize_database_url(url: str, *, async_driver: bool = True) -> str:
-    """Normalize a Postgres URL for SQLAlchemy/Alembic.
-
-    - Converts postgres/postgresql schemes to postgresql+psycopg for async use.
-    - Ensures sslmode=require when not explicitly provided (Neon requires TLS).
-    """
     raw = (url or "").strip()
     if not raw:
         return ""
@@ -43,8 +38,6 @@ def normalize_database_url(url: str, *, async_driver: bool = True) -> str:
 
 
 class Settings(BaseSettings):
-    """Runtime settings loaded from environment variables."""
-
     app_name: str = "Salon API"
     environment: str = "development"
     debug: bool = False
@@ -65,6 +58,18 @@ class Settings(BaseSettings):
         alias="CORS_ORIGINS",
     )
     database_url: str = Field(default="", alias="DATABASE_URL")
+
+    jwt_secret_key: str = Field(
+        default="dev-jwt-secret-change-in-production",
+        alias="JWT_SECRET_KEY",
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(
+        default=1440, alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=30, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
+    )
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parent.parent / ".env"),

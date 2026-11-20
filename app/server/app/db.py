@@ -89,6 +89,8 @@ async def ping_db() -> tuple[bool, Optional[str]]:
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency yielding an async DB session."""
+    if get_session_factory() is None:
+        init_engine()
     factory = get_session_factory()
     if factory is None:
         raise RuntimeError("Database is not configured")
