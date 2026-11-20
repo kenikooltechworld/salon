@@ -1,12 +1,45 @@
-﻿"""Application configuration."""
+"""Application configuration."""
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
 from typing import List
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def normalize_database_url(url: str, *, async_driver: bool = True) -> str:
+    """Normalize a Postgres URL for SQLAlchemy/Alembic.
+
+    - Converts postgres/postgresql schemes to postgresql+psycopg for async use.
+    - Ensures sslmode=require when not explicitly provided (Neon requires TLS).
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+
+    parsed = urlparse(raw)
+    scheme = parsed.scheme.lower()
+
+    if async_driver:
+        if scheme in {"postgres", "postgresql"}:
+            scheme = "postgresql+psycopg"
+        elif scheme == "postgresql+psycopg":
+            scheme = "postgresql+psycopg"
+    else:
+        if scheme in {"postgres", "postgresql+psycopg", "postgresql+asyncpg"}:
+            scheme = "postgresql"
+        elif scheme == "postgres":
+            scheme = "postgresql"
+
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    if "sslmode" not in {k.lower() for k in query.keys()}:
+        query["sslmode"] = "require"
+
+    normalized = parsed._replace(scheme=scheme, query=urlencode(query))
+    return urlunparse(normalized)
 
 
 class Settings(BaseSettings):
@@ -28,7 +61,7 @@ class Settings(BaseSettings):
         alias="PLATFORM_DOMAIN",
     )
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,https://kenikoolsalon.com,https://www.kenikoolsalon.com,https://api.kenikoolsalon.com",
+        default="https://kenikoolsalon.com,https://www.kenikoolsalon.com,https://api.kenikoolsalon.com",
         alias="CORS_ORIGINS",
     )
     database_url: str = Field(default="", alias="DATABASE_URL")
@@ -46,6 +79,18 @@ class Settings(BaseSettings):
         if value == "*":
             return ["*"]
         return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+    @property
+    def database_url_async(self) -> str:
+        return normalize_database_url(self.database_url, async_driver=True)
+
+    @property
+    def database_url_sync(self) -> str:
+        return normalize_database_url(self.database_url, async_driver=False)
+
+    @property
+    def database_configured(self) -> bool:
+        return bool(self.database_url.strip())
 
 
 @lru_cache

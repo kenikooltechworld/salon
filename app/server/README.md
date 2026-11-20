@@ -1,14 +1,15 @@
-﻿# Salon Backend (`app/server`)
+# Salon Backend (`app/server`)
 
 Production-first FastAPI backend for the rebuilt salon platform.
 
-## Endpoints (Phase 1)
-- `GET /health` - service health
+## Endpoints
+- `GET /health` - service health; reports database status when `DATABASE_URL` is configured
 - `GET /` - basic service info
 
 ## Configuration
-- Copy `.env.example` to `.env` and set values as needed.
-- `DATABASE_URL` will be set to Neon PostgreSQL in later phases (not used in Phase 1).
+- Copy `.env.example` to `.env` for reference; set runtime env vars in Render/production.
+- `DATABASE_URL` - Neon PostgreSQL URL (e.g. `postgresql://...` or `postgresql+psycopg://...`). Normalized to async psycopg with `sslmode=require` at runtime.
+- `PLATFORM_DOMAIN`, `FRONTEND_URL`, `CORS_ORIGINS` - production domain settings.
 
 ## Run tests
 ```bash
@@ -16,5 +17,8 @@ pip install -r requirements.txt
 pytest
 ```
 
+## Migrations
+Alembic is configured in `alembic/`. `entrypoint.py` runs `alembic upgrade head` on startup when `DATABASE_URL` is set, then starts uvicorn.
+
 ## Container
-Builds with `Dockerfile`. Binds to `$PORT` (Render-compatible).
+Builds with `Dockerfile`. `CMD` runs `python entrypoint.py` (migrate-on-start, binds to `$PORT`).
