@@ -1,4 +1,3 @@
-import React from "react";
 import { HStack } from "@chakra-ui/react";
 import { Button } from "./components/ui/button";
 function App() {
