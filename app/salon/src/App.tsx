@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Box, Spinner } from "@chakra-ui/react";
 import { useAuthStore } from "@/stores/authStore";
+import { AuthLayout } from "@/layouts/AuthLayout";
+import { DashboardLayout } from "@/layouts/DashboardLayout";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import CustomersPage from "@/pages/CustomersPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -41,66 +43,21 @@ export default function App() {
     <BrowserRouter>
       <Box minH="100vh">
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <Protected>
-                <DashboardPage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/services"
-            element={
-              <Protected>
-                <ServicesPage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/customers"
-            element={
-              <Protected>
-                <CustomersPage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <Protected>
-                <ProfilePage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/change-password"
-            element={
-              <Protected>
-                <ChangePasswordPage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/verify-email"
-            element={
-              <Protected>
-                <VerifyEmailPage />
-              </Protected>
-            }
-          />
-          <Route
-            path="/mfa"
-            element={
-              <Protected>
-                <MfaPage />
-              </Protected>
-            }
-          />
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
+          <Route element={<Protected><DashboardLayout /></Protected>}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/change-password" element={<ChangePasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/mfa" element={<MfaPage />} />
+          </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Box>
