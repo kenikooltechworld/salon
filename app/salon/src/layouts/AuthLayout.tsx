@@ -1,19 +1,19 @@
 import { Outlet } from "react-router-dom";
-import { Container, Flex } from "@chakra-ui/react";
+import { Center, Container, VStack } from "@chakra-ui/react";
 import { Navbar } from "@/components/Navbar";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export function AuthLayout() {
   return (
-    <Flex minH="100vh" flexDirection="column">
+    <VStack minH="100vh" gap="0" align="stretch">
       <Navbar />
-      <Flex as="main" flex="1" pt="16" align="center" justify="center" px="4" py="8">
+      <Center as="main" flex="1" pt="16" px="4" py="8">
         <Container maxW="md">
           <Outlet />
         </Container>
-      </Flex>
+      </Center>
       <LandingFooter />
-    </Flex>
+    </VStack>
   );
 }
 
