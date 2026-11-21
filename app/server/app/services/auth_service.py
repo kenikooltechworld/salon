@@ -1,6 +1,10 @@
 """Auth service: registration, login, token issuance."""
 from __future__ import annotations
 
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+
 import uuid
 from typing import Optional
 
@@ -16,6 +20,7 @@ from app.lib.security import (
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, UserCreate
+from app.config import settings
 
 
 class AuthService:
@@ -87,3 +92,61 @@ class AuthService:
         from app.config import settings
 
         return access, refresh, settings.jwt_access_token_expire_minutes * 60
+
+    async def change_password(
+        self, user: "User", current_password: str, new_password: str
+    ) -> bool:
+        from app.lib.security import hash_password, verify_password
+
+        if not verify_password(current_password, user.password_hash):
+            return False
+        if len(new_password) < 8:
+            return False
+        user.password_hash = hash_password(new_password)
+        user.password_change_required = False
+        await self.session.flush()
+        await self.session.refresh(user)
+        return True
+
+    async def create_password_reset_token(self, email: str) -> str | None:
+        """Generate a reset token for the user with the given email.
+
+        Returns the raw token (for dev/testing) or None if user not found.
+        Stores a hashed version with expiry.
+        """
+        result = await self.session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user is None or user.status != "active":
+            return None
+
+        raw_token = secrets.token_urlsafe(32)
+        hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+        user.password_reset_token = hashed
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        await self.session.flush()
+        await self.session.refresh(user)
+        return raw_token
+
+    async def reset_password(self, token: str, new_password: str) -> bool:
+        """Reset password using a valid reset token."""
+        from app.lib.security import hash_password
+
+        hashed = hashlib.sha256(token.encode()).hexdigest()
+        result = await self.session.execute(
+            select(User).where(User.password_reset_token == hashed)
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            return False
+        if user.password_reset_expires is None or user.password_reset_expires < datetime.now(timezone.utc):
+            return False
+        if len(new_password) < 8:
+            return False
+
+        user.password_hash = hash_password(new_password)
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        user.password_change_required = False
+        await self.session.flush()
+        await self.session.refresh(user)
+        return True

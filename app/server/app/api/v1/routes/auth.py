@@ -8,10 +8,14 @@ from app.controllers.auth_controller import AuthController
 from app.lib.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     MeResponse,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -57,6 +61,37 @@ async def refresh(
 ):
     controller = AuthController(session)
     return await controller.refresh(request, response)
+
+
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.change_password(current_user, data)
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.forgot_password(data, request, response)
+
+
+@router.post("/reset-password")
+async def reset_password(
+    data: ResetPasswordRequest,
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.reset_password(data)
 
 
 @router.get("/me", response_model=MeResponse)

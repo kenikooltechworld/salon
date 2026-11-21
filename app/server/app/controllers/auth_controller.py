@@ -11,10 +11,14 @@ from app.lib.cookies import clear_auth_cookies, cookie_kwargs, set_auth_cookies
 from app.lib.security import create_access_token, create_refresh_token, verify_token
 from app.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     MeResponse,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TenantRead,
     UserRead,
 )
@@ -111,6 +115,44 @@ class AuthController:
             **cookie_kwargs(request),
         )
         return {"message": "Token refreshed", "expires_in": settings.jwt_access_token_expire_minutes * 60}
+
+    async def change_password(
+        self, user: User, data: "ChangePasswordRequest"
+    ) -> dict:
+        ok = await self.auth_service.change_password(
+            user, data.current_password, data.new_password
+        )
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect or new password invalid",
+            )
+        await self.session.commit()
+        return {"message": "Password changed successfully"}
+
+    async def forgot_password(
+        self, data: "ForgotPasswordRequest", request: Request, response: Response
+    ) -> "ForgotPasswordResponse":
+        from app.config import settings
+
+        token = await self.auth_service.create_password_reset_token(data.email)
+        await self.session.commit()
+        # Only expose token in debug mode (for testing); production sends via email
+        reset_token = token if settings.debug else None
+        return ForgotPasswordResponse(
+            message="If the email exists, a reset link has been sent",
+            reset_token=reset_token,
+        )
+
+    async def reset_password(self, data: "ResetPasswordRequest") -> dict:
+        ok = await self.auth_service.reset_password(data.token, data.new_password)
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token",
+            )
+        await self.session.commit()
+        return {"message": "Password reset successfully"}
 
     async def me(self, user: User) -> MeResponse:
         tenant = await self.tenant_service.get_tenant(self.session, user.tenant_id)

@@ -75,3 +75,23 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     user: UserRead
     tenant: TenantRead
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    # Only populated in debug mode for testing
+    reset_token: str | None = None
+
