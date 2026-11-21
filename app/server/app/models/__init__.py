@@ -1,3 +1,4 @@
+from .appointment import Appointment
 from .base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from .customer import Customer
 from .service import Service
@@ -7,6 +8,6 @@ from .tenant import Tenant
 from .user import User
 
 __all__ = [
-    "Base", "Customer", "Service", "ServiceCategory", "Staff", "Tenant",
+    "Appointment", "Base", "Customer", "Service", "ServiceCategory", "Staff", "Tenant",
     "TenantMixin", "TimestampMixin", "User", "UUIDPrimaryKeyMixin",
 ]

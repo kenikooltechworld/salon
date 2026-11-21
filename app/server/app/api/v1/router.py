@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.api.v1.routes import appointments as appointment_routes
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import customers as customer_routes
 from app.api.v1.routes import health as health_routes
@@ -16,3 +17,4 @@ api_router.include_router(service_category_routes.router)
 api_router.include_router(service_routes.router)
 api_router.include_router(customer_routes.router)
 api_router.include_router(staff_routes.router)
+api_router.include_router(appointment_routes.router)
