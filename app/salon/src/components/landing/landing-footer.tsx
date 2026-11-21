@@ -1,80 +1,143 @@
-import { Link as RouterLink } from "react-router-dom";
-import { Box, Container, Grid, Heading, Text, VStack } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
+import { motion } from "motion/react";
+import { Link } from "react-router-dom";
 
-const CURRENT_YEAR = new Date().getFullYear();
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
+  },
+};
 
 export function LandingFooter() {
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
-  const columns = [
-    {
-      title: "Product",
-      links: [
-        { label: "Features", href: "#features" },
-        { label: "Pricing", href: "#pricing" },
-        { label: "Security", href: "#" },
-      ],
-    },
-    {
-      title: "Company",
-      links: [
-        { label: "About", to: "/about" },
-        { label: "Blog", href: "#" },
-        { label: "Contact", href: "#" },
-      ],
-    },
-    {
-      title: "Legal",
-      links: [
-        { label: "Privacy", href: "#" },
-        { label: "Terms", href: "#" },
-        { label: "Cookies", href: "#" },
-      ],
-    },
-    {
-      title: "Follow",
-      links: [
-        { label: "Twitter", href: "#" },
-        { label: "LinkedIn", href: "#" },
-        { label: "Facebook", href: "#" },
-      ],
-    },
-  ];
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   return (
-    <Box as="footer" bg="bg" borderTopWidth="1px" borderColor="border" py={{ base: 12, sm: 16 }}>
-      <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }}>
-        <Grid templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }} gap={{ base: 6, md: 8 }} mb={8}>
-          {columns.map((col) => (
-            <VStack key={col.title} align="flex-start" gap={2}>
-              <Heading size="sm" mb={2} color="fg">
-                {col.title}
-              </Heading>
-              <VStack align="flex-start" gap={2}>
-                {col.links.map((link) => (
-                  <Box key={link.label} color="fg.muted" fontSize={{ base: "xs", sm: "sm" }} _hover={{ color: "fg" }} transition="colors">
-                    {link.to ? (
-                      <Box asChild>
-                        <RouterLink to={link.to}>{link.label}</RouterLink>
-                      </Box>
-                    ) : (
-                      <Box asChild>
-                        <a href={link.href}>{link.label}</a>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </VStack>
-            </VStack>
-          ))}
-        </Grid>
-        <Box borderTopWidth="1px" borderColor="border" pt={8} textAlign="center">
-          <Text fontSize={{ base: "xs", sm: "sm" }} color="fg.muted">
-            &copy; {CURRENT_YEAR} Kenikool. All rights reserved.
-          </Text>
-        </Box>
-      </Container>
-    </Box>
+    <footer className="bg-card border-t border-border py-12 sm:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <h4 className="font-semibold mb-4 text-sm sm:text-base text-foreground">
+              Product
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-muted-foreground">
+              <li>
+                <a
+                  href="#features"
+                  className="hover:text-foreground transition"
+                >
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="#pricing" className="hover:text-foreground transition">
+                  Pricing
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Security
+                </a>
+              </li>
+            </ul>
+          </motion.div>
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <h4 className="font-semibold mb-4 text-sm sm:text-base text-foreground">
+              Company
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-muted-foreground">
+              <li>
+                <Link to="/about" className="hover:text-foreground transition">
+                  About
+                </Link>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Blog
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </motion.div>
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <h4 className="font-semibold mb-4 text-sm sm:text-base text-foreground">
+              Legal
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-muted-foreground">
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Privacy
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Terms
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Cookies
+                </a>
+              </li>
+            </ul>
+          </motion.div>
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <h4 className="font-semibold mb-4 text-sm sm:text-base text-foreground">
+              Follow
+            </h4>
+            <ul className="space-y-2 text-xs sm:text-sm text-muted-foreground">
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  LinkedIn
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-foreground transition">
+                  Facebook
+                </a>
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+        <div className="border-t border-border pt-8 text-center text-xs sm:text-sm text-muted-foreground">
+          <p>&copy; {currentYear} Kenikool. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
   );
 }
-
-export default LandingFooter;
