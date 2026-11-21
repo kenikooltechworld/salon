@@ -100,6 +100,35 @@ class AuthService:
         result = await self.session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
+
+    async def create_email_verification_token(self, user: "User") -> str:
+        raw_token = secrets.token_urlsafe(32)
+        hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+        user.email_verification_token = hashed
+        user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
+        return raw_token
+
+    async def verify_email(self, token: str) -> bool:
+        hashed = hashlib.sha256(token.encode()).hexdigest()
+        result = await self.session.execute(
+            select(User).where(User.email_verification_token == hashed)
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            return False
+        if user.email_verification_expires is None or user.email_verification_expires < datetime.now(timezone.utc):
+            return False
+        user.email_verified = True
+        user.email_verification_token = None
+        user.email_verification_expires = None
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
+        return True
+
     def issue_tokens(self, user: User) -> tuple[str, str, int]:
         access = create_access_token(
             user_id=str(user.id),

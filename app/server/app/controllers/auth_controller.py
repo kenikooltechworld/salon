@@ -19,7 +19,11 @@ from app.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    SendVerificationResponse,
     TenantRead,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
+
     UserRead,
 )
 from app.services.auth_service import AuthService
@@ -153,6 +157,27 @@ class AuthController:
             )
         await self.session.commit()
         return {"message": "Password reset successfully"}
+
+    async def send_verification(
+        self, user: User, request: Request, response: Response
+    ) -> "SendVerificationResponse":
+        from app.config import settings
+
+        token = await self.auth_service.create_email_verification_token(user)
+        await self.session.commit()
+        return SendVerificationResponse(
+            message="Verification email sent",
+            verification_token=token if settings.debug else None,
+        )
+
+    async def verify_email(self, data: "VerifyEmailRequest") -> "VerifyEmailResponse":
+        ok = await self.auth_service.verify_email(data.token)
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification token",
+            )
+        return VerifyEmailResponse(message="Email verified successfully", email_verified=True)
 
     async def me(self, user: User) -> MeResponse:
         tenant = await self.tenant_service.get_tenant(self.session, user.tenant_id)

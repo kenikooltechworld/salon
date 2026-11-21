@@ -16,6 +16,9 @@ from app.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    SendVerificationResponse,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -92,6 +95,27 @@ async def reset_password(
 ):
     controller = AuthController(session)
     return await controller.reset_password(data)
+
+
+
+@router.post("/send-verification", response_model=SendVerificationResponse)
+async def send_verification(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.send_verification(current_user, request, response)
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+async def verify_email(
+    data: VerifyEmailRequest,
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.verify_email(data)
 
 
 @router.get("/me", response_model=MeResponse)

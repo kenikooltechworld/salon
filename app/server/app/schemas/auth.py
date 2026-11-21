@@ -95,3 +95,17 @@ class ForgotPasswordResponse(BaseModel):
     # Only populated in debug mode for testing
     reset_token: str | None = None
 
+class SendVerificationResponse(BaseModel):
+    message: str
+    # Only populated in debug mode for testing
+    verification_token: str | None = None
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=1)
+
+
+class VerifyEmailResponse(BaseModel):
+    message: str
+    email_verified: bool
+
