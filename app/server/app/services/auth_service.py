@@ -73,8 +73,27 @@ class AuthService:
             return None
         if user.status != "active":
             return None
-        if not verify_password(data.password, user.password_hash):
+
+        now = datetime.now(timezone.utc)
+        if user.locked_until is not None and user.locked_until > now:
             return None
+
+        if not verify_password(data.password, user.password_hash):
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= 5:
+                user.locked_until = now + timedelta(minutes=15)
+            await self.session.flush()
+            await self.session.commit()
+            await self.session.refresh(user)
+            return None
+
+        # success: reset counters
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        user.last_login = now
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
         return user
 
     async def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:

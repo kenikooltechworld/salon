@@ -34,6 +34,8 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     password_change_required: Mapped[bool] = mapped_column(default=False, nullable=False)
     password_reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_login_attempts: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     tenant = relationship("Tenant", back_populates="users")
