@@ -46,18 +46,18 @@ def test_email_verification_flow() -> None:
     # send verification
     r = client.post("/api/v1/auth/send-verification")
     assert r.status_code == 200, r.text
-    token = r.json().get("verification_token")
+    token = r.json().get("verification_code")
     assert token is not None
 
     # verify with invalid token
-    r = client.post("/api/v1/auth/verify-email", json={"token": "invalid"})
+    r = client.post("/api/v1/auth/verify-email", json={"code": "000000"})
     assert r.status_code == 400
 
     # verify with valid token
-    r = client.post("/api/v1/auth/verify-email", json={"token": token})
+    r = client.post("/api/v1/auth/verify-email", json={"code": token})
     assert r.status_code == 200, r.text
     assert r.json()["email_verified"] is True
 
     # token cannot be reused
-    r = client.post("/api/v1/auth/verify-email", json={"token": token})
+    r = client.post("/api/v1/auth/verify-email", json={"code": token})
     assert r.status_code == 400

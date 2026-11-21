@@ -97,23 +97,24 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(min_length=1)
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
 
 
 class ForgotPasswordResponse(BaseModel):
     message: str
     # Only populated in debug mode for testing
-    reset_token: str | None = None
+    reset_code: str | None = None
 
 class SendVerificationResponse(BaseModel):
     message: str
     # Only populated in debug mode for testing
-    verification_token: str | None = None
+    verification_code: str | None = None
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str = Field(min_length=1)
+    code: str = Field(min_length=6, max_length=6)
 
 
 class VerifyEmailResponse(BaseModel):

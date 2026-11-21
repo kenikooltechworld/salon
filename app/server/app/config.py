@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     )
     database_url: str = Field(default="", alias="DATABASE_URL")
 
+    resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
+    email_from: str = Field(default="Kenikool Salon <noreply@localhost>", alias="EMAIL_FROM")
+
     jwt_secret_key: str = Field(
         default="dev-jwt-secret-change-in-production",
         alias="JWT_SECRET_KEY",

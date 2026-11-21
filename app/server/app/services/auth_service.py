@@ -111,20 +111,27 @@ class AuthService:
         return result.scalar_one_or_none()
 
 
-    async def create_email_verification_token(self, user: "User") -> str:
-        raw_token = secrets.token_urlsafe(32)
-        hashed = hashlib.sha256(raw_token.encode()).hexdigest()
-        user.email_verification_token = hashed
+    async def create_email_verification_code(self, user: "User") -> str:
+        import random
+
+        code = "".join(str(random.randint(0, 9)) for _ in range(6))
+        hashed = hashlib.sha256(code.encode()).hexdigest()
+        user.email_verification_code = hashed
         user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(user)
-        return raw_token
 
-    async def verify_email(self, token: str) -> bool:
-        hashed = hashlib.sha256(token.encode()).hexdigest()
+        # send email
+        from app.services.email_service import send_email, verification_email_html
+
+        await send_email(user.email, "Verify your email", verification_email_html(code))
+        return code
+
+    async def verify_email(self, code: str) -> bool:
+        hashed = hashlib.sha256(code.encode()).hexdigest()
         result = await self.session.execute(
-            select(User).where(User.email_verification_token == hashed)
+            select(User).where(User.email_verification_code == hashed)
         )
         user = result.scalar_one_or_none()
         if user is None:
@@ -132,7 +139,7 @@ class AuthService:
         if user.email_verification_expires is None or user.email_verification_expires < datetime.now(timezone.utc):
             return False
         user.email_verified = True
-        user.email_verification_token = None
+        user.email_verification_code = None
         user.email_verification_expires = None
         await self.session.flush()
         await self.session.commit()
@@ -238,32 +245,39 @@ class AuthService:
         await self.session.refresh(user)
         return True
 
-    async def create_password_reset_token(self, email: str) -> str | None:
-        """Generate a reset token for the user with the given email.
+    async def create_password_reset_code(self, email: str) -> str | None:
+        """Generate a 6-digit reset code for the user with the given email.
 
-        Returns the raw token (for dev/testing) or None if user not found.
-        Stores a hashed version with expiry.
+        Returns the raw code (for dev/testing) or None if user not found.
+        Stores a hashed version with expiry and sends an email.
         """
+        import random
+
         result = await self.session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if user is None or user.status != "active":
             return None
 
-        raw_token = secrets.token_urlsafe(32)
-        hashed = hashlib.sha256(raw_token.encode()).hexdigest()
-        user.password_reset_token = hashed
+        code = "".join(str(random.randint(0, 9)) for _ in range(6))
+        hashed = hashlib.sha256(code.encode()).hexdigest()
+        user.password_reset_code = hashed
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(user)
-        return raw_token
 
-    async def reset_password(self, token: str, new_password: str) -> bool:
-        """Reset password using a valid reset token."""
+        from app.services.email_service import password_reset_email_html, send_email
+
+        await send_email(user.email, "Reset your password", password_reset_email_html(code))
+        return code
+
+    async def reset_password(self, email: str, code: str, new_password: str) -> bool:
+        """Reset password using a valid reset code."""
         from app.lib.security import hash_password
 
-        hashed = hashlib.sha256(token.encode()).hexdigest()
+        hashed = hashlib.sha256(code.encode()).hexdigest()
         result = await self.session.execute(
-            select(User).where(User.password_reset_token == hashed)
+            select(User).where(User.email == email, User.password_reset_code == hashed)
         )
         user = result.scalar_one_or_none()
         if user is None:
@@ -274,9 +288,12 @@ class AuthService:
             return False
 
         user.password_hash = hash_password(new_password)
-        user.password_reset_token = None
+        user.password_reset_code = None
         user.password_reset_expires = None
         user.password_change_required = False
+        user.failed_login_attempts = 0
+        user.locked_until = None
         await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(user)
         return True

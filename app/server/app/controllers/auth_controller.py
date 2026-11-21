@@ -165,21 +165,19 @@ class AuthController:
     ) -> "ForgotPasswordResponse":
         from app.config import settings
 
-        token = await self.auth_service.create_password_reset_token(data.email)
+        code = await self.auth_service.create_password_reset_code(data.email)
         await self.session.commit()
-        # Only expose token in debug mode (for testing); production sends via email
-        reset_token = token if settings.debug else None
         return ForgotPasswordResponse(
-            message="If the email exists, a reset link has been sent",
-            reset_token=reset_token,
+            message="If the email exists, a reset code has been sent",
+            reset_code=code if settings.debug else None,
         )
 
     async def reset_password(self, data: "ResetPasswordRequest") -> dict:
-        ok = await self.auth_service.reset_password(data.token, data.new_password)
+        ok = await self.auth_service.reset_password(data.email, data.code, data.new_password)
         if not ok:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token",
+                detail="Invalid or expired reset code",
             )
         await self.session.commit()
         return {"message": "Password reset successfully"}
@@ -189,15 +187,15 @@ class AuthController:
     ) -> "SendVerificationResponse":
         from app.config import settings
 
-        token = await self.auth_service.create_email_verification_token(user)
+        code = await self.auth_service.create_email_verification_code(user)
         await self.session.commit()
         return SendVerificationResponse(
             message="Verification email sent",
-            verification_token=token if settings.debug else None,
+            verification_code=code if settings.debug else None,
         )
 
     async def verify_email(self, data: "VerifyEmailRequest") -> "VerifyEmailResponse":
-        ok = await self.auth_service.verify_email(data.token)
+        ok = await self.auth_service.verify_email(data.code)
         if not ok:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -76,20 +76,20 @@ def test_forgot_and_reset_password_flow() -> None:
     # forgot password (debug mode returns token)
     r = client.post("/api/v1/auth/forgot-password", json={"email": email})
     assert r.status_code == 200, r.text
-    token = r.json().get("reset_token")
+    token = r.json().get("reset_code")
     assert token is not None
 
     # reset with invalid token
     r = client.post(
         "/api/v1/auth/reset-password",
-        json={"token": "invalid", "new_password": "ResetPassword123!"},
+        json={"email": email, "code": "000000", "new_password": "ResetPassword123!"},
     )
     assert r.status_code == 400
 
     # reset with valid token
     r = client.post(
         "/api/v1/auth/reset-password",
-        json={"token": token, "new_password": "ResetPassword123!"},
+        json={"email": email, "code": token, "new_password": "ResetPassword123!"},
     )
     assert r.status_code == 200, r.text
 
@@ -100,6 +100,6 @@ def test_forgot_and_reset_password_flow() -> None:
     # token cannot be reused
     r = client.post(
         "/api/v1/auth/reset-password",
-        json={"token": token, "new_password": "AnotherPassword123!"},
+        json={"email": email, "code": token, "new_password": "AnotherPassword123!"},
     )
     assert r.status_code == 400
