@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,16 +48,14 @@ export default function VerifyEmailPage() {
   return (
     <Container maxW="sm" py={16}>
       <Heading mb={4}>Verify email</Heading>
-      <form onSubmit={handleSubmit(submit)}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
           <Input placeholder="6-digit code from email" {...register("code")} />
           {errors.code && <Text color="red.500" fontSize="sm">{errors.code.message}</Text>}
           {message && <Text color="green.500" fontSize="sm">{message}</Text>}
           {error && <Text color="red.500" fontSize="sm">{error}</Text>}
           <Button type="submit" loading={loading}>Verify</Button>
           <Button variant="outline" onClick={resend} loading={loading}>Resend code</Button>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }

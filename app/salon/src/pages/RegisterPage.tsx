@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -48,8 +48,7 @@ export default function RegisterPage() {
   return (
     <Container maxW="sm" py={16}>
       <Heading mb={4}>Register</Heading>
-      <form onSubmit={submit}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={submit} gap={3} align="stretch">
           <Input placeholder="Business name" value={form.name} onChange={set("name")} />
           <Input placeholder="Subdomain" value={form.subdomain} onChange={set("subdomain")} />
           <Input placeholder="First name" value={form.first_name} onChange={set("first_name")} />
@@ -61,8 +60,7 @@ export default function RegisterPage() {
           <Text fontSize="sm">
             Have account? <Link to="/login">Login</Link>
           </Text>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }

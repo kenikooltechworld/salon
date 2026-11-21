@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -33,16 +33,14 @@ export default function ProfilePage() {
   return (
     <Container maxW="sm" py={8}>
       <Heading mb={4}>Profile</Heading>
-      <form onSubmit={submit}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={submit} gap={3} align="stretch">
           <Input placeholder="First name" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
           <Input placeholder="Last name" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
           <Input placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           {message && <Text color="green.500" fontSize="sm">{message}</Text>}
           {error && <Text color="red.500" fontSize="sm">{error}</Text>}
           <Button type="submit" loading={loading}>Save</Button>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }

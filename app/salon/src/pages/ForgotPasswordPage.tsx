@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,8 +32,7 @@ export default function ForgotPasswordPage() {
   return (
     <Container maxW="sm" py={16}>
       <Heading mb={4}>Forgot password</Heading>
-      <form onSubmit={handleSubmit(submit)}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
           <Input placeholder="Email" {...register("email")} />
           {errors.email && <Text color="red.500" fontSize="sm">{errors.email.message}</Text>}
           {message && <Text color="green.500" fontSize="sm">{message}</Text>}
@@ -42,8 +41,7 @@ export default function ForgotPasswordPage() {
           <Text fontSize="sm">
             <Link to="/login">Back to login</Link>
           </Text>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }

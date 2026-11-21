@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -30,8 +30,7 @@ export default function LoginPage() {
   return (
     <Container maxW="sm" py={16}>
       <Heading mb={4}>Login</Heading>
-      <form onSubmit={submit}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={submit} gap={3} align="stretch">
           <Input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <Text color="red.500">{error}</Text>}
@@ -39,8 +38,7 @@ export default function LoginPage() {
           <Text fontSize="sm">
             No account? <Link to="/register">Register</Link>
           </Text>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }

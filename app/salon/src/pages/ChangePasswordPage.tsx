@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,8 +37,7 @@ export default function ChangePasswordPage() {
   return (
     <Container maxW="sm" py={16}>
       <Heading mb={4}>Change password</Heading>
-      <form onSubmit={handleSubmit(submit)}>
-        <Stack gap={3}>
+      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
           <Input type="password" placeholder="Current password" {...register("current_password")} />
           {errors.current_password && <Text color="red.500" fontSize="sm">{errors.current_password.message}</Text>}
           <Input type="password" placeholder="New password" {...register("new_password")} />
@@ -46,8 +45,7 @@ export default function ChangePasswordPage() {
           {message && <Text color="green.500" fontSize="sm">{message}</Text>}
           {error && <Text color="red.500" fontSize="sm">{error}</Text>}
           <Button type="submit" loading={loading}>Change password</Button>
-        </Stack>
-      </form>
+      </VStack>
     </Container>
   );
 }
