@@ -1,11 +1,41 @@
-import { HStack } from "@chakra-ui/react";
-import { Button } from "./components/ui/button";
-function App() {
-  return (
-    <HStack>
-      <Button bg={"red"}>App</Button>
-    </HStack>
-  );
+﻿import { useEffect } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Box } from "@chakra-ui/react";
+import { setAuthToken } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
+import DashboardPage from "@/pages/DashboardPage";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
+
+function Protected({ children }: { children: React.ReactNode }) {
+  const token = useAuthStore((s) => s.token);
+  if (!token) return <Navigate to="/login" replace />;
+  return <>{children}</>;
 }
 
-export default App;
+export default function App() {
+  const token = useAuthStore((s) => s.token);
+  useEffect(() => {
+    setAuthToken(token);
+  }, [token]);
+
+  return (
+    <BrowserRouter>
+      <Box minH="100vh">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <Protected>
+                <DashboardPage />
+              </Protected>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Box>
+    </BrowserRouter>
+  );
+}
