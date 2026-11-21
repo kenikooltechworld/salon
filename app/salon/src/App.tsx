@@ -1,7 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
-import { setAuthToken } from "@/lib/api";
+import { Box, Spinner } from "@chakra-ui/react";
 import { useAuthStore } from "@/stores/authStore";
 import CustomersPage from "@/pages/CustomersPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -10,16 +9,27 @@ import RegisterPage from "@/pages/RegisterPage";
 import ServicesPage from "@/pages/ServicesPage";
 
 function Protected({ children }: { children: React.ReactNode }) {
-  const token = useAuthStore((s) => s.token);
-  if (!token) return <Navigate to="/login" replace />;
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  if (!isAuthenticated && !user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
-  const token = useAuthStore((s) => s.token);
+  const load = useAuthStore((s) => s.load);
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    setAuthToken(token);
-  }, [token]);
+    load().finally(() => setReady(true));
+  }, [load]);
+
+  if (!ready) {
+    return (
+      <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+        <Spinner />
+      </Box>
+    );
+  }
 
   return (
     <BrowserRouter>

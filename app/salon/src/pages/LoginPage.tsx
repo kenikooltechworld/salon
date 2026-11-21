@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/authStore";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const load = useAuthStore((s) => s.load);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,11 +17,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.post("/auth/login", { email, password });
-      const me = await api.get("/auth/me", {
-        headers: { Authorization: `Bearer ${data.access_token}` },
-      });
-      setAuth(data.access_token, me.data.user, me.data.tenant);
+      await api.post("/auth/login", { email, password });
+      await load();
       navigate("/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Login failed");

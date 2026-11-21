@@ -19,7 +19,7 @@ def unique() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _register_and_login(client: TestClient) -> str:
+def _register_and_login(client: TestClient) -> None:
     suffix = unique()
     reg = {
         "tenant": {
@@ -39,22 +39,21 @@ def _register_and_login(client: TestClient) -> str:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    return r.json()["access_token"]
+    return None
 
 
 def test_service_category_and_service_flow() -> None:
     client = TestClient(app)
-    token = _register_and_login(client)
-    headers = {"Authorization": f"Bearer {token}"}
+    _register_and_login(client)
 
     # create category
     cat = {"name": "Hair", "color": "#FF0000", "is_active": True}
-    r = client.post("/api/v1/service-categories", json=cat, headers=headers)
+    r = client.post("/api/v1/service-categories", json=cat)
     assert r.status_code == 201, r.text
     cat_id = r.json()["id"]
 
     # list categories
-    r = client.get("/api/v1/service-categories", headers=headers)
+    r = client.get("/api/v1/service-categories")
     assert r.status_code == 200
     assert any(c["id"] == cat_id for c in r.json())
 
@@ -66,24 +65,24 @@ def test_service_category_and_service_flow() -> None:
         "category": "Hair",
         "is_active": True,
     }
-    r = client.post("/api/v1/services", json=svc, headers=headers)
+    r = client.post("/api/v1/services", json=svc)
     assert r.status_code == 201, r.text
     svc_id = r.json()["id"]
 
     # get service
-    r = client.get(f"/api/v1/services/{svc_id}", headers=headers)
+    r = client.get(f"/api/v1/services/{svc_id}")
     assert r.status_code == 200
     assert r.json()["name"] == "Haircut"
 
     # update service
-    r = client.put(f"/api/v1/services/{svc_id}", json={"price": "30.00"}, headers=headers)
+    r = client.put(f"/api/v1/services/{svc_id}", json={"price": "30.00"})
     assert r.status_code == 200
     assert r.json()["price"] == "30.00"
 
     # delete service
-    r = client.delete(f"/api/v1/services/{svc_id}", headers=headers)
+    r = client.delete(f"/api/v1/services/{svc_id}")
     assert r.status_code == 204
 
     # delete category
-    r = client.delete(f"/api/v1/service-categories/{cat_id}", headers=headers)
+    r = client.delete(f"/api/v1/service-categories/{cat_id}")
     assert r.status_code == 204

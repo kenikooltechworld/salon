@@ -20,7 +20,7 @@ def unique() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _setup(client: TestClient) -> tuple[str, str, str]:
+def _setup(client: TestClient) -> tuple[None, str, str]:
     suffix = unique()
     reg = {
         "tenant": {
@@ -41,28 +41,25 @@ def _setup(client: TestClient) -> tuple[str, str, str]:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    token = r.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
 
     # service
     svc = {"name": "Haircut", "duration_minutes": 30, "price": "25.00", "category": "Hair"}
-    r = client.post("/api/v1/services", json=svc, headers=headers)
+    r = client.post("/api/v1/services", json=svc)
     assert r.status_code == 201, r.text
     service_id = r.json()["id"]
 
     # staff
     st = {"user_id": user_id, "payment_type": "hourly", "payment_rate": "20.00"}
-    r = client.post("/api/v1/staff", json=st, headers=headers)
+    r = client.post("/api/v1/staff", json=st)
     assert r.status_code == 201, r.text
     staff_id = r.json()["id"]
 
-    return token, service_id, staff_id
+    return None, service_id, staff_id
 
 
 def test_appointment_flow() -> None:
     client = TestClient(app)
-    token, service_id, staff_id = _setup(client)
-    headers = {"Authorization": f"Bearer {token}"}
+    _, service_id, staff_id = _setup(client)
 
     start = datetime.now(timezone.utc) + timedelta(days=1)
     end = start + timedelta(minutes=30)
@@ -73,17 +70,17 @@ def test_appointment_flow() -> None:
         "end_time": end.isoformat(),
         "price": "25.00",
     }
-    r = client.post("/api/v1/appointments", json=payload, headers=headers)
+    r = client.post("/api/v1/appointments", json=payload)
     assert r.status_code == 201, r.text
     aid = r.json()["id"]
 
-    r = client.get(f"/api/v1/appointments/{aid}", headers=headers)
+    r = client.get(f"/api/v1/appointments/{aid}")
     assert r.status_code == 200
     assert r.json()["status"] == "scheduled"
 
-    r = client.put(f"/api/v1/appointments/{aid}", json={"status": "confirmed"}, headers=headers)
+    r = client.put(f"/api/v1/appointments/{aid}", json={"status": "confirmed"})
     assert r.status_code == 200
     assert r.json()["status"] == "confirmed"
 
-    r = client.delete(f"/api/v1/appointments/{aid}", headers=headers)
+    r = client.delete(f"/api/v1/appointments/{aid}")
     assert r.status_code == 204

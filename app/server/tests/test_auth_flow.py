@@ -45,9 +45,8 @@ def test_register_login_me_flow() -> None:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    token = r.json()["access_token"]
 
-    r = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    r = client.get("/api/v1/auth/me")
     assert r.status_code == 200, r.text
     assert r.json()["user"]["email"] == reg["user"]["email"]
 

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/authStore";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const load = useAuthStore((s) => s.load);
   const [form, setForm] = useState({
     name: "",
     subdomain: "",
@@ -32,14 +32,8 @@ export default function RegisterPage() {
           last_name: form.last_name,
         },
       });
-      const { data } = await api.post("/auth/login", {
-        email: form.email,
-        password: form.password,
-      });
-      const me = await api.get("/auth/me", {
-        headers: { Authorization: `Bearer ${data.access_token}` },
-      });
-      setAuth(data.access_token, me.data.user, me.data.tenant);
+      await api.post("/auth/login", { email: form.email, password: form.password });
+      await load();
       navigate("/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Registration failed");

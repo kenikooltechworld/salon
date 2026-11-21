@@ -19,7 +19,7 @@ def unique() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _register_and_login(client: TestClient) -> str:
+def _register_and_login(client: TestClient) -> None:
     suffix = unique()
     reg = {
         "tenant": {
@@ -39,13 +39,12 @@ def _register_and_login(client: TestClient) -> str:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    return r.json()["access_token"]
+    return None
 
 
 def test_customer_flow() -> None:
     client = TestClient(app)
-    token = _register_and_login(client)
-    headers = {"Authorization": f"Bearer {token}"}
+    _register_and_login(client)
 
     payload = {
         "first_name": "Jane",
@@ -54,17 +53,17 @@ def test_customer_flow() -> None:
         "phone": "555-0100",
         "communication_preference": "email",
     }
-    r = client.post("/api/v1/customers", json=payload, headers=headers)
+    r = client.post("/api/v1/customers", json=payload)
     assert r.status_code == 201, r.text
     cid = r.json()["id"]
 
-    r = client.get(f"/api/v1/customers/{cid}", headers=headers)
+    r = client.get(f"/api/v1/customers/{cid}")
     assert r.status_code == 200
     assert r.json()["first_name"] == "Jane"
 
-    r = client.put(f"/api/v1/customers/{cid}", json={"phone": "555-0200"}, headers=headers)
+    r = client.put(f"/api/v1/customers/{cid}", json={"phone": "555-0200"})
     assert r.status_code == 200
     assert r.json()["phone"] == "555-0200"
 
-    r = client.delete(f"/api/v1/customers/{cid}", headers=headers)
+    r = client.delete(f"/api/v1/customers/{cid}")
     assert r.status_code == 204

@@ -19,7 +19,7 @@ def unique() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def _register_and_login(client: TestClient) -> tuple[str, str]:
+def _register_and_login(client: TestClient) -> tuple[None, str]:
     suffix = unique()
     reg = {
         "tenant": {
@@ -40,13 +40,12 @@ def _register_and_login(client: TestClient) -> tuple[str, str]:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    return r.json()["access_token"], user_id
+    return None, user_id
 
 
 def test_staff_flow() -> None:
     client = TestClient(app)
-    token, user_id = _register_and_login(client)
-    headers = {"Authorization": f"Bearer {token}"}
+    _, user_id = _register_and_login(client)
 
     payload = {
         "user_id": user_id,
@@ -56,17 +55,17 @@ def test_staff_flow() -> None:
         "bio": "Experienced stylist",
         "is_available_for_public_booking": True,
     }
-    r = client.post("/api/v1/staff", json=payload, headers=headers)
+    r = client.post("/api/v1/staff", json=payload)
     assert r.status_code == 201, r.text
     sid = r.json()["id"]
 
-    r = client.get(f"/api/v1/staff/{sid}", headers=headers)
+    r = client.get(f"/api/v1/staff/{sid}")
     assert r.status_code == 200
     assert r.json()["user_id"] == user_id
 
-    r = client.put(f"/api/v1/staff/{sid}", json={"bio": "Updated bio"}, headers=headers)
+    r = client.put(f"/api/v1/staff/{sid}", json={"bio": "Updated bio"})
     assert r.status_code == 200
     assert r.json()["bio"] == "Updated bio"
 
-    r = client.delete(f"/api/v1/staff/{sid}", headers=headers)
+    r = client.delete(f"/api/v1/staff/{sid}")
     assert r.status_code == 204

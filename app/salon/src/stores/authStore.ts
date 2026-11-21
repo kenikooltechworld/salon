@@ -1,26 +1,33 @@
-﻿import { create } from "zustand";
-import { setAuthToken } from "@/lib/api";
+import { create } from "zustand";
+import { api } from "@/lib/api";
+
+interface User { id: string; email: string; first_name: string; last_name: string }
+interface Tenant { id: string; name: string; subdomain: string }
 
 interface AuthState {
-  token: string | null;
-  user: { id: string; email: string; first_name: string; last_name: string } | null;
-  tenant: { id: string; name: string; subdomain: string } | null;
-  setAuth: (token: string, user: AuthState["user"], tenant: AuthState["tenant"]) => void;
-  logout: () => void;
+  user: User | null;
+  tenant: Tenant | null;
+  isAuthenticated: boolean;
+  load: () => Promise<void>;
+  setAuth: (user: User | null, tenant: Tenant | null) => void;
+  logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem("access_token"),
   user: null,
   tenant: null,
-  setAuth: (token, user, tenant) => {
-    localStorage.setItem("access_token", token);
-    setAuthToken(token);
-    set({ token, user, tenant });
+  isAuthenticated: false,
+  load: async () => {
+    try {
+      const { data } = await api.get("/auth/me");
+      set({ user: data.user, tenant: data.tenant, isAuthenticated: true });
+    } catch {
+      set({ user: null, tenant: null, isAuthenticated: false });
+    }
   },
-  logout: () => {
-    localStorage.removeItem("access_token");
-    setAuthToken(null);
-    set({ token: null, user: null, tenant: null });
+  setAuth: (user, tenant) => set({ user, tenant, isAuthenticated: !!user }),
+  logout: async () => {
+    try { await api.post("/auth/logout"); } catch {}
+    set({ user: null, tenant: null, isAuthenticated: false });
   },
 }));
