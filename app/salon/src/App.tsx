@@ -4,10 +4,15 @@ import { Box, Spinner } from "@chakra-ui/react";
 import { useAuthStore } from "@/stores/authStore";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
+import { PublicLayout } from "@/layouts/PublicLayout";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import CustomersPage from "@/pages/CustomersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import HomePage from "@/pages/Home";
+import FeaturesPage from "@/pages/Features";
+import AboutPage from "@/pages/About";
+import PricingPage from "@/pages/Pricing";
 import LoginPage from "@/pages/LoginPage";
 import MfaPage from "@/pages/MfaPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -43,6 +48,12 @@ export default function App() {
     <BrowserRouter>
       <Box minH="100vh">
         <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+          </Route>
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -58,7 +69,6 @@ export default function App() {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/mfa" element={<MfaPage />} />
           </Route>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Box>
     </BrowserRouter>
