@@ -1,11 +1,13 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Box } from "@chakra-ui/react";
 import { setAuthToken } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+import CustomersPage from "@/pages/CustomersPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import ServicesPage from "@/pages/ServicesPage";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -30,6 +32,22 @@ export default function App() {
             element={
               <Protected>
                 <DashboardPage />
+              </Protected>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <Protected>
+                <ServicesPage />
+              </Protected>
+            }
+          />
+          <Route
+            path="/customers"
+            element={
+              <Protected>
+                <CustomersPage />
               </Protected>
             }
           />
