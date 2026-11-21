@@ -3,11 +3,14 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
+  Center,
   Container,
   Flex,
   HStack,
   IconButton,
   Link,
+  Separator,
+  Spacer,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -35,16 +38,18 @@ export function Navbar() {
         <Flex h="16" align="center" justify="space-between">
           <HStack asChild gap="2" textDecoration="none">
             <RouterLink to="/">
-              <Box w="8" h="8" bgGradient="to-br" gradientFrom="blue.500" gradientTo="purple.500" rounded="lg" display="flex" alignItems="center" justifyContent="center">
+              <Center w="8" h="8" bgGradient="to-br" gradientFrom="blue.500" gradientTo="purple.500" rounded="lg">
                 <Text color="white" fontWeight="bold" fontSize="lg">
                   K
                 </Text>
-              </Box>
+              </Center>
               <Text fontWeight="bold" fontSize="lg" display={{ base: "none", sm: "block" }}>
                 Kenikool
               </Text>
             </RouterLink>
           </HStack>
+
+          <Spacer />
 
           {!user && (
             <HStack gap="8" display={{ base: "none", md: "flex" }}>
@@ -59,6 +64,8 @@ export function Navbar() {
               </Link>
             </HStack>
           )}
+
+          <Spacer />
 
           <HStack gap="4" display={{ base: "none", md: "flex" }} align="center">
             <ColorModeButton />
@@ -105,7 +112,7 @@ export function Navbar() {
                   <Link asChild display="block" px="3" py="2" rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
                     <RouterLink to="/about">About</RouterLink>
                   </Link>
-                  <Box borderTopWidth="1px" borderColor="border" my="2" />
+                    <Separator my="2" />
                 </>
               )}
               {user ? (
