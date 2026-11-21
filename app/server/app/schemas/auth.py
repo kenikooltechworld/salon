@@ -5,12 +5,23 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class TenantCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    subdomain: str = Field(min_length=1, max_length=63, pattern=r"^[a-z0-9-]+$")
+    subdomain: str | None = Field(default=None, max_length=63)
+
+    @field_validator("subdomain")
+    @classmethod
+    def validate_subdomain(cls, v):
+        if v is None:
+            return v
+        v = v.strip().lower()
+        from app.lib.subdomain import is_valid_subdomain
+        if not is_valid_subdomain(v):
+            raise ValueError("Invalid subdomain")
+        return v
     email: Optional[EmailStr] = None
     description: Optional[str] = Field(default=None, max_length=1000)
 
@@ -108,4 +119,29 @@ class VerifyEmailRequest(BaseModel):
 class VerifyEmailResponse(BaseModel):
     message: str
     email_verified: bool
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    qr_code: str
+    backup_codes: list[str]
+
+
+class MfaVerifyRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
+
+
+class MfaVerifyResponse(BaseModel):
+    message: str
+    mfa_enabled: bool
+
+
+class MfaValidateRequest(BaseModel):
+    email: str
+    code: str = Field(min_length=6, max_length=6)
+
+
+class MfaDisableRequest(BaseModel):
+    password: str
+    code: str = Field(min_length=6, max_length=6)
 

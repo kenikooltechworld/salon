@@ -12,6 +12,11 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
+    MfaDisableRequest,
+    MfaSetupResponse,
+    MfaValidateRequest,
+    MfaVerifyRequest,
+    MfaVerifyResponse,
     MeResponse,
     RegisterRequest,
     RegisterResponse,
@@ -116,6 +121,79 @@ async def verify_email(
 ):
     controller = AuthController(session)
     return await controller.verify_email(data)
+
+
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse)
+async def mfa_setup(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.mfa_setup(current_user)
+
+
+@router.post("/mfa/verify", response_model=MfaVerifyResponse)
+async def mfa_verify(
+    data: MfaVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.mfa_verify(current_user, data)
+
+
+@router.post("/mfa/validate")
+async def mfa_validate(
+    data: MfaValidateRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.mfa_validate(data, request, response)
+
+
+@router.post("/mfa/disable")
+async def mfa_disable(
+    data: MfaDisableRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.mfa_disable(current_user, data)
+
+
+
+@router.put("/me")
+async def update_me(
+    updates: dict,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    # update allowed fields
+    allowed = {"first_name", "last_name", "phone"}
+    for k, v in updates.items():
+        if k in allowed:
+            setattr(current_user, k, v)
+    await session.commit()
+    await session.refresh(current_user)
+    from app.services.tenant_service import TenantService
+
+    tenant = await TenantService().get_tenant(session, current_user.tenant_id)
+    from app.schemas.auth import MeResponse, TenantRead, UserRead
+
+    return MeResponse(
+        user=UserRead.model_validate(current_user),
+        tenant=TenantRead.model_validate(tenant),
+    )
+
+
+@router.get("/csrf-token")
+async def csrf_token():
+    from app.lib.security import generate_csrf_token
+
+    return {"csrf_token": generate_csrf_token()}
 
 
 @router.get("/me", response_model=MeResponse)

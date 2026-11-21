@@ -30,12 +30,22 @@ class AuthService:
         self.session = session
 
     async def register(self, data: RegisterRequest) -> tuple[Tenant, User]:
-        # Ensure subdomain not already taken
-        existing_tenant = await self.session.execute(
-            select(Tenant).where(Tenant.subdomain == data.tenant.subdomain)
-        )
-        if existing_tenant.scalar_one_or_none() is not None:
-            raise ValueError("Subdomain already taken")
+        from app.lib.subdomain import generate_unique_subdomain, is_valid_subdomain
+
+        # Generate subdomain if not provided
+        requested = (data.tenant.subdomain or "").strip().lower()
+        if not requested:
+            subdomain = await generate_unique_subdomain(self.session, data.tenant.name)
+        else:
+            if not is_valid_subdomain(requested):
+                raise ValueError("Invalid subdomain")
+            # Ensure not already taken
+            existing_tenant = await self.session.execute(
+                select(Tenant).where(Tenant.subdomain == requested)
+            )
+            if existing_tenant.scalar_one_or_none() is not None:
+                raise ValueError("Subdomain already taken")
+            subdomain = requested
 
         # Ensure email not already taken
         existing_user = await self.session.execute(
@@ -46,7 +56,7 @@ class AuthService:
 
         tenant = Tenant(
             name=data.tenant.name,
-            subdomain=data.tenant.subdomain,
+            subdomain=subdomain,
             email=data.tenant.email,
             description=data.tenant.description,
         )
@@ -128,6 +138,78 @@ class AuthService:
         await self.session.commit()
         await self.session.refresh(user)
         return True
+
+
+    async def setup_mfa(self, user: "User") -> tuple[str, str, str, list[str]]:
+        from app.services.mfa_service import (
+            generate_backup_codes,
+            generate_qr_code,
+            generate_secret,
+            get_totp_uri,
+            hash_backup_code,
+        )
+
+        secret = generate_secret()
+        uri = get_totp_uri(secret, user.email)
+        qr = generate_qr_code(uri)
+        backup_codes = generate_backup_codes()
+        hashed = [hash_backup_code(c) for c in backup_codes]
+
+        user.mfa_secret = secret
+        user.mfa_backup_codes = hashed
+        user.mfa_method = "totp"
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
+        return secret, uri, qr, backup_codes
+
+    async def verify_mfa(self, user: "User", code: str) -> bool:
+        from app.services.mfa_service import verify_code
+
+        if not user.mfa_secret:
+            return False
+        if not verify_code(user.mfa_secret, code):
+            return False
+        user.mfa_enabled = True
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
+        return True
+
+    async def disable_mfa(self, user: "User", password: str, code: str) -> bool:
+        from app.lib.security import verify_password
+        from app.services.mfa_service import verify_code, verify_backup_code
+
+        if not verify_password(password, user.password_hash):
+            return False
+        if user.mfa_secret and verify_code(user.mfa_secret, code):
+            pass
+        elif user.mfa_backup_codes and verify_backup_code(code, user.mfa_backup_codes):
+            pass
+        else:
+            return False
+
+        user.mfa_enabled = False
+        user.mfa_secret = None
+        user.mfa_backup_codes = None
+        user.mfa_method = None
+        await self.session.flush()
+        await self.session.commit()
+        await self.session.refresh(user)
+        return True
+
+    async def validate_mfa_login(self, email: str, code: str) -> "User | None":
+        from app.services.mfa_service import verify_code, verify_backup_code
+
+        result = await self.session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user is None or user.status != "active" or not user.mfa_enabled:
+            return None
+        if user.mfa_secret and verify_code(user.mfa_secret, code):
+            return user
+        if user.mfa_backup_codes and verify_backup_code(code, user.mfa_backup_codes):
+            return user
+        return None
 
     def issue_tokens(self, user: User) -> tuple[str, str, int]:
         access = create_access_token(

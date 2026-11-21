@@ -15,6 +15,11 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
+    MfaDisableRequest,
+    MfaSetupResponse,
+    MfaValidateRequest,
+    MfaVerifyRequest,
+    MfaVerifyResponse,
     MeResponse,
     RegisterRequest,
     RegisterResponse,
@@ -69,6 +74,27 @@ class AuthController:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
             )
+
+        # MFA required: issue short-lived pending token, do not set full cookies
+        if user.mfa_enabled:
+            from app.lib.security import create_access_token
+
+            pending = create_access_token(
+                user_id=str(user.id),
+                tenant_id=str(user.tenant_id),
+                email=user.email,
+                role=user.role,
+            )
+            # reuse as mfa_pending by setting a dedicated cookie
+            kwargs = cookie_kwargs(request)
+            response.set_cookie(
+                key="mfa_pending",
+                value=pending,
+                max_age=5 * 60,
+                **kwargs,
+            )
+            return {"mfa_required": True, "message": "MFA required"}
+
         access, refresh, expires_in = self._issue(user)
         set_auth_cookies(
             response,
@@ -178,6 +204,61 @@ class AuthController:
                 detail="Invalid or expired verification token",
             )
         return VerifyEmailResponse(message="Email verified successfully", email_verified=True)
+
+    async def mfa_setup(self, user: User) -> "MfaSetupResponse":
+        from app.schemas.auth import MfaSetupResponse
+
+        secret, uri, qr, backup_codes = await self.auth_service.setup_mfa(user)
+        await self.session.commit()
+        return MfaSetupResponse(
+            secret=secret,
+            otpauth_uri=uri,
+            qr_code=qr,
+            backup_codes=backup_codes,
+        )
+
+    async def mfa_verify(self, user: User, data: "MfaVerifyRequest") -> "MfaVerifyResponse":
+        from app.schemas.auth import MfaVerifyResponse
+
+        ok = await self.auth_service.verify_mfa(user, data.code)
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code"
+            )
+        await self.session.commit()
+        return MfaVerifyResponse(message="MFA enabled", mfa_enabled=True)
+
+    async def mfa_validate(
+        self, data: "MfaValidateRequest", request: Request, response: Response
+    ) -> dict:
+        user = await self.auth_service.validate_mfa_login(data.email, data.code)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid MFA code"
+            )
+        # clear mfa_pending cookie
+        kwargs = cookie_kwargs(request)
+        response.delete_cookie(key="mfa_pending", **kwargs)
+
+        access, refresh, expires_in = self._issue(user)
+        set_auth_cookies(
+            response,
+            request,
+            access_token=access,
+            refresh_token=refresh,
+            access_max_age=settings.jwt_access_token_expire_minutes * 60,
+            refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
+        )
+        return {"message": "Logged in successfully", "expires_in": expires_in}
+
+    async def mfa_disable(self, user: User, data: "MfaDisableRequest") -> dict:
+        ok = await self.auth_service.disable_mfa(user, data.password, data.code)
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials or code"
+            )
+        await self.session.commit()
+        return {"message": "MFA disabled"}
 
     async def me(self, user: User) -> MeResponse:
         tenant = await self.tenant_service.get_tenant(self.session, user.tenant_id)
