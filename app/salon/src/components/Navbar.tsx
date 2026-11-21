@@ -3,9 +3,11 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
+  Container,
   Flex,
   HStack,
   IconButton,
+  Link,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -28,33 +30,12 @@ export function Navbar() {
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
   return (
-    <Box
-      as="nav"
-      position="fixed"
-      top="0"
-      left="0"
-      right="0"
-      zIndex="50"
-      bg="bg"
-      borderBottomWidth="1px"
-      borderColor="border"
-      boxShadow="sm"
-    >
-      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }}>
+    <Box as="nav" position="fixed" top="0" left="0" right="0" zIndex="50" bg="bg" borderBottomWidth="1px" borderColor="border" boxShadow="sm">
+      <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }}>
         <Flex h="16" align="center" justify="space-between">
-          <Box asChild>
-            <RouterLink to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-              <Box
-                w="8"
-                h="8"
-                bgGradient="to-br"
-                gradientFrom="blue.500"
-                gradientTo="purple.500"
-                rounded="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
+          <HStack asChild gap="2" textDecoration="none">
+            <RouterLink to="/">
+              <Box w="8" h="8" bgGradient="to-br" gradientFrom="blue.500" gradientTo="purple.500" rounded="lg" display="flex" alignItems="center" justifyContent="center">
                 <Text color="white" fontWeight="bold" fontSize="lg">
                   K
                 </Text>
@@ -63,23 +44,23 @@ export function Navbar() {
                 Kenikool
               </Text>
             </RouterLink>
-          </Box>
+          </HStack>
 
           {!user && (
-            <HStack gap={8} display={{ base: "none", md: "flex" }}>
-              <Box asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
+            <HStack gap="8" display={{ base: "none", md: "flex" }}>
+              <Link asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
                 <RouterLink to="/features">Features</RouterLink>
-              </Box>
-              <Box asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
+              </Link>
+              <Link asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
                 <RouterLink to="/pricing">Pricing</RouterLink>
-              </Box>
-              <Box asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
+              </Link>
+              <Link asChild color="fg.muted" _hover={{ color: "fg" }} fontSize="sm">
                 <RouterLink to="/about">About</RouterLink>
-              </Box>
+              </Link>
             </HStack>
           )}
 
-          <HStack gap={4} display={{ base: "none", md: "flex" }} align="center">
+          <HStack gap="4" display={{ base: "none", md: "flex" }} align="center">
             <ColorModeButton />
             {user ? (
               <>
@@ -102,7 +83,7 @@ export function Navbar() {
             )}
           </HStack>
 
-          <HStack gap={2} display={{ base: "flex", md: "none" }} align="center">
+          <HStack gap="2" display={{ base: "flex", md: "none" }} align="center">
             <ColorModeButton />
             <IconButton onClick={toggleMenu} aria-label="Toggle menu" variant="ghost" size="sm">
               {isMenuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
@@ -111,20 +92,20 @@ export function Navbar() {
         </Flex>
 
         {isMenuOpen && (
-          <Box borderTopWidth="1px" borderColor="border" bg="bg.panel" py={2}>
-            <VStack align="stretch" gap={1} px={2}>
+          <Box borderTopWidth="1px" borderColor="border" bg="bg.panel" py="2">
+            <VStack align="stretch" gap="1" px="2">
               {!user && (
                 <>
-                  <Box asChild display="block" px={3} py={2} rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
+                  <Link asChild display="block" px="3" py="2" rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
                     <RouterLink to="/features">Features</RouterLink>
-                  </Box>
-                  <Box asChild display="block" px={3} py={2} rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
+                  </Link>
+                  <Link asChild display="block" px="3" py="2" rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
                     <RouterLink to="/pricing">Pricing</RouterLink>
-                  </Box>
-                  <Box asChild display="block" px={3} py={2} rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
+                  </Link>
+                  <Link asChild display="block" px="3" py="2" rounded="md" fontSize="sm" color="fg.muted" _hover={{ color: "fg", bg: "bg.muted" }} onClick={() => setIsMenuOpen(false)}>
                     <RouterLink to="/about">About</RouterLink>
-                  </Box>
-                  <Box borderTopWidth="1px" borderColor="border" my={2} />
+                  </Link>
+                  <Box borderTopWidth="1px" borderColor="border" my="2" />
                 </>
               )}
               {user ? (
@@ -132,7 +113,7 @@ export function Navbar() {
                   <Button asChild variant="outline" size="sm" w="full" justifyContent="flex-start" onClick={() => setIsMenuOpen(false)}>
                     <RouterLink to="/dashboard">Dashboard</RouterLink>
                   </Button>
-                  <Box as="button" onClick={handleLogout} w="full" textAlign="left" px={3} py={2} rounded="md" fontSize="sm" color="red.500" _hover={{ bg: "red.50" }}>
+                  <Box as="button" onClick={handleLogout} w="full" textAlign="left" px="3" py="2" rounded="md" fontSize="sm" color="red.500" _hover={{ bg: "red.50" }}>
                     Logout
                   </Box>
                 </>
@@ -149,7 +130,7 @@ export function Navbar() {
             </VStack>
           </Box>
         )}
-      </Box>
+      </Container>
     </Box>
   );
 }
