@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -31,7 +31,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <Box maxW="sm" mx="auto" mt={8} p={6}>
+    <Container maxW="sm" py={8}>
       <Heading mb={4}>Profile</Heading>
       <form onSubmit={submit}>
         <Stack gap={3}>
@@ -43,6 +43,6 @@ export default function ProfilePage() {
           <Button type="submit" loading={loading}>Save</Button>
         </Stack>
       </form>
-    </Box>
+    </Container>
   );
 }

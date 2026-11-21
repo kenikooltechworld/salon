@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Box, Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import QRCode from "react-qr-code";
 import { api } from "@/lib/api";
 
@@ -63,7 +63,7 @@ export default function MfaPage() {
   };
 
   return (
-    <Box maxW="md" mx="auto" mt={8} p={6}>
+    <Container maxW="md" py={8}>
       <Heading mb={4}>Two-factor authentication</Heading>
       {!secret && !enabled && (
         <Button onClick={setup} loading={loading}>Set up MFA</Button>
@@ -94,6 +94,6 @@ export default function MfaPage() {
           {error && <Text color="red.500" fontSize="sm">{error}</Text>}
         </Stack>
       )}
-    </Box>
+    </Container>
   );
 }

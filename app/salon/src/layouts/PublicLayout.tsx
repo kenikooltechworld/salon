@@ -1,17 +1,19 @@
 import { Outlet } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import { Box, Container, Flex } from "@chakra-ui/react";
 import { Navbar } from "@/components/Navbar";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export function PublicLayout() {
   return (
-    <Box minH="100vh" display="flex" flexDirection="column">
+    <Flex minH="100vh" flexDirection="column">
       <Navbar />
       <Box as="main" flex="1" pt="16">
-        <Outlet />
+        <Container maxW="7xl" py="4">
+          <Outlet />
+        </Container>
       </Box>
       <LandingFooter />
-    </Box>
+    </Flex>
   );
 }
 

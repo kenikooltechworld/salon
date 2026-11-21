@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Container, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -28,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <Box maxW="sm" mx="auto" mt={16} p={6}>
+    <Container maxW="sm" py={16}>
       <Heading mb={4}>Login</Heading>
       <form onSubmit={submit}>
         <Stack gap={3}>
@@ -41,6 +41,6 @@ export default function LoginPage() {
           </Text>
         </Stack>
       </form>
-    </Box>
+    </Container>
   );
 }

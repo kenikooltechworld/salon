@@ -1,17 +1,19 @@
 import { Outlet } from "react-router-dom";
-import { Box } from "@chakra-ui/react";
+import { Container, Flex } from "@chakra-ui/react";
 import { Navbar } from "@/components/Navbar";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export function StaffLayout() {
   return (
-    <Box minH="100vh" display="flex" flexDirection="column">
+    <Flex minH="100vh" flexDirection="column">
       <Navbar />
-      <Box as="main" flex="1" pt="16" p="4">
-        <Outlet />
-      </Box>
+      <Flex as="main" flex="1" pt="16" p="4">
+        <Container maxW="7xl" flex="1">
+          <Outlet />
+        </Container>
+      </Flex>
       <LandingFooter />
-    </Box>
+    </Flex>
   );
 }
 
