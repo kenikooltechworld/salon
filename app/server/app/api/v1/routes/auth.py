@@ -108,10 +108,11 @@ async def forgot_password(
 @router.post("/reset-password")
 async def reset_password(
     data: ResetPasswordRequest,
+    request: Request,
     session: AsyncSession = Depends(db_session),
 ):
     controller = AuthController(session)
-    return await controller.reset_password(data)
+    return await controller.reset_password(data, request)
 
 
 
@@ -127,7 +128,7 @@ async def send_verification(
     try:
         from app.lib.deps import get_current_user as _get
         # best-effort optional auth
-        current_user = await _get(request=request, session=session)
+        current_user = await _get(request=request, response=response, session=session)
     except Exception:
         current_user = None
     return await controller.send_verification(request, response, data=data, current_user=current_user)
@@ -136,10 +137,11 @@ async def send_verification(
 @router.post("/verify-email", response_model=VerifyEmailResponse)
 async def verify_email(
     data: VerifyEmailRequest,
+    request: Request,
     session: AsyncSession = Depends(db_session),
 ):
     controller = AuthController(session)
-    return await controller.verify_email(data)
+    return await controller.verify_email(data, request)
 
 
 
@@ -209,10 +211,23 @@ async def update_me(
 
 
 @router.get("/csrf-token")
-async def csrf_token():
+async def csrf_token(request: Request, response: Response):
     from app.lib.security import generate_csrf_token
+    from app.lib.cookies import cookie_kwargs
 
-    return {"csrf_token": generate_csrf_token()}
+    token = request.cookies.get("csrf_token") or generate_csrf_token()
+    kwargs = cookie_kwargs(request)
+    response.set_cookie(
+        key="csrf_token",
+        value=token,
+        max_age=60 * 60 * 24 * 30,
+        httponly=False,
+        secure=kwargs.get("secure", False),
+        samesite=kwargs.get("samesite", "lax"),
+        path="/",
+        domain=kwargs.get("domain"),
+    )
+    return {"csrf_token": token}
 
 
 @router.get("/me", response_model=MeResponse)

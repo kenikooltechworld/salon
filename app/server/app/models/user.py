@@ -1,4 +1,4 @@
-"""User ORM model."""
+﻿"""User ORM model."""
 from __future__ import annotations
 
 import uuid
@@ -36,11 +36,13 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     password_change_required: Mapped[bool] = mapped_column(default=False, nullable=False)
     password_reset_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_reset_attempts: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
     failed_login_attempts: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified: Mapped[bool] = mapped_column(default=False, server_default='false', nullable=False)
     email_verification_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email_verification_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verification_attempts: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     tenant = relationship("Tenant", back_populates="users")

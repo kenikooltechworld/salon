@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint."""
+﻿"""FastAPI application entrypoint."""
 from __future__ import annotations
 
 import asyncio
@@ -6,7 +6,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 # psycopg async is not compatible with ProactorEventLoop on Windows.
@@ -19,6 +19,7 @@ if sys.platform == "win32":
 from app.api.v1.router import api_router
 from app.config import settings
 from app.db import close_engine, init_engine
+from app.lib.csrf import enforce_csrf
 from app.routes.root_routes import router as root_router
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
@@ -49,6 +50,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def csrf_middleware(request: Request, call_next):
+        enforce_csrf(request)
+        return await call_next(request)
 
     app.include_router(root_router)
     app.include_router(api_router, prefix=settings.api_prefix)

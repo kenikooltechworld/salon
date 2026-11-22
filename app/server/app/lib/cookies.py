@@ -1,4 +1,4 @@
-"""Cookie helpers for httpOnly auth tokens."""
+﻿"""Cookie helpers for httpOnly auth tokens."""
 from __future__ import annotations
 
 from fastapi import Request, Response
@@ -54,6 +54,21 @@ def set_auth_cookies(
         max_age=refresh_max_age,
         **kwargs,
     )
+    csrf = request.cookies.get("csrf_token")
+    if not csrf:
+        from app.lib.security import generate_csrf_token
+
+        csrf = generate_csrf_token()
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf,
+        max_age=refresh_max_age,
+        httponly=False,
+        secure=kwargs.get("secure", False),
+        samesite=kwargs.get("samesite", "lax"),
+        path="/",
+        domain=kwargs.get("domain"),
+    )
 
 
 def clear_auth_cookies(response: Response, request: Request) -> None:
@@ -61,3 +76,4 @@ def clear_auth_cookies(response: Response, request: Request) -> None:
     kwargs = cookie_kwargs(request)
     for name in ("access_token", "refresh_token"):
         response.delete_cookie(key=name, **kwargs)
+    response.delete_cookie(key="csrf_token", path="/", domain=kwargs.get("domain"))

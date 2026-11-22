@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.lib.cookies import clear_auth_cookies, cookie_kwargs, set_auth_cookies
+from app.lib.rate_limit import enforce_rate_limit
 from app.lib.security import create_access_token, create_refresh_token, verify_token
 from app.models.user import User
 from app.schemas.auth import (
@@ -36,6 +37,7 @@ from app.schemas.auth import (
     UserRead,
 )
 from app.services.auth_service import AuthService
+from app.services.email_service import EmailDeliveryError
 from app.services.tenant_service import TenantService
 
 
@@ -48,17 +50,18 @@ class AuthController:
     async def register(
         self, data: RegisterRequest, request: Request, response: Response
     ) -> RegisterResponse:
+        enforce_rate_limit(request, "auth:register", limit=5, window_seconds=600)
+        enforce_rate_limit(request, "auth:register:email", limit=3, window_seconds=3600, identifier=str(data.user.email).lower())
         try:
             tenant, user = await self.auth_service.register(data)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
-        # Send initial verification code
         try:
-            await self.auth_service.create_email_verification_code(user)
-        except Exception:
-            pass
-        await self.session.commit()
+            await self.auth_service.create_email_verification_code(user, required=True)
+        except EmailDeliveryError as exc:
+            await self.session.rollback()
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send verification email. Please try again.") from exc
 
         access, refresh, _ = self._issue(user)
         set_auth_cookies(
@@ -78,6 +81,8 @@ class AuthController:
     async def login(
         self, data: LoginRequest, request: Request, response: Response
     ) -> dict:
+        enforce_rate_limit(request, "auth:login", limit=10, window_seconds=600)
+        enforce_rate_limit(request, "auth:login:email", limit=10, window_seconds=600, identifier=str(data.email).lower())
         user = await self.auth_service.authenticate(data)
         if user is None:
             raise HTTPException(
@@ -124,6 +129,7 @@ class AuthController:
         return {"message": "Logged out successfully"}
 
     async def refresh(self, request: Request, response: Response) -> dict:
+        enforce_rate_limit(request, "auth:refresh", limit=30, window_seconds=300)
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found")
@@ -189,21 +195,27 @@ class AuthController:
     ) -> "ForgotPasswordResponse":
         from app.config import settings
 
-        code = await self.auth_service.create_password_reset_code(data.email)
-        await self.session.commit()
+        enforce_rate_limit(request, "auth:forgot-password", limit=5, window_seconds=600)
+        enforce_rate_limit(request, "auth:forgot-password:email", limit=3, window_seconds=3600, identifier=str(data.email).lower())
+        try:
+            code = await self.auth_service.create_password_reset_code(data.email)
+        except EmailDeliveryError:
+            # Do not reveal account existence; log already in service/email layer
+            code = None
         return ForgotPasswordResponse(
             message="If the email exists, a reset code has been sent",
             reset_code=code if settings.debug else None,
         )
 
-    async def reset_password(self, data: "ResetPasswordRequest") -> dict:
+    async def reset_password(self, data: "ResetPasswordRequest", request: Request) -> dict:
+        enforce_rate_limit(request, "auth:reset-password", limit=10, window_seconds=600)
+        enforce_rate_limit(request, "auth:reset-password:email", limit=10, window_seconds=600, identifier=str(data.email).lower())
         ok = await self.auth_service.reset_password(data.email, data.code, data.new_password)
         if not ok:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired reset code",
             )
-        await self.session.commit()
         return {"message": "Password reset successfully"}
 
     async def send_verification(
@@ -211,24 +223,33 @@ class AuthController:
     ) -> "SendVerificationResponse":
         from app.config import settings
 
+        enforce_rate_limit(request, "auth:send-verification", limit=10, window_seconds=600)
         if current_user is not None:
-            code = await self.auth_service.create_email_verification_code(current_user)
+            enforce_rate_limit(request, "auth:send-verification:user", limit=5, window_seconds=3600, identifier=str(current_user.id))
+            try:
+                code = await self.auth_service.create_email_verification_code(current_user, required=True)
+            except EmailDeliveryError as exc:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send verification email. Please try again.") from exc
         elif data and data.email:
-            code = await self.auth_service.resend_verification_by_email(data.email)
+            enforce_rate_limit(request, "auth:send-verification:email", limit=3, window_seconds=3600, identifier=str(data.email).lower())
+            try:
+                code = await self.auth_service.resend_verification_by_email(data.email)
+            except EmailDeliveryError as exc:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send verification email. Please try again.") from exc
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email or authentication required")
-        await self.session.commit()
         return SendVerificationResponse(
             message="Verification email sent",
             verification_code=code if settings.debug and code else None,
         )
 
-    async def verify_email(self, data: "VerifyEmailRequest") -> "VerifyEmailResponse":
+    async def verify_email(self, data: "VerifyEmailRequest", request: Request) -> "VerifyEmailResponse":
+        enforce_rate_limit(request, "auth:verify-email", limit=20, window_seconds=600)
         ok = await self.auth_service.verify_email(data.code)
         if not ok:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification token",
+                detail="Invalid or expired verification code",
             )
         return VerifyEmailResponse(message="Email verified successfully", email_verified=True)
 
@@ -258,6 +279,8 @@ class AuthController:
     async def mfa_validate(
         self, data: "MfaValidateRequest", request: Request, response: Response
     ) -> dict:
+        enforce_rate_limit(request, "auth:mfa-validate", limit=10, window_seconds=600)
+        enforce_rate_limit(request, "auth:mfa-validate:email", limit=10, window_seconds=600, identifier=str(data.email).lower())
         user = await self.auth_service.validate_mfa_login(data.email, data.code)
         if user is None:
             raise HTTPException(

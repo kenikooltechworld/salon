@@ -22,6 +22,8 @@ from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, UserCreate
 from app.config import settings
 
+MAX_CODE_ATTEMPTS = 5
+
 
 class AuthService:
     """Service for authentication and registration."""
@@ -111,21 +113,21 @@ class AuthService:
         return result.scalar_one_or_none()
 
 
-    async def create_email_verification_code(self, user: "User") -> str:
+    async def create_email_verification_code(self, user: "User", *, required: bool = False) -> str:
         import random
 
         code = "".join(str(random.randint(0, 9)) for _ in range(6))
         hashed = hashlib.sha256(code.encode()).hexdigest()
         user.email_verification_code = hashed
         user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        user.email_verification_attempts = 0
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(user)
 
-        # send email
         from app.services.email_service import send_email, verification_email_html
 
-        await send_email(user.email, "Verify your email", verification_email_html(code))
+        await send_email(user.email, "Verify your email", verification_email_html(code), required=required)
         return code
 
     async def resend_verification_by_email(self, email: str) -> str | None:
@@ -135,7 +137,7 @@ class AuthService:
             return None
         if user.email_verified:
             return ""
-        return await self.create_email_verification_code(user)
+        return await self.create_email_verification_code(user, required=True)
 
     async def verify_email(self, code: str) -> bool:
         hashed = hashlib.sha256(code.encode()).hexdigest()
@@ -144,16 +146,33 @@ class AuthService:
         )
         user = result.scalar_one_or_none()
         if user is None:
+            # increment attempts for any active user with pending code? cannot identify safely; ignore.
             return False
         if user.email_verification_expires is None or user.email_verification_expires < datetime.now(timezone.utc):
+            user.email_verification_code = None
+            user.email_verification_expires = None
+            user.email_verification_attempts = 0
+            await self.session.commit()
             return False
+        if (user.email_verification_attempts or 0) >= MAX_CODE_ATTEMPTS:
+            user.email_verification_code = None
+            user.email_verification_expires = None
+            user.email_verification_attempts = 0
+            await self.session.commit()
+            return False
+        # correct code
         user.email_verified = True
         user.email_verification_code = None
         user.email_verification_expires = None
+        user.email_verification_attempts = 0
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(user)
         return True
+
+    async def register_invalid_email_verification_attempt(self, code: str) -> None:
+        # Best-effort: if code format valid but not found, we cannot map to user; rely on rate limiting.
+        return None
 
 
     async def setup_mfa(self, user: "User") -> tuple[str, str, str, list[str]]:
@@ -283,13 +302,14 @@ class AuthService:
         hashed = hashlib.sha256(code.encode()).hexdigest()
         user.password_reset_code = hashed
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        user.password_reset_attempts = 0
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(user)
 
         from app.services.email_service import password_reset_email_html, send_email
 
-        await send_email(user.email, "Reset your password", password_reset_email_html(code))
+        await send_email(user.email, "Reset your password", password_reset_email_html(code), required=True)
         return code
 
     async def reset_password(self, email: str, code: str, new_password: str) -> bool:
@@ -302,8 +322,29 @@ class AuthService:
         )
         user = result.scalar_one_or_none()
         if user is None:
+            # best-effort attempt tracking when email+code don't match is handled via generic rate limiting
+            # but also increment attempts for pending user by email
+            pending = await self.session.execute(select(User).where(User.email == email))
+            pending_user = pending.scalar_one_or_none()
+            if pending_user and pending_user.password_reset_code:
+                pending_user.password_reset_attempts = (pending_user.password_reset_attempts or 0) + 1
+                if pending_user.password_reset_attempts >= MAX_CODE_ATTEMPTS:
+                    pending_user.password_reset_code = None
+                    pending_user.password_reset_expires = None
+                    pending_user.password_reset_attempts = 0
+                await self.session.commit()
             return False
         if user.password_reset_expires is None or user.password_reset_expires < datetime.now(timezone.utc):
+            user.password_reset_code = None
+            user.password_reset_expires = None
+            user.password_reset_attempts = 0
+            await self.session.commit()
+            return False
+        if (user.password_reset_attempts or 0) >= MAX_CODE_ATTEMPTS:
+            user.password_reset_code = None
+            user.password_reset_expires = None
+            user.password_reset_attempts = 0
+            await self.session.commit()
             return False
         if len(new_password) < 8:
             return False
@@ -311,6 +352,7 @@ class AuthService:
         user.password_hash = hash_password(new_password)
         user.password_reset_code = None
         user.password_reset_expires = None
+        user.password_reset_attempts = 0
         user.password_change_required = False
         user.failed_login_attempts = 0
         user.locked_until = None

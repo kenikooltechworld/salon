@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lib.deps import db_session
+from app.lib.rate_limit import enforce_rate_limit
 from app.lib.security import generate_secure_token, hash_token
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -30,6 +31,8 @@ async def request_tenant_recovery(
     session: AsyncSession = Depends(db_session),
 ):
     """Request account recovery by owner email. Always returns generic response."""
+    enforce_rate_limit(request, "tenant:request-recovery", limit=5, window_seconds=600)
+    enforce_rate_limit(request, "tenant:request-recovery:email", limit=3, window_seconds=3600, identifier=str(data.email).lower())
     result = await session.execute(select(User).where(User.email == data.email, User.role == "owner"))
     user = result.scalar_one_or_none()
     if user is not None and user.status == "active":
@@ -43,20 +46,15 @@ async def request_tenant_recovery(
             await session.commit()
 
             from app.config import settings
-            from app.services.email_service import send_email
+            from app.services.email_service import account_recovery_email_html, send_email
 
             base = str(settings.frontend_url).rstrip("/")
             link = f"{base}/auth/account-recovery?token={raw}"
-            html = f"""
-            <div style=\"font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px\">
-              <h2>Recover your salon account</h2>
-              <p>We received a request to recover your Kenikool Salon account.</p>
-              <p><a href=\"{link}\" style=\"display:inline-block;padding:12px 18px;background:#0b6cfb;color:#fff;text-decoration:none;border-radius:8px\">Recover account</a></p>
-              <p style=\"color:#555;font-size:14px\">Or copy this link:<br><span style=\"word-break:break-all\">{link}</span></p>
-              <p style=\"color:#555;font-size:14px\">This link expires in {RECOVERY_TTL_HOURS} hours. If you did not request this, ignore this email.</p>
-            </div>
-            """
-            await send_email(user.email, "Recover your Kenikool Salon account", html)
+            try:
+                await send_email(user.email, "Recover your Kenikool Salon account", account_recovery_email_html(link, RECOVERY_TTL_HOURS), required=True)
+            except Exception:
+                # Keep generic response; token remains valid so user can retry request later or support can assist.
+                pass
 
     return ForgotPasswordResponse(message="If the account exists, a recovery link has been sent")
 
@@ -64,8 +62,10 @@ async def request_tenant_recovery(
 @router.post("/recover", response_model=RecoverAccountResponse)
 async def recover_tenant(
     data: RecoverAccountRequest,
+    request: Request,
     session: AsyncSession = Depends(db_session),
 ):
+    enforce_rate_limit(request, "tenant:recover", limit=10, window_seconds=600)
     token = data.recovery_token.strip()
     if not token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recovery token")
@@ -88,5 +88,12 @@ async def recover_tenant(
     tenant.recovery_token_hash = None
     tenant.recovery_token_expires_at = None
     tenant.recovery_requested_at = None
+
+    # Reset lockout for owner accounts on successful recovery as a safe recovery action.
+    owner_result = await session.execute(select(User).where(User.tenant_id == tenant.id, User.role == "owner"))
+    for owner in owner_result.scalars().all():
+        owner.failed_login_attempts = 0
+        owner.locked_until = None
+
     await session.commit()
     return RecoverAccountResponse(success=True, detail="Account recovered successfully")
