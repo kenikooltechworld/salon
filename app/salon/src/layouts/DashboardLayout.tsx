@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { Avatar, Box, Flex, HStack, IconButton, Menu, Portal, Splitter, Text, useBreakpointValue } from "@chakra-ui/react";
 import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuLogOut } from "react-icons/lu";
 import { authService, useAuthStore } from "@/features/auth";
+import { useTenantSettings } from "@/features/settings";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
 import { Logo } from "@/components/brand/Logo";
@@ -19,6 +20,7 @@ const SIDEBAR_KEY = "dashboard.sidebar.size";
 const COLLAPSE_AT = 12;
 
 export function DashboardLayout() {
+  useTenantSettings();
   const [open, setOpen] = useState(false);
   const [size, setSize] = useState<number>(() => {
     const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIDEBAR_KEY) : null;

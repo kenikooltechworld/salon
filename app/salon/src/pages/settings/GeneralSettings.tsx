@@ -10,7 +10,6 @@ import {
   normalizeTenantSettings,
   useImageUpload,
   useResetTenantSettings,
-  useSubscription,
   useTenantSettings,
   useUpdateTenantSettings,
   type TenantSettingsData,
@@ -19,7 +18,6 @@ import {
 export default function GeneralSettings() {
   const navigate = useNavigate();
   const { data, isLoading } = useTenantSettings();
-  const { data: subscription } = useSubscription();
   const update = useUpdateTenantSettings();
   const reset = useResetTenantSettings();
   const [settings, setSettings] = useState<TenantSettingsData>(DEFAULT_TENANT_SETTINGS);
@@ -43,9 +41,9 @@ export default function GeneralSettings() {
 
   if (isLoading) return <Container maxW="6xl" py="6"><Stack gap="4"><Skeleton h="10" /><Skeleton h="40" /><Skeleton h="60" /></Stack></Container>;
 
-  const status = subscription?.status || subscription?.subscription_status || settings.status || "";
-  const plan = subscription?.plan_name || settings.plan_name || settings.subscription_tier || "";
-  const billingCycle = subscription?.billing_cycle || settings.billing_cycle || (settings.subscription_tier === "trial" ? "trial" : "monthly");
+  const status = settings.status || "";
+  const plan = settings.plan_name || settings.subscription_tier || "";
+  const billingCycle = settings.billing_cycle || (settings.subscription_tier === "trial" ? "trial" : "monthly");
 
   return (
     <Container maxW="6xl" py="6"><Stack gap="6">
@@ -92,7 +90,7 @@ export default function GeneralSettings() {
 
       <Card.Root><Card.Body><Stack gap="4"><Heading size="md">Branding</Heading>
         <Grid templateColumns={{ base:"1fr", md:"repeat(2,1fr)" }} gap="4">
-          <Box gridColumn={{md:"span 2"}}><Text fontSize="sm" mb="1">Logo</Text><HStack gap="4" align="start"><Box w="24" h="24" borderWidth="1px" rounded="lg" overflow="hidden" bg="bg.muted" display="flex" alignItems="center" justifyContent="center">{(upload.preview || settings.logo_url) ? <img src={upload.preview || settings.logo_url || ""} alt="Logo" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : <Text fontSize="xs" color="fg.muted">No logo</Text>}</Box><Box flex="1"><Input type="file" accept="image/*" onChange={async (e)=>{ const f=e.target.files?.[0]; if(f) await upload.uploadImage(f); e.currentTarget.value=""; }} /><Text fontSize="xs" color="fg.muted" mt="2">Recommended 200x200px PNG/JPG. Max 5MB.</Text>{upload.isUploading && <Text fontSize="xs">Uploading {upload.uploadProgress}%</Text>}</Box></HStack></Box>
+          <Box gridColumn={{md:"span 2"}}><Text fontSize="sm" mb="1">Logo</Text><HStack gap="4" align="start"><Box w="24" h="24" borderWidth="1px" rounded="lg" overflow="hidden" bg="bg.muted" display="flex" alignItems="center" justifyContent="center">{(upload.preview || settings.logo_url) ? <img src={upload.preview || settings.logo_url || ""} alt="Logo" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : <Text fontSize="xs" color="fg.muted">No logo</Text>}</Box><Box flex="1"><Input type="file" accept="image/*" onChange={async (e)=>{ const input = e.currentTarget; const f = input.files?.[0]; if (f) await upload.uploadImage(f); input.value = ""; }} /><Text fontSize="xs" color="fg.muted" mt="2">Recommended 200x200px PNG/JPG. Max 5MB.</Text>{upload.isUploading && <Text fontSize="xs">Uploading {upload.uploadProgress}%</Text>}</Box></HStack></Box>
           <Box><Text fontSize="sm" mb="1">Primary Color</Text><HStack><Input type="color" value={settings.primary_color} onChange={(e)=>setSettings({...settings,primary_color:e.target.value})} w="14" p="1" /><Input value={settings.primary_color} onChange={(e)=>setSettings({...settings,primary_color:e.target.value})} /></HStack></Box>
           <Box><Text fontSize="sm" mb="1">Secondary Color</Text><HStack><Input type="color" value={settings.secondary_color} onChange={(e)=>setSettings({...settings,secondary_color:e.target.value})} w="14" p="1" /><Input value={settings.secondary_color} onChange={(e)=>setSettings({...settings,secondary_color:e.target.value})} /></HStack></Box>
         </Grid>

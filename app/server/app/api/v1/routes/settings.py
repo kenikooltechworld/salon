@@ -55,6 +55,23 @@ async def reset_settings(current_user: User = Depends(get_current_user), session
     return await reset_tenant_settings(session, tenant)
 
 
+@router.get("/billing/subscription")
+async def get_billing_subscription(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    payload = tenant_settings_payload(tenant)["data"]
+    return {
+        "data": {
+            "plan_name": payload.get("plan_name"),
+            "billing_cycle": payload.get("billing_cycle"),
+            "status": payload.get("status"),
+            "subscription_status": payload.get("status"),
+            "subscription_tier": payload.get("subscription_tier"),
+        }
+    }
+
+
 @router.get("/owner/dashboard/metrics")
 async def owner_dashboard_metrics(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
     _require_owner(current_user)

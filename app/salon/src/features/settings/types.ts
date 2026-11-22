@@ -45,10 +45,3 @@ export interface MediaUploadResponse {
 export interface SettingsResponse {
   data: TenantSettingsData;
 }
-
-export interface Subscription {
-  plan_name?: string;
-  billing_cycle?: string;
-  status?: string;
-  subscription_status?: string;
-}
