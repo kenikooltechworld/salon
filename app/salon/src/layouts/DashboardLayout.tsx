@@ -17,20 +17,21 @@ const items: SidebarItem[] = [
 ];
 
 const SIDEBAR_KEY = "dashboard.sidebar.size";
+const COLLAPSE_AT = 12;
 
 export function DashboardLayout() {
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const [size, setSize] = useState<number>(() => {
     const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIDEBAR_KEY) : null;
     const n = raw ? Number(raw) : 20;
-    return Number.isFinite(n) ? Math.min(35, Math.max(15, n)) : 20;
+    return Number.isFinite(n) ? Math.min(35, Math.max(6, n)) : 20;
   });
   const isDesktop = useBreakpointValue({ base: false, lg: true }) ?? false;
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const collapsed = size <= COLLAPSE_AT;
 
-  useEffect(() => { if (!collapsed) window.localStorage.setItem(SIDEBAR_KEY, String(size)); }, [size, collapsed]);
+  useEffect(() => { window.localStorage.setItem(SIDEBAR_KEY, String(size)); }, [size]);
 
   const logout = async () => { await authService.logout(); navigate("/auth/login"); };
   const userName = user ? `${user.first_name} ${user.last_name}`.trim() : "Account";
@@ -39,14 +40,14 @@ export function DashboardLayout() {
     <Flex minH="100vh" bg="bg">
       {isDesktop ? (
         <Splitter.Root
-          size={[collapsed ? 4 : size, collapsed ? 96 : 100 - size]}
-          onResize={(e) => { if (!collapsed && e.size[0]) setSize(Math.min(35, Math.max(15, e.size[0]))); }}
-          panels={[{ id: "sidebar", minSize: collapsed ? 4 : 15, maxSize: collapsed ? 6 : 35 }, { id: "content", minSize: 60 }]}
+          size={[size, 100 - size]}
+          onResize={(e) => { const next = e.size[0]; if (next) setSize(Math.min(35, Math.max(6, next))); }}
+          panels={[{ id: "sidebar", minSize: 6, maxSize: 35, collapsible: true, collapsedSize: 6 }, { id: "content", minSize: 60 }]}
         >
-          <Splitter.Panel id="sidebar">
-            <AppSidebar items={items} subtitle={userName} isDesktop open={open} onOpenChange={setOpen} collapsed={collapsed} onCollapsedChange={setCollapsed} onLogout={logout} />
+          <Splitter.Panel id="sidebar" borderRightWidth="1px">
+            <AppSidebar items={items} subtitle={userName} isDesktop open={open} onOpenChange={setOpen} collapsed={collapsed} onLogout={logout} />
           </Splitter.Panel>
-          <Splitter.ResizeTrigger id="sidebar:content" display={collapsed ? "none" : "flex"} w="2" bg="transparent" _hover={{ bg: "brand.500/30" }} />
+          <Splitter.ResizeTrigger id="sidebar:content" w="2" bg="transparent" _hover={{ bg: "brand.500/30" }} _active={{ bg: "brand.500/40" }} />
           <Splitter.Panel id="content">
             <Flex direction="column" minH="100vh" minW="0">
               <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
@@ -76,7 +77,7 @@ export function DashboardLayout() {
         </Splitter.Root>
       ) : (
         <>
-          <AppSidebar items={items} subtitle={userName} isDesktop={false} open={open} onOpenChange={setOpen} collapsed={false} onCollapsedChange={setCollapsed} onLogout={logout} />
+          <AppSidebar items={items} subtitle={userName} isDesktop={false} open={open} onOpenChange={setOpen} collapsed={false} onLogout={logout} />
           <Flex direction="column" flex="1" minW="0">
             <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
               <HStack gap="2">
