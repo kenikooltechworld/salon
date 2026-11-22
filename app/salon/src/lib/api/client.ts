@@ -3,10 +3,15 @@ import type { ApiError } from "./types";
 
 const baseURL = import.meta.env.VITE_API_URL || "https://api.kenikoolsalon.com/api/v1";
 
+export const TIMEOUTS = {
+  DEFAULT: 15000,
+  UPLOAD: 60000,
+} as const;
+
 export const apiClient: AxiosInstance = axios.create({
   baseURL,
   withCredentials: true,
-  timeout: 15000,
+  timeout: TIMEOUTS.DEFAULT,
   headers: {
     "Content-Type": "application/json",
   },

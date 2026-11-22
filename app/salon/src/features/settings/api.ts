@@ -1,4 +1,4 @@
-﻿import { apiClient } from "@/lib/api";
+﻿import { apiClient, TIMEOUTS } from "@/lib/api";
 import type { MediaUploadResponse, SettingsResponse, TenantSettingsData } from "./types";
 
 export const settingsApi = {
@@ -6,5 +6,5 @@ export const settingsApi = {
   update: (payload: TenantSettingsData) => apiClient.put<SettingsResponse>("/settings", payload),
   reset: () => apiClient.post<SettingsResponse>("/settings/reset"),
   uploadMedia: (payload: { base64_data: string; media_type?: string; folder?: string }) =>
-    apiClient.post<MediaUploadResponse>("/media/upload", payload),
+    apiClient.post<MediaUploadResponse>("/media/upload", payload, { timeout: TIMEOUTS.UPLOAD }),
 };
