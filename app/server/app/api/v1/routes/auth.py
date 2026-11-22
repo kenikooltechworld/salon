@@ -126,9 +126,14 @@ async def send_verification(
     controller = AuthController(session)
     current_user = None
     try:
-        from app.lib.deps import get_current_user as _get
-        # best-effort optional auth
-        current_user = await _get(request=request, response=response, session=session)
+        from app.lib.security import verify_token
+        from app.services.auth_service import AuthService
+        import uuid
+        access_token = request.cookies.get("access_token")
+        payload = verify_token(access_token) if access_token else None
+        if payload and payload.get("type") == "access":
+            uid = uuid.UUID(str(payload.get("sub")))
+            current_user = await AuthService(session).get_user_by_id(uid)
     except Exception:
         current_user = None
     return await controller.send_verification(request, response, data=data, current_user=current_user)

@@ -182,6 +182,11 @@ class AuthController:
     async def change_password_required(
         self, user: User, data: "ChangePasswordRequiredRequest"
     ) -> dict:
+        if not user.password_change_required:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password change is not required",
+            )
         ok = await self.auth_service.change_password_required(user, data.new_password)
         if not ok:
             raise HTTPException(
