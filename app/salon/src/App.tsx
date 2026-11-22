@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Box, Spinner } from "@chakra-ui/react";
-import { useAuthStore } from "@/stores/authStore";
+import { authService, useAuthStore } from "@/features/auth";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { PublicLayout } from "@/layouts/PublicLayout";
@@ -29,12 +29,11 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const load = useAuthStore((s) => s.load);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    load().finally(() => setReady(true));
-  }, [load]);
+    authService.loadSession().finally(() => setReady(true));
+  }, []);
 
   if (!ready) {
     return (

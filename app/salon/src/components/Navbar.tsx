@@ -15,17 +15,16 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { LuMenu, LuX } from "react-icons/lu";
-import { useAuthStore } from "@/stores/authStore";
+import { authService, useAuthStore } from "@/features/auth";
 import { ColorModeButton } from "@/components/ui/color-mode";
 
 export function Navbar() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
+    await authService.logout();
     navigate("/");
     setIsMenuOpen(false);
   };

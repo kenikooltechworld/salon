@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/stores/authStore";
+import { authService, useAuthStore } from "@/features/auth";
 
 export default function ProfilePage() {
-  const { user, load } = useAuthStore();
+  const { user } = useAuthStore();
   const [form, setForm] = useState({ first_name: "", last_name: "", phone: "" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +21,7 @@ export default function ProfilePage() {
     setMessage("");
     try {
       await api.put("/auth/me", form);
-      await load();
+      await authService.loadSession();
       setMessage("Profile updated");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Update failed");

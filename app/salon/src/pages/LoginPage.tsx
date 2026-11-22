@@ -2,11 +2,10 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/stores/authStore";
+import { authService } from "@/features/auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const load = useAuthStore((s) => s.load);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +17,7 @@ export default function LoginPage() {
     setError("");
     try {
       await api.post("/auth/login", { email, password });
-      await load();
+      await authService.loadSession();
       navigate("/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Login failed");
