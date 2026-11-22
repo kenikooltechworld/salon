@@ -16,7 +16,6 @@ export default function VerifyEmailPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  useEffect(() => { if (!email) navigate("/auth/register"); }, [email, navigate]);
   useEffect(() => {
     if (resendCountdown <= 0) return;
     const t = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
@@ -29,9 +28,9 @@ export default function VerifyEmailPage() {
     setError("");
     setIsLoading(true);
     try {
-      await api.post("/auth/verify-email", { code });
-      toaster.create({ title: "Email verified", description: "You can now sign in.", type: "success" });
-      navigate("/auth/login");
+      await api.post("/auth/verify-email", { code, email: email || undefined });
+      toaster.create({ title: "Email verified", description: "Your email has been verified.", type: "success" });
+      navigate("/dashboard");
     } catch (err: any) {
       const msg = err?.response?.data?.detail || err?.message || "Failed to verify code. Please try again.";
       setError(msg);
@@ -44,7 +43,7 @@ export default function VerifyEmailPage() {
   const handleResend = async () => {
     setError("");
     try {
-      await api.post("/auth/send-verification", { email });
+      await api.post("/auth/send-verification", email ? { email } : undefined);
       setCode("");
       setResendCountdown(60);
       toaster.create({ title: "Code sent", description: "Verification code resent to your email.", type: "success" });
@@ -57,7 +56,7 @@ export default function VerifyEmailPage() {
   return (
     <Card.Root shadow="lg">
       <Card.Body p={{ base: "6", md: "10" }}>
-        <AuthHeader title="Verify Your Email" subtitle={`We sent a 6-digit code to ${email}`} />
+        <AuthHeader title="Verify Your Email" subtitle={email ? `We sent a 6-digit code to ${email}` : "Enter the 6-digit code sent to your email"} />
         {error && <Alert.Root status="error" mb="6"><Alert.Indicator /><Box><Alert.Title>Error</Alert.Title><Alert.Description>{error}</Alert.Description></Box></Alert.Root>}
         <Box as="form" onSubmit={handleVerify}>
           <VStack gap="4" align="stretch">

@@ -34,8 +34,8 @@ export function useRegisterSalon() {
 
 export function useVerifyRegistrationCode() {
   return useMutation({
-    mutationFn: async ({ code }: { email: string; code: string }) => {
-      const { data } = await api.post("/auth/verify-email", { code });
+    mutationFn: async ({ email, code }: { email: string; code: string }) => {
+      const { data } = await api.post("/auth/verify-email", { code, email });
       return { success: true, data };
     },
   });
@@ -43,8 +43,8 @@ export function useVerifyRegistrationCode() {
 
 export function useResendVerificationCode() {
   return useMutation({
-    mutationFn: async (_email: string) => {
-      const { data } = await api.post("/auth/send-verification");
+    mutationFn: async (email: string) => {
+      const { data } = await api.post("/auth/send-verification", { email });
       return { success: true, data };
     },
   });

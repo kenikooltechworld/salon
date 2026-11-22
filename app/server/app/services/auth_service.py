@@ -1,4 +1,4 @@
-"""Auth service: registration, login, token issuance."""
+﻿"""Auth service: registration, login, token issuance."""
 from __future__ import annotations
 
 import hashlib
@@ -128,6 +128,15 @@ class AuthService:
         await send_email(user.email, "Verify your email", verification_email_html(code))
         return code
 
+    async def resend_verification_by_email(self, email: str) -> str | None:
+        result = await self.session.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user is None or user.status != "active":
+            return None
+        if user.email_verified:
+            return ""
+        return await self.create_email_verification_code(user)
+
     async def verify_email(self, code: str) -> bool:
         hashed = hashlib.sha256(code.encode()).hexdigest()
         result = await self.session.execute(
@@ -242,6 +251,18 @@ class AuthService:
         user.password_hash = hash_password(new_password)
         user.password_change_required = False
         await self.session.flush()
+        await self.session.refresh(user)
+        return True
+
+    async def change_password_required(self, user: "User", new_password: str) -> bool:
+        from app.lib.security import hash_password
+
+        if len(new_password) < 8:
+            return False
+        user.password_hash = hash_password(new_password)
+        user.password_change_required = False
+        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(user)
         return True
 

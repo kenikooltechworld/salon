@@ -43,6 +43,7 @@ export default function LoginPage() {
         return;
       }
       await authService.loadSession();
+      if (res.data?.password_change_required) { navigate("/auth/change-password-required"); return; }
       toaster.create({ title: "Welcome back", type: "success" });
       navigate("/dashboard");
     } catch (err: any) {
@@ -129,4 +130,5 @@ export default function LoginPage() {
     </Card.Root>
   );
 }
+
 

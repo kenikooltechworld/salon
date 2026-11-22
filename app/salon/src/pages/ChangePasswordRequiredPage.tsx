@@ -23,7 +23,7 @@ export default function ChangePasswordRequiredPage() {
     setIsLoading(true);
     try {
       await api.post("/auth/change-password-required", { new_password: newPassword });
-      toaster.create({ title: "Success", description: "Password changed successfully. Logging you in...", type: "success" });
+      toaster.create({ title: "Success", description: "Password changed successfully.", type: "success" });
       await authService.loadSession();
       navigate("/dashboard");
     } catch (err: any) {
@@ -39,6 +39,7 @@ export default function ChangePasswordRequiredPage() {
     <Card.Root shadow="lg">
       <Card.Body p={{ base: "6", md: "10" }}>
         <AuthHeader title="Change Password Required" subtitle="Set a new password to continue" />
+        <Alert.Root status="warning" mb="6"><Alert.Indicator /><Box><Alert.Title>Required Action</Alert.Title><Alert.Description>For security reasons, you must set a new password before continuing.</Alert.Description></Box></Alert.Root>
         {error && <Alert.Root status="error" mb="6"><Alert.Indicator /><Box><Alert.Title>Error</Alert.Title><Alert.Description>{error}</Alert.Description></Box></Alert.Root>}
         <Box as="form" onSubmit={handleSubmit}>
           <Stack gap="4">

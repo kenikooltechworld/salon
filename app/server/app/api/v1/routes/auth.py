@@ -1,4 +1,4 @@
-"""Auth routes for API v1."""
+﻿"""Auth routes for API v1."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -9,6 +9,7 @@ from app.lib.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ChangePasswordRequiredRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
@@ -21,6 +22,7 @@ from app.schemas.auth import (
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    SendVerificationRequest,
     SendVerificationResponse,
     VerifyEmailRequest,
     VerifyEmailResponse,
@@ -82,6 +84,16 @@ async def change_password(
     return await controller.change_password(current_user, data)
 
 
+@router.post("/change-password-required")
+async def change_password_required(
+    data: ChangePasswordRequiredRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = AuthController(session)
+    return await controller.change_password_required(current_user, data)
+
+
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 async def forgot_password(
     data: ForgotPasswordRequest,
@@ -107,11 +119,18 @@ async def reset_password(
 async def send_verification(
     request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user),
+    data: SendVerificationRequest | None = None,
     session: AsyncSession = Depends(db_session),
 ):
     controller = AuthController(session)
-    return await controller.send_verification(current_user, request, response)
+    current_user = None
+    try:
+        from app.lib.deps import get_current_user as _get
+        # best-effort optional auth
+        current_user = await _get(request=request, session=session)
+    except Exception:
+        current_user = None
+    return await controller.send_verification(request, response, data=data, current_user=current_user)
 
 
 @router.post("/verify-email", response_model=VerifyEmailResponse)

@@ -1,4 +1,4 @@
-"""Auth controller: HTTP handling for auth endpoints."""
+﻿"""Auth controller: HTTP handling for auth endpoints."""
 from __future__ import annotations
 
 import uuid
@@ -12,6 +12,7 @@ from app.lib.security import create_access_token, create_refresh_token, verify_t
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ChangePasswordRequiredRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
@@ -21,9 +22,12 @@ from app.schemas.auth import (
     MfaVerifyRequest,
     MfaVerifyResponse,
     MeResponse,
+    RecoverAccountRequest,
+    RecoverAccountResponse,
     RegisterRequest,
     RegisterResponse,
     ResetPasswordRequest,
+    SendVerificationRequest,
     SendVerificationResponse,
     TenantRead,
     VerifyEmailRequest,
@@ -49,6 +53,11 @@ class AuthController:
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
+        # Send initial verification code
+        try:
+            await self.auth_service.create_email_verification_code(user)
+        except Exception:
+            pass
         await self.session.commit()
 
         access, refresh, _ = self._issue(user)
@@ -104,7 +113,11 @@ class AuthController:
             access_max_age=settings.jwt_access_token_expire_minutes * 60,
             refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
         )
-        return {"message": "Logged in successfully", "expires_in": expires_in}
+        return {
+            "message": "Logged in successfully",
+            "expires_in": expires_in,
+            "password_change_required": bool(getattr(user, "password_change_required", False)),
+        }
 
     async def logout(self, request: Request, response: Response) -> dict:
         clear_auth_cookies(response, request)
@@ -160,6 +173,17 @@ class AuthController:
         await self.session.commit()
         return {"message": "Password changed successfully"}
 
+    async def change_password_required(
+        self, user: User, data: "ChangePasswordRequiredRequest"
+    ) -> dict:
+        ok = await self.auth_service.change_password_required(user, data.new_password)
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid new password",
+            )
+        return {"message": "Password changed successfully"}
+
     async def forgot_password(
         self, data: "ForgotPasswordRequest", request: Request, response: Response
     ) -> "ForgotPasswordResponse":
@@ -183,15 +207,20 @@ class AuthController:
         return {"message": "Password reset successfully"}
 
     async def send_verification(
-        self, user: User, request: Request, response: Response
+        self, request: Request, response: Response, data: "SendVerificationRequest | None" = None, current_user: User | None = None
     ) -> "SendVerificationResponse":
         from app.config import settings
 
-        code = await self.auth_service.create_email_verification_code(user)
+        if current_user is not None:
+            code = await self.auth_service.create_email_verification_code(current_user)
+        elif data and data.email:
+            code = await self.auth_service.resend_verification_by_email(data.email)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email or authentication required")
         await self.session.commit()
         return SendVerificationResponse(
             message="Verification email sent",
-            verification_code=code if settings.debug else None,
+            verification_code=code if settings.debug and code else None,
         )
 
     async def verify_email(self, data: "VerifyEmailRequest") -> "VerifyEmailResponse":

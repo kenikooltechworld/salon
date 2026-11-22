@@ -1,4 +1,4 @@
-"""Pydantic schemas for auth and tenancy."""
+﻿"""Pydantic schemas for auth and tenancy."""
 from __future__ import annotations
 
 import uuid
@@ -92,6 +92,10 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class ChangePasswordRequiredRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -107,6 +111,10 @@ class ForgotPasswordResponse(BaseModel):
     # Only populated in debug mode for testing
     reset_code: str | None = None
 
+class SendVerificationRequest(BaseModel):
+    email: EmailStr | None = None
+
+
 class SendVerificationResponse(BaseModel):
     message: str
     # Only populated in debug mode for testing
@@ -115,6 +123,7 @@ class SendVerificationResponse(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
+    email: EmailStr | None = None
 
 
 class VerifyEmailResponse(BaseModel):
@@ -146,3 +155,11 @@ class MfaDisableRequest(BaseModel):
     password: str
     code: str = Field(min_length=6, max_length=6)
 
+
+class RecoverAccountRequest(BaseModel):
+    recovery_token: str = Field(min_length=1)
+
+
+class RecoverAccountResponse(BaseModel):
+    success: bool
+    detail: str
