@@ -1,4 +1,4 @@
-"""Entrypoint: run migrations (if configured) then start the server."""
+﻿"""Entrypoint: run migrations (if configured) then start the server."""
 from __future__ import annotations
 
 import logging
@@ -17,9 +17,9 @@ def run_migrations() -> None:
         logger.info("DATABASE_URL not set; skipping migrations")
         return
 
-    logger.info("Running database migrations (alembic upgrade head)")
+    logger.info("Running database migrations (alembic upgrade heads)")
     result = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        [sys.executable, "-m", "alembic", "upgrade", "heads"],
         cwd=str(Path(__file__).resolve().parent),
         check=False,
     )
