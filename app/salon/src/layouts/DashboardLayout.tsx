@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Avatar, Box, Flex, HStack, IconButton, Menu, Portal, Splitter, Text, useBreakpointValue } from "@chakra-ui/react";
-import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuShield, LuLogOut } from "react-icons/lu";
+import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuLogOut } from "react-icons/lu";
 import { authService, useAuthStore } from "@/features/auth";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
@@ -12,8 +12,7 @@ const items: SidebarItem[] = [
   { icon: LuScissors, label: "Services", to: "/services" },
   { icon: LuUsers, label: "Customers", to: "/customers" },
   { icon: LuUser, label: "Profile", to: "/profile" },
-  { icon: LuShield, label: "MFA", to: "/mfa" },
-  { icon: LuSettings, label: "Change Password", to: "/change-password" },
+  { icon: LuSettings, label: "Settings", to: "/settings" },
 ];
 
 const SIDEBAR_KEY = "dashboard.sidebar.size";
@@ -66,6 +65,7 @@ export function DashboardLayout() {
                     </Menu.Trigger>
                     <Portal><Menu.Positioner><Menu.Content>
                       <Menu.Item value="profile" onClick={() => navigate("/profile")}>Profile</Menu.Item>
+                      <Menu.Item value="settings" onClick={() => navigate("/settings")}>Settings</Menu.Item>
                       <Menu.Item value="logout" onClick={logout} color="fg.error"><LuLogOut /> Logout</Menu.Item>
                     </Menu.Content></Menu.Positioner></Portal>
                   </Menu.Root>
@@ -98,3 +98,4 @@ export function DashboardLayout() {
 }
 
 export default DashboardLayout;
+

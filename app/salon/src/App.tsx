@@ -24,6 +24,15 @@ import RegisterSuccessPage from "@/pages/RegisterSuccessPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ServicesPage from "@/pages/ServicesPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import SettingsPage from "@/pages/settings/SettingsPage";
+import GeneralSettings from "@/pages/settings/GeneralSettings";
+import CommissionSettings from "@/pages/settings/CommissionSettings";
+import FinancialSettings from "@/pages/settings/FinancialSettings";
+import OperationalSettings from "@/pages/settings/OperationalSettings";
+import BillingSettings from "@/pages/settings/BillingSettings";
+import NotificationSettings from "@/pages/settings/NotificationSettings";
+import EmailTemplatesSettings from "@/pages/settings/EmailTemplatesSettings";
+import LocationsSettings from "@/pages/settings/LocationsSettings";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -81,6 +90,15 @@ export default function App() {
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/general" element={<GeneralSettings />} />
+            <Route path="/settings/commission" element={<CommissionSettings />} />
+            <Route path="/settings/financial" element={<FinancialSettings />} />
+            <Route path="/settings/operational" element={<OperationalSettings />} />
+            <Route path="/settings/billing" element={<BillingSettings />} />
+            <Route path="/settings/notifications" element={<NotificationSettings />} />
+            <Route path="/settings/email-templates" element={<EmailTemplatesSettings />} />
+            <Route path="/settings/locations" element={<LocationsSettings />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/mfa" element={<MfaPage />} />
             <Route path="/auth/mfa/setup" element={<MfaPage />} />
