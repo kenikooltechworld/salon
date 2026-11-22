@@ -13,21 +13,11 @@ export interface RegistrationData {
   referral_code?: string;
 }
 
-function splitName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return { first_name: parts[0] || "Owner", last_name: parts.slice(1).join(" ") || "Account" };
-}
-
 export function useRegisterSalon() {
   return useMutation({
     mutationFn: async (data: RegistrationData) => {
-      const { first_name, last_name } = splitName(data.owner_name);
-      const { data: response } = await api.post("/auth/register", {
-        tenant: { name: data.salon_name, email: data.email },
-        user: { email: data.email, password: data.password, first_name, last_name, phone: data.phone, role: "owner" },
-      });
-      await authService.loadSession();
-      return { success: true, data: response };
+      const { data: response } = await api.post("/auth/register", data);
+      return response;
     },
   });
 }
@@ -35,8 +25,9 @@ export function useRegisterSalon() {
 export function useVerifyRegistrationCode() {
   return useMutation({
     mutationFn: async ({ email, code }: { email: string; code: string }) => {
-      const { data } = await api.post("/auth/verify-email", { code, email });
-      return { success: true, data };
+      const { data } = await api.post("/auth/verify-code", { email, code });
+      await authService.loadSession();
+      return data;
     },
   });
 }
@@ -44,8 +35,8 @@ export function useVerifyRegistrationCode() {
 export function useResendVerificationCode() {
   return useMutation({
     mutationFn: async (email: string) => {
-      const { data } = await api.post("/auth/send-verification", { email });
-      return { success: true, data };
+      const { data } = await api.post("/auth/resend-code", { email });
+      return data;
     },
   });
 }
