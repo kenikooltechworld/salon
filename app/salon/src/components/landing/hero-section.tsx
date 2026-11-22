@@ -108,12 +108,12 @@ export function HeroSection() {
           <Flex direction={{ base: "column", sm: "row" }} gap={{ base: 4, sm: 6 }} justify="center" mb={8} px={2}>
             <motion.div variants={scaleInVariants}>
               <Button asChild size="lg" w={{ base: "full", sm: "auto" }}>
-                <RouterLink to="/auth/register">Sign Up</RouterLink>
+                <RouterLink to="/register">Sign Up</RouterLink>
               </Button>
             </motion.div>
             <motion.div variants={scaleInVariants}>
               <Button asChild size="lg" variant="outline" w={{ base: "full", sm: "auto" }} color="white" borderColor="whiteAlpha.500" _hover={{ bg: "whiteAlpha.200" }}>
-                <RouterLink to="/auth/login">Sign In</RouterLink>
+                <RouterLink to="/login">Sign In</RouterLink>
               </Button>
             </motion.div>
           </Flex>

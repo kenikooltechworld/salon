@@ -81,10 +81,10 @@ export function Navbar() {
             ) : (
               <>
                 <Button asChild variant="outline" size="sm">
-                  <RouterLink to="/auth/login">Sign In</RouterLink>
+                  <RouterLink to="/login">Sign In</RouterLink>
                 </Button>
                 <Button asChild size="sm">
-                  <RouterLink to="/auth/register">Get Started</RouterLink>
+                  <RouterLink to="/register">Get Started</RouterLink>
                 </Button>
               </>
             )}
@@ -127,10 +127,10 @@ export function Navbar() {
               ) : (
                 <>
                   <Button asChild variant="outline" size="sm" w="full" justifyContent="flex-start" onClick={() => setIsMenuOpen(false)}>
-                    <RouterLink to="/auth/login">Sign In</RouterLink>
+                    <RouterLink to="/login">Sign In</RouterLink>
                   </Button>
                   <Button asChild size="sm" w="full" justifyContent="flex-start" onClick={() => setIsMenuOpen(false)}>
-                    <RouterLink to="/auth/register">Get Started</RouterLink>
+                    <RouterLink to="/register">Get Started</RouterLink>
                   </Button>
                 </>
               )}

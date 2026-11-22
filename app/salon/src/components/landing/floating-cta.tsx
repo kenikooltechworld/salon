@@ -10,7 +10,7 @@ export function FloatingCTA() {
           💬
         </motion.a>
         <Button asChild size="sm" display={{ base: "none", sm: "inline-flex" }}>
-          <RouterLink to="/auth/register">Start Free</RouterLink>
+          <RouterLink to="/register">Start Free</RouterLink>
         </Button>
       </HStack>
     </motion.div>

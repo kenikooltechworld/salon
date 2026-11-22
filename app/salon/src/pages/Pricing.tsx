@@ -44,7 +44,7 @@ export default function Pricing() {
                   {savings > 0 && <Text color="purple.500" fontSize="xs" fontWeight="semibold" mt={2}>Save ₦{savings.toLocaleString()}/month</Text>}
                 </Box>
                 <Button asChild w="full" mb={6} variant={plan.highlighted ? "solid" : "outline"}>
-                  <RouterLink to="/auth/register">{plan.cta}</RouterLink>
+                  <RouterLink to="/register">{plan.cta}</RouterLink>
                 </Button>
                 <VStack align="stretch" gap={3}>
                   {plan.features.map((feature) => (

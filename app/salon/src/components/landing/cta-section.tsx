@@ -14,7 +14,7 @@ export function CTASection() {
         </motion.div>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.2 }} viewport={{ once: true }}>
           <Button asChild size="lg" bg="white" color="purple.700" _hover={{ bg: "whiteAlpha.900" }}>
-            <RouterLink to="/auth/register">Get Started Free</RouterLink>
+            <RouterLink to="/register">Get Started Free</RouterLink>
           </Button>
         </motion.div>
       </Container>
