@@ -19,6 +19,7 @@ class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     subdomain: Mapped[str] = mapped_column(String(63), nullable=False, unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     primary_color: Mapped[str | None] = mapped_column(String(7), nullable=True)

@@ -13,7 +13,7 @@ interface BusinessProfile {
 interface ActivityStats { totalAppointments: number; totalRevenue: number; totalCustomers: number; pendingActions: number; }
 
 export default function ProfilePage() {
-  const [tab, setTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "business" | "activity" | "notifications" | "security">("profile");
   const [profile, setProfile] = useState<OwnerProfile>({ id: "", email: "", firstName: "", lastName: "", phone: "", role: "", roleNames: [], tenantId: "" });
   const [business, setBusiness] = useState<BusinessProfile>({ salon_name: "", email: "", phone: "", address: "" });
   const [activity, setActivity] = useState<ActivityStats>({ totalAppointments: 0, totalRevenue: 0, totalCustomers: 0, pendingActions: 0 });
@@ -22,56 +22,68 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void fetchProfile(); void fetchBusiness(); void fetchActivity(); }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const fetchProfile = async () => {
     try {
-      const [meRes, settingsRes, metricsRes, pendingRes] = await Promise.all([
-        authApi.me(), authApi.getSettings(), authApi.dashboardMetrics(), authApi.dashboardPendingActions(),
-      ]);
-      const u = meRes.data.user;
+      const res = await authApi.me();
+      const u = res.data.user || res.data;
       setProfile({ id: u.id, email: u.email, firstName: u.first_name, lastName: u.last_name, phone: u.phone || "", role: u.role, roleNames: [u.role], tenantId: u.tenant_id });
-      const s = settingsRes.data.data;
-      setBusiness({ salon_name: s.salon_name || s.name || "", email: s.email || "", phone: s.phone || "", address: s.address || "", subdomain: s.subdomain, subdomain_url: s.subdomain_url, subscription_tier: s.subscription_tier, status: s.status, description: s.description });
-      const m = metricsRes.data.data;
-      const p = pendingRes.data.data;
-      setActivity({ totalAppointments: m.appointments?.thisMonth || 0, totalRevenue: m.revenue?.current || 0, totalCustomers: m.customers?.total || 0, pendingActions: p.total || 0 });
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || "Failed to load profile");
-    } finally { setLoading(false); }
+    } catch (err: any) { setError("Failed to load profile"); }
+    finally { setLoading(false); }
   };
 
-  const saveProfile = async (e: React.FormEvent) => {
+  const fetchBusiness = async () => {
+    try {
+      const res = await authApi.getSettings();
+      const s = res.data.data || res.data;
+      setBusiness({ salon_name: s.salon_name || s.name || "", email: s.email || "", phone: s.phone || "", address: s.address || "", subdomain: s.subdomain, subdomain_url: s.subdomain_url, subscription_tier: s.subscription_tier, status: s.status, description: s.description });
+    } catch (err) { console.error("Failed to load business settings:", err); }
+  };
+
+  const fetchActivity = async () => {
+    try {
+      const [metricsRes, pendingRes] = await Promise.all([authApi.dashboardMetrics(), authApi.dashboardPendingActions()]);
+      const metrics = metricsRes.data.data || metricsRes.data;
+      const pending = pendingRes.data.data || pendingRes.data;
+      setActivity({ totalAppointments: metrics.appointments?.thisMonth || 0, totalRevenue: metrics.revenue?.current || 0, totalCustomers: 0, pendingActions: pending.total || 0 });
+    } catch (err) { console.error("Failed to load activity stats:", err); }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setError(""); setSuccess("");
     try {
       await authApi.updateMe({ first_name: profile.firstName, last_name: profile.lastName, phone: profile.phone });
-      setSuccess("Profile updated successfully");
-      toaster.create({ title: "Profile updated", type: "success" });
       await authService.loadSession();
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || "Failed to update profile"; setError(msg); toaster.create({ title: msg, type: "error" });
+      setSuccess("Profile updated successfully");
+      toaster.create({ title: "Success", description: "Profile updated successfully", type: "success" });
+    } catch (err: any) {
+      const message = err?.response?.data?.detail || err.message || "Failed to update profile";
+      setError(message); toaster.create({ title: "Error", description: message, type: "error" });
     } finally { setSaving(false); }
   };
 
-  const saveBusiness = async (e: React.FormEvent) => {
+  const handleUpdateBusiness = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setError(""); setSuccess("");
     try {
-      await authApi.updateSettings({ salon_name: business.salon_name, email: business.email, phone: business.phone, address: business.address, description: business.description || "" });
+      await authApi.updateSettings({ salon_name: business.salon_name, email: business.email, phone: business.phone, address: business.address });
       setSuccess("Business profile updated successfully");
-      toaster.create({ title: "Business profile updated", type: "success" });
-      await load();
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || "Failed to update business profile"; setError(msg); toaster.create({ title: msg, type: "error" });
+      toaster.create({ title: "Success", description: "Business profile updated successfully", type: "success" });
+    } catch (err: any) {
+      const message = err?.response?.data?.detail || err.message || "Failed to update business profile";
+      setError(message); toaster.create({ title: "Error", description: message, type: "error" });
     } finally { setSaving(false); }
   };
 
-  const badgeColor = (v?: string) => {
-    const t = (v || "").toLowerCase();
-    if (["active", "professional"].includes(t)) return "green";
-    if (["trial", "starter", "pending"].includes(t)) return "yellow";
-    if (["inactive", "suspended"].includes(t)) return "red";
-    return "purple";
+  const getSubscriptionBadge = () => {
+    const tier = business.subscription_tier || "starter";
+    const colors: Record<string, string> = { starter: "gray", professional: "blue", enterprise: "purple" };
+    return colors[tier] || "gray";
+  };
+  const getStatusBadge = () => {
+    const status = business.status || "active";
+    const colors: Record<string, string> = { active: "green", inactive: "red", trial: "yellow" };
+    return colors[status] || "green";
   };
 
   if (loading) {
@@ -81,11 +93,7 @@ export default function ProfilePage() {
   return (
     <Container maxW="6xl" py="6">
       <Stack gap="6">
-        <Box>
-          <Heading size="xl">My Profile</Heading>
-          <Text color="fg.muted">Manage your personal and business profile</Text>
-        </Box>
-
+        <Box><Heading size="xl">My Profile</Heading><Text color="fg.muted">Manage your personal and business profile</Text></Box>
         {error && <Alert.Root status="error"><Alert.Indicator /><Alert.Description>{error}</Alert.Description></Alert.Root>}
         {success && <Alert.Root status="success"><Alert.Indicator /><Alert.Description>{success}</Alert.Description></Alert.Root>}
 
@@ -95,7 +103,7 @@ export default function ProfilePage() {
           <Card.Root><Card.Body><HStack gap="3"><Box p="3" bg="yellow.subtle" rounded="lg"><LuBell /></Box><Box><Text fontSize="sm" color="fg.muted">Pending Actions</Text><Text fontSize="2xl" fontWeight="bold">{activity.pendingActions}</Text></Box></HStack></Card.Body></Card.Root>
         </SimpleGrid>
 
-        <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value)}>
+        <Tabs.Root value={activeTab} onValueChange={(e) => setActiveTab(e.value as any)}>
           <Tabs.List>
             <Tabs.Trigger value="profile"><LuUser /> Personal Profile</Tabs.Trigger>
             <Tabs.Trigger value="business"><LuBuilding2 /> Business Profile</Tabs.Trigger>
@@ -103,46 +111,38 @@ export default function ProfilePage() {
           </Tabs.List>
 
           <Tabs.Content value="profile">
-            <Card.Root><Card.Body>
-              <form onSubmit={saveProfile}>
-                <Stack gap="4">
-                  <Heading size="md">Personal Information</Heading>
-                  <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
-                    <Box><Text mb="1" fontSize="sm">First Name</Text><Input value={profile.firstName} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} disabled={saving} /></Box>
-                    <Box><Text mb="1" fontSize="sm">Last Name</Text><Input value={profile.lastName} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} disabled={saving} /></Box>
-                  </Grid>
-                  <Box><Text mb="1" fontSize="sm">Email Address</Text><Input value={profile.email} disabled /><Text fontSize="xs" color="fg.muted">Email cannot be changed here.</Text></Box>
-                  <Box><Text mb="1" fontSize="sm">Phone Number</Text><Input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} disabled={saving} /></Box>
-                  <Box><Text mb="1" fontSize="sm">Role</Text><Input value={profile.roleNames?.join(", ") || profile.role} disabled /></Box>
-                  <Flex justify="flex-end"><Button type="submit" loading={saving}>Save Changes</Button></Flex>
-                </Stack>
-              </form>
-            </Card.Body></Card.Root>
+            <Card.Root><Card.Body><form onSubmit={handleUpdateProfile}><Stack gap="4">
+              <Heading size="md">Personal Information</Heading>
+              <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
+                <Box><Text mb="1" fontSize="sm">First Name</Text><Input value={profile.firstName} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} disabled={saving} /></Box>
+                <Box><Text mb="1" fontSize="sm">Last Name</Text><Input value={profile.lastName} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} disabled={saving} /></Box>
+              </Grid>
+              <Box><Text mb="1" fontSize="sm">Email Address</Text><Input type="email" value={profile.email} disabled /><Text fontSize="xs" color="fg.muted">Email cannot be changed here. Use Account Settings to change email.</Text></Box>
+              <Box><Text mb="1" fontSize="sm">Phone Number</Text><Input type="tel" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} disabled={saving} /></Box>
+              <Box><Text mb="1" fontSize="sm">Role</Text><Input value={profile.roleNames?.join(", ") || profile.role} disabled /></Box>
+              <Flex justify="flex-end"><Button type="submit" loading={saving}>{saving ? "Saving..." : "Save Changes"}</Button></Flex>
+            </Stack></form></Card.Body></Card.Root>
           </Tabs.Content>
 
           <Tabs.Content value="business">
-            <Card.Root><Card.Body>
-              <form onSubmit={saveBusiness}>
-                <Stack gap="4">
-                  <Flex justify="space-between" align="center" wrap="wrap" gap="2">
-                    <Heading size="md">Business Information</Heading>
-                    <HStack><Badge colorPalette={badgeColor(business.subscription_tier)}>{business.subscription_tier || "Starter"}</Badge><Badge colorPalette={badgeColor(business.status)}>{business.status || "Active"}</Badge></HStack>
-                  </Flex>
-                  <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
-                    <Box><Text mb="1" fontSize="sm">Salon/Business Name</Text><Input value={business.salon_name} onChange={(e) => setBusiness({ ...business, salon_name: e.target.value })} disabled={saving} /></Box>
-                    <Box><Text mb="1" fontSize="sm">Business Email</Text><Input type="email" value={business.email} onChange={(e) => setBusiness({ ...business, email: e.target.value })} disabled={saving} /></Box>
-                    <Box><Text mb="1" fontSize="sm">Business Phone</Text><Input value={business.phone} onChange={(e) => setBusiness({ ...business, phone: e.target.value })} disabled={saving} /></Box>
-                    <Box><Text mb="1" fontSize="sm">Address</Text><Input value={business.address} onChange={(e) => setBusiness({ ...business, address: e.target.value })} disabled={saving} /></Box>
-                  </Grid>
-                  {business.subdomain_url && (
-                    <Box><Text mb="1" fontSize="sm">Subdomain URL</Text>
-                      <HStack><Input value={business.subdomain_url} disabled /><Button variant="outline" onClick={async () => { await navigator.clipboard.writeText(business.subdomain_url || ""); toaster.create({ title: "Copied", type: "success" }); }}><LuCopy /> Copy</Button></HStack>
-                    </Box>
-                  )}
-                  <Flex justify="flex-end"><Button type="submit" loading={saving}>Save Changes</Button></Flex>
-                </Stack>
-              </form>
-            </Card.Body></Card.Root>
+            <Card.Root><Card.Body><form onSubmit={handleUpdateBusiness}><Stack gap="4">
+              <Flex justify="space-between" align="center" wrap="wrap" gap="2">
+                <Heading size="md">Business Information</Heading>
+                <HStack><Badge colorPalette={getSubscriptionBadge()}>{business.subscription_tier || "Starter"}</Badge><Badge colorPalette={getStatusBadge()}>{business.status || "Active"}</Badge></HStack>
+              </Flex>
+              <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
+                <Box><Text mb="1" fontSize="sm">Salon/Business Name</Text><Input value={business.salon_name} onChange={(e) => setBusiness({ ...business, salon_name: e.target.value })} disabled={saving} /></Box>
+                <Box><Text mb="1" fontSize="sm">Business Email</Text><Input type="email" value={business.email} onChange={(e) => setBusiness({ ...business, email: e.target.value })} disabled={saving} /></Box>
+                <Box><Text mb="1" fontSize="sm">Business Phone</Text><Input type="tel" value={business.phone} onChange={(e) => setBusiness({ ...business, phone: e.target.value })} disabled={saving} /></Box>
+                <Box><Text mb="1" fontSize="sm">Address</Text><Input value={business.address} onChange={(e) => setBusiness({ ...business, address: e.target.value })} disabled={saving} /></Box>
+              </Grid>
+              {business.subdomain_url && (
+                <Box><Text mb="1" fontSize="sm">Subdomain URL</Text>
+                  <HStack><Input value={business.subdomain_url} disabled /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(business.subdomain_url || ""); toaster.create({ title: "Copied", description: "URL copied to clipboard", type: "success" }); } catch { toaster.create({ title: "Error", description: "Failed to copy URL", type: "error" }); } }}><LuCopy /> Copy</Button></HStack>
+                </Box>
+              )}
+              <Flex justify="flex-end"><Button type="submit" loading={saving}>{saving ? "Saving..." : "Save Changes"}</Button></Flex>
+            </Stack></form></Card.Body></Card.Root>
           </Tabs.Content>
 
           <Tabs.Content value="activity">

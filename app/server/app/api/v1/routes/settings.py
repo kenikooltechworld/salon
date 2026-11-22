@@ -53,10 +53,9 @@ async def update_settings(
     payload = data.model_dump(exclude_unset=True)
     if "salon_name" in payload and payload["salon_name"] is not None:
         tenant.name = payload["salon_name"].strip()
-    for field in ("email", "address", "description", "logo_url", "primary_color", "secondary_color"):
+    for field in ("email", "phone", "address", "description", "logo_url", "primary_color", "secondary_color"):
         if field in payload:
             setattr(tenant, field, payload[field])
-    # phone is accepted for Kenikool parity; tenant model currently has no phone column.
     await session.commit()
     await session.refresh(tenant)
     return {"data": _tenant_payload(tenant)}
@@ -102,3 +101,5 @@ async def owner_dashboard_pending_actions(current_user: User = Depends(get_curre
         )
     )
     return {"data": {"total": int(pending or 0)}}
+
+

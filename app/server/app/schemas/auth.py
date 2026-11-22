@@ -31,6 +31,7 @@ class TenantRead(BaseModel):
     name: str
     subdomain: str
     email: Optional[str] = None
+    phone: Optional[str] = None
     description: Optional[str] = None
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
@@ -184,3 +185,4 @@ class RecoverAccountRequest(BaseModel):
 class RecoverAccountResponse(BaseModel):
     success: bool
     detail: str
+
