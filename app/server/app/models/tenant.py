@@ -1,4 +1,4 @@
-"""Tenant ORM model."""
+﻿"""Tenant ORM model."""
 from __future__ import annotations
 
 import uuid
@@ -28,5 +28,8 @@ class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     region: Mapped[str] = mapped_column(String(64), nullable=False, default="us-east-1")
     is_published: Mapped[bool] = mapped_column(default=True, nullable=False)
+    recovery_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    recovery_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recovery_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")

@@ -1,4 +1,4 @@
-"""Security helpers: password hashing and JWT tokens."""
+﻿"""Security helpers: password hashing and JWT tokens."""
 from __future__ import annotations
 
 import hashlib
@@ -80,6 +80,10 @@ def verify_token(token: str) -> Optional[dict[str, Any]]:
 
 def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
+
+
+def generate_secure_token(nbytes: int = 32) -> str:
+    return secrets.token_urlsafe(nbytes)
 
 
 def hash_token(value: str) -> str:
