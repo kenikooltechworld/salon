@@ -1,10 +1,11 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Box, Flex, HStack, IconButton, Text, useBreakpointValue } from "@chakra-ui/react";
-import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu, LuSettings, LuShield } from "react-icons/lu";
+import { Avatar, Box, Flex, HStack, IconButton, Menu, Portal, Splitter, Text, useBreakpointValue } from "@chakra-ui/react";
+import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuShield, LuLogOut } from "react-icons/lu";
 import { authService, useAuthStore } from "@/features/auth";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
+import { Logo } from "@/components/brand/Logo";
 
 const items: SidebarItem[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", to: "/dashboard" },
@@ -15,33 +16,82 @@ const items: SidebarItem[] = [
   { icon: LuSettings, label: "Change Password", to: "/change-password" },
 ];
 
+const SIDEBAR_KEY = "dashboard.sidebar.size";
+
 export function DashboardLayout() {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [size, setSize] = useState<number>(() => {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIDEBAR_KEY) : null;
+    const n = raw ? Number(raw) : 20;
+    return Number.isFinite(n) ? Math.min(35, Math.max(15, n)) : 20;
+  });
   const isDesktop = useBreakpointValue({ base: false, lg: true }) ?? false;
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
+  useEffect(() => { if (!collapsed) window.localStorage.setItem(SIDEBAR_KEY, String(size)); }, [size, collapsed]);
+
+  const logout = async () => { await authService.logout(); navigate("/auth/login"); };
+  const userName = user ? `${user.first_name} ${user.last_name}`.trim() : "Account";
+
   return (
     <Flex minH="100vh" bg="bg">
-      <AppSidebar
-        items={items}
-        brand="Kenikool"
-        subtitle={user ? `${user.first_name} ${user.last_name}` : undefined}
-        isDesktop={isDesktop}
-        open={open}
-        onOpenChange={setOpen}
-        onLogout={async () => { await authService.logout(); navigate("/auth/login"); }}
-      />
-      <Flex direction="column" flex="1" minW="0">
-        <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
-          {!isDesktop && <IconButton aria-label="Open menu" variant="ghost" onClick={() => setOpen(true)}><LuMenu /></IconButton>}
-          <Text fontWeight="semibold">Dashboard</Text>
-          <HStack><ColorModeButton /></HStack>
-        </HStack>
-        <Box flex="1" p={{ base: 4, md: 6 }}>
-          <Outlet />
-        </Box>
-      </Flex>
+      {isDesktop ? (
+        <Splitter.Root
+          size={[collapsed ? 4 : size, collapsed ? 96 : 100 - size]}
+          onResize={(e) => { if (!collapsed && e.size[0]) setSize(Math.min(35, Math.max(15, e.size[0]))); }}
+          panels={[{ id: "sidebar", minSize: collapsed ? 4 : 15, maxSize: collapsed ? 6 : 35 }, { id: "content", minSize: 60 }]}
+        >
+          <Splitter.Panel id="sidebar">
+            <AppSidebar items={items} subtitle={userName} isDesktop open={open} onOpenChange={setOpen} collapsed={collapsed} onCollapsedChange={setCollapsed} onLogout={logout} />
+          </Splitter.Panel>
+          <Splitter.ResizeTrigger id="sidebar:content" display={collapsed ? "none" : "flex"} w="2" bg="transparent" _hover={{ bg: "brand.500/30" }} />
+          <Splitter.Panel id="content">
+            <Flex direction="column" minH="100vh" minW="0">
+              <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
+                <HStack gap="3"><Logo to="/dashboard" showText={false} size="sm" /><Text fontWeight="semibold">Dashboard</Text></HStack>
+                <HStack gap="2">
+                  <ColorModeButton />
+                  <Menu.Root>
+                    <Menu.Trigger asChild>
+                      <HStack as="button" gap="2" px="2" py="1" rounded="md" _hover={{ bg: "bg.muted" }}>
+                        <Avatar.Root size="sm"><Avatar.Fallback name={userName} /></Avatar.Root>
+                        <Box textAlign="left" display={{ base: "none", md: "block" }}>
+                          <Text fontSize="sm" fontWeight="medium" lineClamp="1">{userName}</Text>
+                          <Text fontSize="xs" color="fg.muted" lineClamp="1">{user?.email}</Text>
+                        </Box>
+                      </HStack>
+                    </Menu.Trigger>
+                    <Portal><Menu.Positioner><Menu.Content>
+                      <Menu.Item value="profile" onClick={() => navigate("/profile")}>Profile</Menu.Item>
+                      <Menu.Item value="logout" onClick={logout} color="fg.error"><LuLogOut /> Logout</Menu.Item>
+                    </Menu.Content></Menu.Positioner></Portal>
+                  </Menu.Root>
+                </HStack>
+              </HStack>
+              <Box flex="1" p={{ base: 4, md: 6 }}><Outlet /></Box>
+            </Flex>
+          </Splitter.Panel>
+        </Splitter.Root>
+      ) : (
+        <>
+          <AppSidebar items={items} subtitle={userName} isDesktop={false} open={open} onOpenChange={setOpen} collapsed={false} onCollapsedChange={setCollapsed} onLogout={logout} />
+          <Flex direction="column" flex="1" minW="0">
+            <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
+              <HStack gap="2">
+                <IconButton aria-label="Open menu" variant="ghost" onClick={() => setOpen(true)}><LuMenuIcon /></IconButton>
+                <Logo to="/dashboard" showText={false} size="sm" />
+              </HStack>
+              <HStack gap="2">
+                <ColorModeButton />
+                <Avatar.Root size="sm" onClick={() => navigate("/profile")} cursor="pointer"><Avatar.Fallback name={userName} /></Avatar.Root>
+              </HStack>
+            </HStack>
+            <Box flex="1" p={{ base: 4, md: 6 }}><Outlet /></Box>
+          </Flex>
+        </>
+      )}
     </Flex>
   );
 }

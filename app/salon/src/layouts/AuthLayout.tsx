@@ -1,22 +1,19 @@
 ﻿import { Outlet } from "react-router-dom";
-import { Box, Container } from "@chakra-ui/react";
-import { motion } from "motion/react";
+import { Box, Container, Flex } from "@chakra-ui/react";
+import { Logo } from "@/components/brand/Logo";
+import { ColorModeButton } from "@/components/ui/color-mode";
 
 export function AuthLayout() {
   return (
-    <Box minH="100vh" bgGradient="to-br" gradientFrom="brand.50" gradientTo="purple.50" _dark={{ gradientFrom: "gray.900", gradientTo: "gray.800" }} display="flex" alignItems="center" justifyContent="center" p="4">
-      <Container maxW="2xl" p="0">
-        <Box
-          as={motion.div}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          // @ts-expect-error motion props
-          transition={{ duration: 0.4 }}
-        >
-          <Outlet />
-        </Box>
-      </Container>
-    </Box>
+    <Flex minH="100vh" direction="column" bg="bg">
+      <Flex h="16" px={{ base: 4, md: 6 }} align="center" justify="space-between" borderBottomWidth="1px" bg="bg.panel">
+        <Logo />
+        <ColorModeButton />
+      </Flex>
+      <Box flex="1" bg={{ base: "bg", md: "bg.muted/30" }} py={{ base: 6, md: 10 }}>
+        <Container maxW="lg"><Outlet /></Container>
+      </Box>
+    </Flex>
   );
 }
 

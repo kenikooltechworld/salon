@@ -1,6 +1,6 @@
-import { Outlet } from "react-router-dom";
+﻿import { Outlet } from "react-router-dom";
 import { Container, VStack } from "@chakra-ui/react";
-import { Navbar } from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 export function PublicLayout() {

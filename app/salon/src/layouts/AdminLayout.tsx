@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { Container, HStack, VStack } from "@chakra-ui/react";
-import { Navbar } from "@/components/Navbar";
+import Navbar from "@/components/Navbar";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 interface AdminLayoutProps {
