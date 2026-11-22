@@ -1,0 +1,80 @@
+﻿from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.tenant import Tenant
+from app.schemas.tenant_settings import TenantSettingsSchema, default_business_hours
+
+
+DEFAULT_SETTINGS = TenantSettingsSchema(salon_name="My Salon", email="", phone="", address="").model_dump()
+
+
+def _subdomain_url(tenant: Tenant) -> str:
+    from app.config import settings
+    domain = settings.platform_domain.strip().strip("/") or "kenikoolsalon.com"
+    env = settings.environment.lower()
+    if not tenant.subdomain:
+        return ""
+    if env == "development":
+        return f"http://{tenant.subdomain}.{domain}:3000"
+    return f"https://{tenant.subdomain}.{domain}"
+
+
+def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
+    stored = dict(tenant.settings or {})
+    # merge defaults
+    merged = {**DEFAULT_SETTINGS, **stored}
+    # canonical tenant fields override
+    merged.update({
+        "salon_name": tenant.name,
+        "email": tenant.email or merged.get("email") or "",
+        "phone": tenant.phone or merged.get("phone") or "",
+        "address": tenant.address or merged.get("address") or "",
+        "logo_url": tenant.logo_url if tenant.logo_url is not None else merged.get("logo_url"),
+        "primary_color": tenant.primary_color or merged.get("primary_color") or "#000000",
+        "secondary_color": tenant.secondary_color or merged.get("secondary_color") or "#FFFFFF",
+    })
+    # normalize/validate via schema
+    schema = TenantSettingsSchema(**merged)
+    data = schema.model_dump()
+    data.update({
+        "tenant_id": str(tenant.id),
+        "tenant_name": tenant.name,
+        "subdomain": tenant.subdomain,
+        "subdomain_url": _subdomain_url(tenant),
+        "region": tenant.region,
+        "subscription_tier": tenant.subscription_tier,
+        "status": tenant.status,
+        "is_published": tenant.is_published,
+    })
+    return {"data": data}
+
+
+async def update_tenant_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:
+    schema = TenantSettingsSchema(**updates)
+    data = schema.model_dump()
+    tenant.name = data["salon_name"]
+    tenant.email = data["email"] or None
+    tenant.phone = data["phone"] or None
+    tenant.address = data["address"] or None
+    tenant.logo_url = data["logo_url"]
+    tenant.primary_color = data["primary_color"]
+    tenant.secondary_color = data["secondary_color"]
+
+    current = dict(tenant.settings or {})
+    preserved = {k: v for k, v in current.items() if k in {"financial_config", "operational_config", "customer_welcome_email_template", "commission_config"}}
+    current.update(data)
+    current.update(preserved)
+    tenant.settings = current
+
+    await session.commit()
+    await session.refresh(tenant)
+    return tenant_settings_payload(tenant)
+
+
+async def reset_tenant_settings(session: AsyncSession, tenant: Tenant) -> dict[str, Any]:
+    defaults = TenantSettingsSchema(salon_name=tenant.name or "My Salon", email=tenant.email or "", phone=tenant.phone or "", address=tenant.address or "").model_dump()
+    return await update_tenant_settings(session, tenant, defaults)

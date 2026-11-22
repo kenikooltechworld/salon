@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
     email_from: str = Field(default="Kenikool Salon <noreply@localhost>", alias="EMAIL_FROM")
 
+    cloudflare_account_id: str = Field(default="", alias="CLOUDFLARE_ACCOUNT_ID")
+    cloudflare_access_key: str = Field(default="", alias="CLOUDFLARE_ACCESS_KEY")
+    cloudflare_secret_access_key: str = Field(default="", alias="CLOUDFLARE_SECRET_ACCESS_KEY")
+    cloudflare_s3_api_endpoint: str = Field(default="", alias="CLOUDFLARE_S3_API_ENDPOINT")
+    cloudflare_r2_public_url: str = Field(default="", alias="CLOUDFLARE_R2_PUBLIC_URL")
+    cloudflare_r2_bucket: str = Field(default="kenikool-salon", alias="CLOUDFLARE_R2_BUCKET")
+
     jwt_secret_key: str = Field(
         default="dev-jwt-secret-change-in-production",
         alias="JWT_SECRET_KEY",

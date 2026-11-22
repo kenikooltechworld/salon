@@ -12,8 +12,10 @@ from app.lib.deps import db_session, get_current_user
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.user import User
-from app.schemas.auth import TenantRead, TenantSettingsUpdate
+from app.schemas.auth import TenantRead
+from app.schemas.tenant_settings import TenantSettingsSchema
 from app.services.tenant_service import TenantService
+from app.services.tenant_settings_service import reset_tenant_settings, tenant_settings_payload, update_tenant_settings
 
 router = APIRouter(tags=["settings", "owner-dashboard"])
 
@@ -23,25 +25,17 @@ def _require_owner(user: User) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
 
-def _tenant_payload(tenant) -> dict:
-    data = TenantRead.model_validate(tenant).model_dump()
-    # Kenikool OwnerProfile expects salon_name and subdomain_url
-    data["salon_name"] = tenant.name
-    data["subdomain_url"] = f"https://{tenant.subdomain}.kenikoolsalon.com" if tenant.subdomain else None
-    return data
-
-
 @router.get("/settings")
 async def get_settings(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
     tenant = await TenantService.get_tenant(session, current_user.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
-    return {"data": _tenant_payload(tenant)}
+    return tenant_settings_payload(tenant)
 
 
 @router.put("/settings")
 async def update_settings(
-    data: TenantSettingsUpdate,
+    data: TenantSettingsSchema,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_session),
 ):
@@ -49,16 +43,16 @@ async def update_settings(
     tenant = await TenantService.get_tenant(session, current_user.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return await update_tenant_settings(session, tenant, data.model_dump())
 
-    payload = data.model_dump(exclude_unset=True)
-    if "salon_name" in payload and payload["salon_name"] is not None:
-        tenant.name = payload["salon_name"].strip()
-    for field in ("email", "phone", "address", "description", "logo_url", "primary_color", "secondary_color"):
-        if field in payload:
-            setattr(tenant, field, payload[field])
-    await session.commit()
-    await session.refresh(tenant)
-    return {"data": _tenant_payload(tenant)}
+
+@router.post("/settings/reset")
+async def reset_settings(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
+    _require_owner(current_user)
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return await reset_tenant_settings(session, tenant)
 
 
 @router.get("/owner/dashboard/metrics")
@@ -101,5 +95,3 @@ async def owner_dashboard_pending_actions(current_user: User = Depends(get_curre
         )
     )
     return {"data": {"total": int(pending or 0)}}
-
-
