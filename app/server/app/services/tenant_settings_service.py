@@ -1,12 +1,11 @@
 ﻿from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tenant import Tenant
-from app.schemas.tenant_settings import TenantSettingsSchema, default_business_hours
+from app.schemas.tenant_settings import TenantSettingsSchema
 
 
 DEFAULT_SETTINGS = TenantSettingsSchema(salon_name="My Salon", email="", phone="", address="").model_dump()
@@ -23,11 +22,21 @@ def _subdomain_url(tenant: Tenant) -> str:
     return f"https://{tenant.subdomain}.{domain}"
 
 
+def _subscription_payload(tenant: Tenant) -> dict[str, Any]:
+    tier = tenant.subscription_tier or "trial"
+    status = tenant.status or "active"
+    billing_cycle = "monthly" if tier != "trial" else "trial"
+    return {
+        "plan_name": tier.capitalize(),
+        "plan_tier": {"trial": 0, "starter": 1, "professional": 2, "enterprise": 3}.get(tier, 0),
+        "billing_cycle": billing_cycle,
+        "status": status,
+    }
+
+
 def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
     stored = dict(tenant.settings or {})
-    # merge defaults
     merged = {**DEFAULT_SETTINGS, **stored}
-    # canonical tenant fields override
     merged.update({
         "salon_name": tenant.name,
         "email": tenant.email or merged.get("email") or "",
@@ -37,9 +46,9 @@ def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
         "primary_color": tenant.primary_color or merged.get("primary_color") or "#000000",
         "secondary_color": tenant.secondary_color or merged.get("secondary_color") or "#FFFFFF",
     })
-    # normalize/validate via schema
     schema = TenantSettingsSchema(**merged)
     data = schema.model_dump()
+    sub = _subscription_payload(tenant)
     data.update({
         "tenant_id": str(tenant.id),
         "tenant_name": tenant.name,
@@ -49,6 +58,7 @@ def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
         "subscription_tier": tenant.subscription_tier,
         "status": tenant.status,
         "is_published": tenant.is_published,
+        **sub,
     })
     return {"data": data}
 

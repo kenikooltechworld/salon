@@ -5,6 +5,7 @@ import { useSettingsStore } from "./store";
 import type { TenantSettingsData } from "./types";
 
 export const SETTINGS_KEY = ["tenant-settings"] as const;
+export const SUBSCRIPTION_KEY = ["subscription"] as const;
 
 export function useTenantSettings() {
   const setSettings = useSettingsStore((s) => s.setSettings);
@@ -16,6 +17,15 @@ export function useTenantSettings() {
       return data;
     },
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSubscription() {
+  return useQuery({
+    queryKey: SUBSCRIPTION_KEY,
+    queryFn: async () => (await settingsApi.getSubscription()).data,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 }
 

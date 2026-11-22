@@ -13,6 +13,9 @@ export interface TenantSettingsData {
   subscription_tier?: string;
   status?: string;
   is_published?: boolean;
+  plan_name?: string;
+  plan_tier?: number;
+  billing_cycle?: string;
   salon_name: string;
   email: string;
   phone: string;
@@ -41,4 +44,11 @@ export interface MediaUploadResponse {
 
 export interface SettingsResponse {
   data: TenantSettingsData;
+}
+
+export interface Subscription {
+  plan_name?: string;
+  billing_cycle?: string;
+  status?: string;
+  subscription_status?: string;
 }
