@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { Box, Button, Dialog, Text, VStack } from "@chakra-ui/react";
 
@@ -33,7 +33,7 @@ export function ExitIntentPopup() {
             </Box>
             <VStack align="stretch" gap={3}>
               <Button asChild w="full">
-                <RouterLink to="/register">Start Free Trial</RouterLink>
+                <RouterLink to="/auth/register">Start Free Trial</RouterLink>
               </Button>
               <Button variant="outline" w="full" onClick={() => setIsVisible(false)}>Maybe later</Button>
             </VStack>

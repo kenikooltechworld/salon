@@ -1,65 +1,78 @@
-import { useState } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+﻿import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, Box, Button, Card, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
+import { AuthHeader } from "@/components/auth/AuthHeader";
+import { TrustIndicators } from "@/components/auth/TrustIndicators";
 
-const schema = z.object({
-  email: z.string().email(),
-  code: z.string().length(6, "Code must be 6 digits"),
-  new_password: z.string().min(8, "Password must be at least 8 characters"),
-});
-type Form = z.infer<typeof schema>;
+const validatePassword = (pwd: string) => {
+  if (pwd.length < 8) return "Password must be at least 8 characters";
+  if (!/[A-Z]/.test(pwd)) return "Password must contain an uppercase letter";
+  if (!/[a-z]/.test(pwd)) return "Password must contain a lowercase letter";
+  if (!/[0-9]/.test(pwd)) return "Password must contain a number";
+  if (!/[^A-Za-z0-9]/.test(pwd)) return "Password must contain a special character";
+  return null;
+};
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
+  const [code, setCode] = useState(searchParams.get("code") ?? "");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<Form>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: searchParams.get("email") ?? "" },
-  });
+  const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const submit = async (data: Form) => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
-    setMessage("");
+    const pwdErr = validatePassword(password);
+    if (pwdErr) { setError(pwdErr); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+    setIsLoading(true);
     try {
-      const res = await api.post("/auth/reset-password", {
-        email: data.email,
-        code: data.code,
-        new_password: data.new_password,
-      });
-      setMessage(res.data.message);
-      setTimeout(() => navigate("/login"), 1500);
+      await api.post("/auth/reset-password", { email, code, new_password: password });
+      setSuccess(true);
+      setTimeout(() => navigate("/auth/login"), 2000);
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Reset failed");
+      setError(err?.response?.data?.detail || err?.message || "Failed to reset password. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Container maxW="sm" py={16}>
-      <Heading mb={4}>Reset password</Heading>
-      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
-          <Input placeholder="Email" {...register("email")} />
-          {errors.email && <Text color="red.500" fontSize="sm">{errors.email.message}</Text>}
-          <Input placeholder="6-digit code" {...register("code")} />
-          {errors.code && <Text color="red.500" fontSize="sm">{errors.code.message}</Text>}
-          <Input type="password" placeholder="New password" {...register("new_password")} />
-          {errors.new_password && <Text color="red.500" fontSize="sm">{errors.new_password.message}</Text>}
-          {message && <Text color="green.500" fontSize="sm">{message}</Text>}
-          {error && <Text color="red.500" fontSize="sm">{error}</Text>}
-          <Button type="submit" loading={loading}>Reset password</Button>
-          <Text fontSize="sm">
-            <Link to="/login">Back to login</Link>
-          </Text>
-      </VStack>
-    </Container>
+    <Card.Root shadow="lg">
+      <Card.Body p={{ base: "6", md: "10" }}>
+        <AuthHeader title="Create New Password" subtitle="Enter your reset code and a strong new password" />
+        {error && <Alert.Root status="error" mb="6"><Alert.Indicator /><Box><Alert.Title>Error</Alert.Title><Alert.Description>{error}</Alert.Description></Box></Alert.Root>}
+        {success && <Alert.Root status="success" mb="6"><Alert.Indicator /><Box><Alert.Title>Success</Alert.Title><Alert.Description>Password reset successfully. Redirecting to login...</Alert.Description></Box></Alert.Root>}
+        {!success && (
+          <Box as="form" onSubmit={handleSubmit}>
+            <Stack gap="4">
+              <Box><Text fontSize="sm" fontWeight="medium" mb="2">Email</Text><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} /></Box>
+              <Box><Text fontSize="sm" fontWeight="medium" mb="2">Reset Code</Text><Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-digit code" required disabled={isLoading} maxLength={6} /></Box>
+              <Box>
+                <Text fontSize="sm" fontWeight="medium" mb="2">New Password</Text>
+                <Box position="relative">
+                  <Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} pr="16" />
+                  <Button variant="ghost" size="xs" position="absolute" right="2" top="50%" transform="translateY(-50%)" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Hide" : "Show"}</Button>
+                </Box>
+                <Text fontSize="xs" color="fg.muted" mt="1">At least 8 characters with uppercase, lowercase, number, and special character</Text>
+              </Box>
+              <Box><Text fontSize="sm" fontWeight="medium" mb="2">Confirm Password</Text><Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={isLoading} /></Box>
+              <Button type="submit" colorPalette="brand" w="full" loading={isLoading} disabled={isLoading || !email || !code || !password || !confirmPassword}>Reset Password</Button>
+            </Stack>
+          </Box>
+        )}
+        <Text mt="6" pt="6" borderTopWidth="1px" textAlign="center" fontSize="sm">
+          <Link to="/auth/login"><Text as="span" color="brand.500">Back to Sign In</Text></Link>
+        </Text>
+        <TrustIndicators />
+      </Card.Body>
+    </Card.Root>
   );
 }

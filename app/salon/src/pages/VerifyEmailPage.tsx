@@ -1,61 +1,78 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+﻿import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, Box, Button, Card, Text, VStack } from "@chakra-ui/react";
 import { api } from "@/lib/api";
-
-const schema = z.object({ code: z.string().length(6, "Code must be 6 digits") });
-type Form = z.infer<typeof schema>;
+import { AuthHeader } from "@/components/auth/AuthHeader";
+import { TrustIndicators } from "@/components/auth/TrustIndicators";
+import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
+import { toaster } from "@/components/ui/toaster";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("");
+  const [searchParams] = useSearchParams();
+  const email = searchParams.get("email") || "";
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema) });
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
 
-  const submit = async (data: Form) => {
-    setLoading(true);
+  useEffect(() => { if (!email) navigate("/auth/register"); }, [email, navigate]);
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCountdown]);
+
+  const handleVerify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (code.length !== 6) { setError("Please enter all 6 digits"); return; }
     setError("");
-    setMessage("");
+    setIsLoading(true);
     try {
-      const res = await api.post("/auth/verify-email", { code: data.code });
-      setMessage(res.data.message);
-      setTimeout(() => navigate("/dashboard"), 1500);
+      await api.post("/auth/verify-email", { code });
+      toaster.create({ title: "Email verified", description: "You can now sign in.", type: "success" });
+      navigate("/auth/login");
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Verification failed");
+      const msg = err?.response?.data?.detail || err?.message || "Failed to verify code. Please try again.";
+      setError(msg);
+      toaster.create({ title: "Verification Failed", description: msg, type: "error" });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const resend = async () => {
-    setLoading(true);
+  const handleResend = async () => {
     setError("");
-    setMessage("");
     try {
-      const res = await api.post("/auth/send-verification");
-      setMessage(res.data.message);
+      await api.post("/auth/send-verification", { email });
+      setCode("");
+      setResendCountdown(60);
+      toaster.create({ title: "Code sent", description: "Verification code resent to your email.", type: "success" });
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Failed to send");
-    } finally {
-      setLoading(false);
+      const msg = err?.response?.data?.detail || err?.message || "Failed to resend code.";
+      setError(msg);
     }
   };
 
   return (
-    <Container maxW="sm" py={16}>
-      <Heading mb={4}>Verify email</Heading>
-      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
-          <Input placeholder="6-digit code from email" {...register("code")} />
-          {errors.code && <Text color="red.500" fontSize="sm">{errors.code.message}</Text>}
-          {message && <Text color="green.500" fontSize="sm">{message}</Text>}
-          {error && <Text color="red.500" fontSize="sm">{error}</Text>}
-          <Button type="submit" loading={loading}>Verify</Button>
-          <Button variant="outline" onClick={resend} loading={loading}>Resend code</Button>
-      </VStack>
-    </Container>
+    <Card.Root shadow="lg">
+      <Card.Body p={{ base: "6", md: "10" }}>
+        <AuthHeader title="Verify Your Email" subtitle={`We sent a 6-digit code to ${email}`} />
+        {error && <Alert.Root status="error" mb="6"><Alert.Indicator /><Box><Alert.Title>Error</Alert.Title><Alert.Description>{error}</Alert.Description></Box></Alert.Root>}
+        <Box as="form" onSubmit={handleVerify}>
+          <VStack gap="4" align="stretch">
+            <VerificationCodeInput value={code} onChange={setCode} disabled={isLoading} error={error && code.length !== 6 ? error : undefined} />
+            <Button type="submit" colorPalette="brand" w="full" loading={isLoading} disabled={isLoading || code.length !== 6}>Verify Email</Button>
+            <Button variant="outline" w="full" onClick={handleResend} disabled={isLoading || resendCountdown > 0}>
+              {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend Code"}
+            </Button>
+          </VStack>
+        </Box>
+        <Text mt="6" pt="6" borderTopWidth="1px" textAlign="center" fontSize="sm">
+          <Link to="/auth/register"><Text as="span" color="brand.500">Back to Register</Text></Link>
+        </Text>
+        <TrustIndicators />
+      </Card.Body>
+    </Card.Root>
   );
 }

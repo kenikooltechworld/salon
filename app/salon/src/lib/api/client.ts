@@ -1,10 +1,7 @@
-import axios, { AxiosError, type AxiosInstance } from "axios";
+﻿import axios, { AxiosError, type AxiosInstance } from "axios";
 import type { ApiError } from "./types";
 
-const baseURL = import.meta.env.VITE_API_URL;
-if (!baseURL) {
-  throw new Error("VITE_API_URL is not set");
-}
+const baseURL = import.meta.env.VITE_API_URL || "https://api.kenikoolsalon.com/api/v1";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL,

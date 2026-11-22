@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Button, Card, CloseButton, Text } from "@chakra-ui/react";
@@ -19,7 +19,7 @@ export function StickyCTA() {
             <Text fontWeight="semibold" mb={2}>Ready to get started?</Text>
             <Text fontSize="sm" color="fg.muted" mb={4}>Join thousands of businesses using Kenikool</Text>
             <Button asChild size="sm" w="full">
-              <RouterLink to="/register">Start Free Trial</RouterLink>
+              <RouterLink to="/auth/register">Start Free Trial</RouterLink>
             </Button>
           </Card.Root>
         </motion.div>

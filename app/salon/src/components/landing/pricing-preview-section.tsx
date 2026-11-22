@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { motion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
@@ -57,12 +57,12 @@ export function PricingPreviewSection() {
                     <Heading size="xl" mb={2}>{plan.name || "Plan"}</Heading>
                     <Text color="fg.muted" fontSize="sm" mb={6}>{plan.description || ""}</Text>
                     <Box mb={6}>
-                      <Text fontSize="4xl" fontWeight="bold">{displayPrice === 0 ? "Free" : `₦${(displayPrice || 0).toLocaleString()}`}</Text>
+                      <Text fontSize="4xl" fontWeight="bold">{displayPrice === 0 ? "Free" : `â‚¦${(displayPrice || 0).toLocaleString()}`}</Text>
                       {displayPrice > 0 && <Text as="span" color="fg.muted" fontSize="sm"> {isAnnual ? "/year" : "/month"}</Text>}
-                      {savings > 0 && <Text color="purple.500" fontSize="xs" fontWeight="semibold" mt={2}>Save ₦{savings.toLocaleString()}/month</Text>}
+                      {savings > 0 && <Text color="purple.500" fontSize="xs" fontWeight="semibold" mt={2}>Save â‚¦{savings.toLocaleString()}/month</Text>}
                     </Box>
                     <Button asChild w="full" mb={8} variant={plan.highlighted ? "solid" : "outline"}>
-                      <RouterLink to="/register">{plan.cta}</RouterLink>
+                      <RouterLink to="/auth/register">{plan.cta}</RouterLink>
                     </Button>
                     <VStack align="stretch" gap={3}>
                       {(Array.isArray(plan.features) ? plan.features : []).map((feature: string, fidx: number) => (

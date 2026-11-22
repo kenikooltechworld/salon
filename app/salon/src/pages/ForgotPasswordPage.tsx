@@ -1,47 +1,59 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Container, Button, Heading, Input, VStack, Text } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Box, Button, Card, Input, Stack, Text } from "@chakra-ui/react";
 import { api } from "@/lib/api";
-
-const schema = z.object({ email: z.string().email() });
-type Form = z.infer<typeof schema>;
+import { AuthHeader } from "@/components/auth/AuthHeader";
+import { TrustIndicators } from "@/components/auth/TrustIndicators";
 
 export default function ForgotPasswordPage() {
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema) });
+  const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const submit = async (data: Form) => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
-    setMessage("");
+    setIsLoading(true);
     try {
-      const res = await api.post("/auth/forgot-password", { email: data.email });
-      setMessage(res.data.message);
+      await api.post("/auth/forgot-password", { email });
+      setSuccess(true);
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Request failed");
+      setError(err?.response?.data?.detail || err?.message || "Failed to send reset email. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Container maxW="sm" py={16}>
-      <Heading mb={4}>Forgot password</Heading>
-      <VStack as="form" onSubmit={handleSubmit(submit)} gap={3} align="stretch">
-          <Input placeholder="Email" {...register("email")} />
-          {errors.email && <Text color="red.500" fontSize="sm">{errors.email.message}</Text>}
-          {message && <Text color="green.500" fontSize="sm">{message}</Text>}
-          {error && <Text color="red.500" fontSize="sm">{error}</Text>}
-          <Button type="submit" loading={loading}>Send reset code</Button>
-          <Text fontSize="sm">
-            <Link to="/login">Back to login</Link>
-          </Text>
-      </VStack>
-    </Container>
+    <Card.Root shadow="lg">
+      <Card.Body p={{ base: "6", md: "10" }}>
+        <AuthHeader title="Reset Password" subtitle="Enter your email to receive a password reset code" />
+        {error && <Alert.Root status="error" mb="6"><Alert.Indicator /><Box><Alert.Title>Error</Alert.Title><Alert.Description>{error}</Alert.Description></Box></Alert.Root>}
+        {success && <Alert.Root status="success" mb="6"><Alert.Indicator /><Box><Alert.Title>Success</Alert.Title><Alert.Description>Password reset code sent to your email. Check your inbox and spam folder.</Alert.Description></Box></Alert.Root>}
+        {!success ? (
+          <Box as="form" onSubmit={handleSubmit}>
+            <Stack gap="4">
+              <Box>
+                <Text fontSize="sm" fontWeight="medium" mb="2">Email Address</Text>
+                <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} required />
+              </Box>
+              <Button type="submit" colorPalette="brand" w="full" loading={isLoading} disabled={isLoading || !email}>
+                {isLoading ? "Sending..." : "Send Reset Code"}
+              </Button>
+            </Stack>
+          </Box>
+        ) : (
+          <Stack gap="4">
+            <Text fontSize="sm" color="fg.muted">Didn't receive the email? Check your spam folder or try again.</Text>
+            <Button variant="outline" w="full" onClick={() => { setSuccess(false); setEmail(""); }}>Try Again</Button>
+          </Stack>
+        )}
+        <Text mt="6" pt="6" borderTopWidth="1px" textAlign="center" fontSize="sm">
+          <Link to="/auth/login"><Text as="span" color="brand.500">Back to Sign In</Text></Link>
+        </Text>
+        <TrustIndicators />
+      </Card.Body>
+    </Card.Root>
   );
 }

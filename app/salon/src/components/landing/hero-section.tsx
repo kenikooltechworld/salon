@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { motion } from "motion/react";
 import { Box, Button, Container, Flex, Grid, Heading, HStack, Text, VStack, Badge } from "@chakra-ui/react";
@@ -108,18 +108,18 @@ export function HeroSection() {
           <Flex direction={{ base: "column", sm: "row" }} gap={{ base: 4, sm: 6 }} justify="center" mb={8} px={2}>
             <motion.div variants={scaleInVariants}>
               <Button asChild size="lg" w={{ base: "full", sm: "auto" }}>
-                <RouterLink to="/register">Sign Up</RouterLink>
+                <RouterLink to="/auth/register">Sign Up</RouterLink>
               </Button>
             </motion.div>
             <motion.div variants={scaleInVariants}>
               <Button asChild size="lg" variant="outline" w={{ base: "full", sm: "auto" }} color="white" borderColor="whiteAlpha.500" _hover={{ bg: "whiteAlpha.200" }}>
-                <RouterLink to="/login">Sign In</RouterLink>
+                <RouterLink to="/auth/login">Sign In</RouterLink>
               </Button>
             </motion.div>
           </Flex>
         </motion.div>
         <motion.div variants={fadeInUpVariants} initial="hidden" animate="visible" transition={{ delay: 0.4 }}>
-          <Text fontSize={{ base: "xs", sm: "sm" }} color="whiteAlpha.800" px={2}>No credit card required • Free 30-day trial • Cancel anytime</Text>
+          <Text fontSize={{ base: "xs", sm: "sm" }} color="whiteAlpha.800" px={2}>No credit card required â€¢ Free 30-day trial â€¢ Cancel anytime</Text>
         </motion.div>
         <StatisticsSection />
       </Container>
