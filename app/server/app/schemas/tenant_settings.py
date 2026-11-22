@@ -25,7 +25,7 @@ def default_business_hours() -> Dict[str, BusinessHoursDay]:
 
 class TenantSettingsSchema(BaseModel):
     salon_name: str = Field(min_length=1, max_length=255)
-    email: str = Field(min_length=1, max_length=255)
+    email: str = Field(default="", max_length=255)
     phone: str = Field(default="", max_length=20)
     address: str = Field(default="", max_length=500)
     tax_rate: float = Field(default=0.0, ge=0, le=100)
