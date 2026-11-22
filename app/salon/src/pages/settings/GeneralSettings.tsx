@@ -3,31 +3,41 @@ import { Box, Button, Card, Container, Flex, Grid, Heading, HStack, Input, Nativ
 import { useNavigate } from "react-router-dom";
 import { LuArrowLeft, LuCheck, LuCopy } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
-import { useTenantSettings, useUpdateTenantSettings, useResetTenantSettings } from "@/features/settings/hooks";
-import { useImageUpload } from "@/features/settings/useImageUpload";
-import type { TenantSettingsData } from "@/features/settings/api";
-
-const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
-
-const defaultSettings: TenantSettingsData = {
-  salon_name: "My Salon", email: "", phone: "", address: "", tax_rate: 0, currency: "NGN", timezone: "Africa/Lagos", language: "en",
-  business_hours: { monday:{open_time:"09:00",close_time:"18:00",is_closed:false}, tuesday:{open_time:"09:00",close_time:"18:00",is_closed:false}, wednesday:{open_time:"09:00",close_time:"18:00",is_closed:false}, thursday:{open_time:"09:00",close_time:"18:00",is_closed:false}, friday:{open_time:"09:00",close_time:"18:00",is_closed:false}, saturday:{open_time:"10:00",close_time:"16:00",is_closed:false}, sunday:{open_time:"00:00",close_time:"00:00",is_closed:true} },
-  notification_email: true, notification_sms: false, notification_push: false, logo_url: null, primary_color: "#000000", secondary_color: "#FFFFFF",
-  appointment_reminder_hours: 24, allow_online_booking: true, require_customer_approval: false, auto_confirm_bookings: true,
-};
+import {
+  DEFAULT_TENANT_SETTINGS,
+  SETTINGS_DAYS,
+  getErrorMessage,
+  normalizeTenantSettings,
+  useImageUpload,
+  useResetTenantSettings,
+  useTenantSettings,
+  useUpdateTenantSettings,
+  type TenantSettingsData,
+} from "@/features/settings";
 
 export default function GeneralSettings() {
   const navigate = useNavigate();
   const { data, isLoading } = useTenantSettings();
   const update = useUpdateTenantSettings();
   const reset = useResetTenantSettings();
-  const [settings, setSettings] = useState<TenantSettingsData>(defaultSettings);
-  const upload = useImageUpload({ folder: "salon-logos", mediaType: "image", onSuccess: (url) => setSettings((p) => ({ ...p, logo_url: url })), onError: (e) => toaster.create({ title: "Upload failed", description: e, type: "error" }) });
+  const [settings, setSettings] = useState<TenantSettingsData>(DEFAULT_TENANT_SETTINGS);
+  const upload = useImageUpload({
+    folder: "salon-logos",
+    mediaType: "image",
+    onSuccess: (url) => setSettings((p) => ({ ...p, logo_url: url })),
+    onError: (e) => toaster.create({ title: "Upload failed", description: e, type: "error" }),
+  });
 
-  useEffect(() => { if (data) setSettings({ ...defaultSettings, ...data, business_hours: { ...defaultSettings.business_hours, ...(data.business_hours || {}) } }); }, [data]);
+  useEffect(() => { if (data) setSettings(normalizeTenantSettings(data)); }, [data]);
 
-  const save = async () => { try { const saved = await update.mutateAsync(settings); setSettings(saved); toaster.create({ title: "Settings saved", type: "success" }); } catch (e: any) { toaster.create({ title: "Save failed", description: e?.response?.data?.detail || e.message, type: "error" }); } };
-  const doReset = async () => { try { const saved = await reset.mutateAsync(); setSettings(saved); toaster.create({ title: "Settings reset", type: "success" }); } catch (e: any) { toaster.create({ title: "Reset failed", description: e?.response?.data?.detail || e.message, type: "error" }); } };
+  const save = async () => {
+    try { setSettings(await update.mutateAsync(settings)); toaster.create({ title: "Settings saved", type: "success" }); }
+    catch (e) { toaster.create({ title: "Save failed", description: getErrorMessage(e, "Failed to save settings"), type: "error" }); }
+  };
+  const doReset = async () => {
+    try { setSettings(await reset.mutateAsync()); toaster.create({ title: "Settings reset", type: "success" }); }
+    catch (e) { toaster.create({ title: "Reset failed", description: getErrorMessage(e, "Failed to reset settings"), type: "error" }); }
+  };
 
   if (isLoading) return <Container maxW="6xl" py="6"><Stack gap="4"><Skeleton h="10" /><Skeleton h="40" /><Skeleton h="60" /></Stack></Container>;
 
@@ -54,7 +64,7 @@ export default function GeneralSettings() {
       </Stack></Card.Body></Card.Root>
 
       <Card.Root><Card.Body><Stack gap="4"><Heading size="md">Business Hours</Heading>
-        {DAYS.map((day) => { const h=settings.business_hours[day] || {open_time:"09:00",close_time:"18:00",is_closed:false}; return (
+        {SETTINGS_DAYS.map((day) => { const h=settings.business_hours[day] || {open_time:"09:00",close_time:"18:00",is_closed:false}; return (
           <Grid key={day} templateColumns={{base:"1fr", md:"120px 120px 1fr 40px 1fr"}} gap="3" alignItems="center">
             <Text textTransform="capitalize" fontWeight="medium">{day}</Text>
             <Switch.Root checked={!h.is_closed} onCheckedChange={(e)=>setSettings({...settings,business_hours:{...settings.business_hours,[day]:{...h,is_closed:!e.checked}}})}><Switch.HiddenInput /><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Root>

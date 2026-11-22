@@ -1,16 +1,44 @@
 ﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { settingsApi, type TenantSettingsData } from "./api";
+import { settingsApi } from "./api";
+import { normalizeTenantSettings } from "./service";
+import { useSettingsStore } from "./store";
+import type { TenantSettingsData } from "./types";
 
-export const SETTINGS_KEY = ["tenant-settings"];
+export const SETTINGS_KEY = ["tenant-settings"] as const;
 
 export function useTenantSettings() {
-  return useQuery({ queryKey: SETTINGS_KEY, queryFn: async () => (await settingsApi.get()).data.data, staleTime: 5 * 60 * 1000 });
+  const setSettings = useSettingsStore((s) => s.setSettings);
+  return useQuery({
+    queryKey: SETTINGS_KEY,
+    queryFn: async () => {
+      const data = normalizeTenantSettings((await settingsApi.get()).data.data);
+      setSettings(data);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 }
+
 export function useUpdateTenantSettings() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: async (payload: TenantSettingsData) => (await settingsApi.update(payload)).data.data, onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }) });
+  const setSettings = useSettingsStore((s) => s.setSettings);
+  return useMutation({
+    mutationFn: async (payload: TenantSettingsData) => normalizeTenantSettings((await settingsApi.update(payload)).data.data),
+    onSuccess: (data) => {
+      setSettings(data);
+      qc.invalidateQueries({ queryKey: SETTINGS_KEY });
+    },
+  });
 }
+
 export function useResetTenantSettings() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: async () => (await settingsApi.reset()).data.data, onSuccess: () => qc.invalidateQueries({ queryKey: SETTINGS_KEY }) });
+  const setSettings = useSettingsStore((s) => s.setSettings);
+  return useMutation({
+    mutationFn: async () => normalizeTenantSettings((await settingsApi.reset()).data.data),
+    onSuccess: (data) => {
+      setSettings(data);
+      qc.invalidateQueries({ queryKey: SETTINGS_KEY });
+    },
+  });
 }

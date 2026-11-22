@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
-import { settingsApi } from "@/features/settings/api";
+import { settingsApi } from "./api";
+import { getErrorMessage } from "./service";
 
 const LIMITS = { image: 5 * 1024 * 1024, document: 10 * 1024 * 1024 } as const;
 
@@ -25,12 +26,11 @@ export function useImageUpload(options: { folder?: string; mediaType?: "image" |
       const base64 = await toBase64(file); setPreview(base64); setUploadProgress(50);
       const res = await settingsApi.uploadMedia({ base64_data: base64, media_type: mediaType, folder });
       setUploadProgress(100); onSuccess?.(res.data.url); return res.data.url;
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail || e?.message || "Upload failed";
+    } catch (e) {
+      const msg = getErrorMessage(e, "Upload failed");
       setError(msg); onError?.(msg); throw e;
     } finally { setIsUploading(false); setTimeout(() => setUploadProgress(0), 400); }
   };
 
   return { uploadImage, isUploading, uploadProgress, preview, error, setPreview };
 }
-
