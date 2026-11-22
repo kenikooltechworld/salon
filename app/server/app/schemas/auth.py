@@ -31,11 +31,29 @@ class TenantRead(BaseModel):
     name: str
     subdomain: str
     email: Optional[str] = None
+    description: Optional[str] = None
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
     subscription_tier: str
     status: str
+    address: Optional[str] = None
+    region: str = "us-east-1"
+    is_published: bool = True
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TenantSettingsUpdate(BaseModel):
+    salon_name: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    address: str | None = Field(default=None, max_length=500)
+    description: str | None = Field(default=None, max_length=1000)
+    logo_url: str | None = Field(default=None, max_length=500)
+    primary_color: str | None = Field(default=None, max_length=7)
+    secondary_color: str | None = Field(default=None, max_length=7)
 
 
 class UserCreate(BaseModel):
@@ -56,6 +74,9 @@ class UserRead(BaseModel):
     phone: Optional[str] = None
     role: str
     status: str
+    email_verified: bool = False
+    mfa_enabled: bool = False
+    last_login: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
