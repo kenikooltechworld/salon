@@ -39,50 +39,53 @@ def _register_and_login(client: TestClient) -> None:
     login = {"email": reg["user"]["email"], "password": reg["user"]["password"]}
     r = client.post("/api/v1/auth/login", json=login)
     assert r.status_code == 200, r.text
-    return None
 
 
 def test_service_category_and_service_flow() -> None:
     client = TestClient(app)
     _register_and_login(client)
 
-    # create category
     cat = {"name": "Hair", "color": "#FF0000", "is_active": True}
     r = client.post("/api/v1/service-categories", json=cat)
     assert r.status_code == 201, r.text
     cat_id = r.json()["id"]
 
-    # list categories
     r = client.get("/api/v1/service-categories")
     assert r.status_code == 200
-    assert any(c["id"] == cat_id for c in r.json())
+    body = r.json()
+    assert any(c["id"] == cat_id for c in body["categories"])
 
-    # create service
     svc = {
         "name": "Haircut",
         "duration_minutes": 30,
         "price": "25.00",
         "category": "Hair",
         "is_active": True,
+        "staff_ids": [],
+        "tags": ["popular"],
     }
     r = client.post("/api/v1/services", json=svc)
     assert r.status_code == 201, r.text
     svc_id = r.json()["id"]
 
-    # get service
     r = client.get(f"/api/v1/services/{svc_id}")
     assert r.status_code == 200
     assert r.json()["name"] == "Haircut"
 
-    # update service
-    r = client.put(f"/api/v1/services/{svc_id}", json={"price": "30.00"})
+    r = client.get("/api/v1/services", params={"active_only": True, "category": "Hair", "page": 1, "page_size": 10})
+    assert r.status_code == 200
+    listed = r.json()
+    assert listed["total"] >= 1
+    assert any(s["id"] == svc_id for s in listed["services"])
+
+    r = client.put(f"/api/v1/services/{svc_id}", json={"price": "30.00", "is_published": True})
     assert r.status_code == 200
     assert r.json()["price"] == "30.00"
+    assert r.json()["is_published"] is True
 
-    # delete service
     r = client.delete(f"/api/v1/services/{svc_id}")
-    assert r.status_code == 204
+    assert r.status_code == 200
+    assert r.json()["is_active"] is False
 
-    # delete category
     r = client.delete(f"/api/v1/service-categories/{cat_id}")
     assert r.status_code == 204

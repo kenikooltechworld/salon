@@ -19,7 +19,7 @@ export default function ServicesPage() {
   const load = async () => {
     try {
       const { data } = await api.get("/services");
-      setItems(data);
+      setItems(data.services ?? data);
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? "Failed to load");
     }

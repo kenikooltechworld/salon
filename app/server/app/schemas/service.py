@@ -39,14 +39,19 @@ class ServiceCategoryRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ServiceCategoryListResponse(BaseModel):
+    categories: list[ServiceCategoryRead]
+    total: int
+
+
 class ServiceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
     duration_minutes: int = Field(ge=1)
-    price: Decimal = Field(ge=0)
+    price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     category: str = Field(min_length=1, max_length=100)
-    color: Optional[str] = Field(default=None, max_length=7)
-    icon: Optional[str] = Field(default=None, max_length=50)
+    color: Optional[str] = Field(default="#3B82F6", max_length=7)
+    icon: Optional[str] = Field(default="Scissors", max_length=50)
     is_active: bool = True
     is_published: bool = False
     public_description: Optional[str] = Field(default=None, max_length=1000)
@@ -56,13 +61,14 @@ class ServiceCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
     benefits: list[str] = Field(default_factory=list)
     commission_percentage: Optional[Decimal] = Field(default=None, ge=0, le=100)
+    staff_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class ServiceUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
     duration_minutes: Optional[int] = Field(default=None, ge=1)
-    price: Optional[Decimal] = Field(default=None, ge=0)
+    price: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     category: Optional[str] = Field(default=None, min_length=1, max_length=100)
     color: Optional[str] = Field(default=None, max_length=7)
     icon: Optional[str] = Field(default=None, max_length=50)
@@ -75,6 +81,7 @@ class ServiceUpdate(BaseModel):
     tags: Optional[list[str]] = None
     benefits: Optional[list[str]] = None
     commission_percentage: Optional[Decimal] = Field(default=None, ge=0, le=100)
+    staff_ids: Optional[list[uuid.UUID]] = None
 
 
 class ServiceRead(BaseModel):
@@ -96,7 +103,15 @@ class ServiceRead(BaseModel):
     tags: list[str] = Field(default_factory=list)
     benefits: list[str] = Field(default_factory=list)
     commission_percentage: Optional[Decimal] = None
+    staff_ids: list[uuid.UUID] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ServiceListResponse(BaseModel):
+    services: list[ServiceRead]
+    total: int
+    page: int
+    page_size: int

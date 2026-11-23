@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.service import (
     ServiceCategoryCreate,
+    ServiceCategoryListResponse,
     ServiceCategoryRead,
     ServiceCategoryUpdate,
 )
@@ -19,9 +20,12 @@ class ServiceCategoryController:
         self.session = session
         self.service = ServiceCategoryService(session)
 
-    async def list(self, tenant_id: uuid.UUID) -> list[ServiceCategoryRead]:
+    async def list(self, tenant_id: uuid.UUID) -> ServiceCategoryListResponse:
         items = await self.service.list_categories(tenant_id)
-        return [ServiceCategoryRead.model_validate(i) for i in items]
+        return ServiceCategoryListResponse(
+            categories=[ServiceCategoryRead.model_validate(i) for i in items],
+            total=len(items),
+        )
 
     async def create(self, tenant_id: uuid.UUID, data: ServiceCategoryCreate) -> ServiceCategoryRead:
         item = await self.service.create(tenant_id, data)

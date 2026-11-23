@@ -19,6 +19,8 @@ def upgrade() -> None:
         "services",
         sa.Column("staff_ids", postgresql.ARRAY(postgresql.UUID(as_uuid=True)), nullable=False, server_default="{}"),
     )
+    op.execute("UPDATE services SET tags = '{}' WHERE tags IS NULL")
+    op.execute("UPDATE services SET benefits = '{}' WHERE benefits IS NULL")
     op.alter_column("services", "tags", existing_type=postgresql.ARRAY(sa.String(length=50)), nullable=False, server_default="{}")
     op.alter_column("services", "benefits", existing_type=postgresql.ARRAY(sa.String(length=200)), nullable=False, server_default="{}")
     op.create_index("ix_services_is_active", "services", ["is_active"])
