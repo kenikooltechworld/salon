@@ -226,9 +226,23 @@ class ServiceCommissionService:
             rows = (await self.session.execute(select(Service.id, Service.name).where(Service.tenant_id == tenant_id, Service.id.in_(svc_ids)))).all()
             svc_names = {sid: name for sid, name in rows}
         if staff_ids:
-            rows = (await self.session.execute(select(Staff.id, Staff.first_name, Staff.last_name, Staff.email).where(Staff.tenant_id == tenant_id, Staff.id.in_(staff_ids)))).all()
-            for sid, fn, ln, email in rows:
-                staff_names[sid] = " ".join([x for x in [fn, ln] if x]) or email or str(sid)
+            rows = (await self.session.execute(select(Staff.id, Staff.user_id).where(Staff.tenant_id == tenant_id, Staff.id.in_(staff_ids)))).all()
+            user_ids = []
+            staff_user: dict[uuid.UUID, uuid.UUID] = {}
+            for sid, uid in rows:
+                try:
+                    u = uuid.UUID(str(uid))
+                    staff_user[sid] = u
+                    user_ids.append(u)
+                except Exception:
+                    pass
+            users = {}
+            if user_ids:
+                from app.models.user import User
+                urows = (await self.session.execute(select(User.id, User.first_name, User.last_name, User.email).where(User.id.in_(user_ids)))).all()
+                users = {uid: (" ".join([x for x in [fn, ln] if x]) or email or str(uid)) for uid, fn, ln, email in urows}
+            for sid, uid in staff_user.items():
+                staff_names[sid] = users.get(uid, str(sid))
         out = []
         for i in items:
             d = ServiceCommissionRead.model_validate(i).model_dump()
