@@ -1,6 +1,9 @@
 import { apiClient } from "@/lib/api";
 import type {
+  BookingEligibility,
   Customer,
+  CustomerBalance,
+  CustomerHistoryResponse,
   CustomerListResponse,
   CustomerPayload,
   CustomerPreference,
@@ -30,4 +33,11 @@ export const customersApi = {
     apiClient.get<CustomerPreference>(`/customers/${id}/preferences`),
   updatePreferences: (id: string, payload: CustomerPreferenceUpdate) =>
     apiClient.put<CustomerPreference>(`/customers/${id}/preferences`, payload),
+  getBalance: (id: string) => apiClient.get<CustomerBalance>(`/customers/${id}/balance`),
+  updateBalance: (id: string) =>
+    apiClient.put<{ customer_id: string; updated_balance: number; message: string }>(`/customers/${id}/balance`),
+  getBookingEligibility: (id: string) =>
+    apiClient.get<BookingEligibility>(`/customers/${id}/booking-eligibility`),
+  getHistory: (id: string, params: Record<string, unknown> = {}) =>
+    apiClient.get<CustomerHistoryResponse>(`/customers/${id}/history`, { params: asParams(params) }),
 };

@@ -10,6 +10,8 @@ import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import ChangePasswordRequiredPage from "@/pages/ChangePasswordRequiredPage";
 import CustomersPage from "@/pages/customers/CustomersPage";
 import CustomerDetailPage from "@/pages/customers/CustomerDetailPage";
+import CustomerAppointmentsPage from "@/pages/customers/CustomerAppointmentsPage";
+import AppointmentDetailPage from "@/pages/customers/AppointmentDetailPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import HomePage from "@/pages/Home";
@@ -123,6 +125,8 @@ export default function App() {
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />
+            <Route path="/customers/:id/appointments" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerAppointmentsPage /></RoleRoute>} />
+            <Route path="/customers/:id/appointments/:appointmentId" element={<RoleRoute roles={["owner","admin","manager","staff"]}><AppointmentDetailPage /></RoleRoute>} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/:id" element={<NotificationDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />

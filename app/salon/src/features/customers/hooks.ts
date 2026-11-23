@@ -7,6 +7,9 @@ export const customerKeys = {
   list: (params: Record<string, unknown>) => [...customerKeys.all, "list", params] as const,
   detail: (id: string) => [...customerKeys.all, "detail", id] as const,
   preferences: (id: string) => [...customerKeys.all, "preferences", id] as const,
+  balance: (id: string) => [...customerKeys.all, "balance", id] as const,
+  eligibility: (id: string) => [...customerKeys.all, "eligibility", id] as const,
+  history: (id: string, params: Record<string, unknown>) => [...customerKeys.all, "history", id, params] as const,
 };
 
 export function useCustomers(params: Record<string, unknown> = {}) {
@@ -79,5 +82,42 @@ export function useUpdateCustomerPreferences() {
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: customerKeys.preferences(v.id) });
     },
+  });
+}
+
+export function useCustomerBalance(id?: string) {
+  return useQuery({
+    queryKey: customerKeys.balance(id || ""),
+    queryFn: async () => (await customersApi.getBalance(id!)).data,
+    enabled: !!id,
+  });
+}
+
+export function useUpdateCustomerBalance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => customersApi.updateBalance(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: customerKeys.balance(id) });
+      qc.invalidateQueries({ queryKey: customerKeys.eligibility(id) });
+      qc.invalidateQueries({ queryKey: customerKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: customerKeys.all });
+    },
+  });
+}
+
+export function useCustomerBookingEligibility(id?: string) {
+  return useQuery({
+    queryKey: customerKeys.eligibility(id || ""),
+    queryFn: async () => (await customersApi.getBookingEligibility(id!)).data,
+    enabled: !!id,
+  });
+}
+
+export function useCustomerHistory(id?: string, params: Record<string, unknown> = {}) {
+  return useQuery({
+    queryKey: customerKeys.history(id || "", params),
+    queryFn: async () => (await customersApi.getHistory(id!, params)).data,
+    enabled: !!id,
   });
 }

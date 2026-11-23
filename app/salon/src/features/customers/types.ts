@@ -64,3 +64,47 @@ export interface CustomerPreferenceUpdate {
   language?: string;
   notes?: string | null;
 }
+
+export interface CustomerBalance {
+  customer_id: string;
+  customer_name: string;
+  outstanding_balance: number;
+  unpaid_invoice_count: number;
+  unpaid_invoices: Array<{
+    invoice_id: string;
+    amount: number;
+    status: string;
+    due_date?: string | null;
+    created_at: string;
+  }>;
+}
+
+export interface BookingEligibility {
+  customer_id: string;
+  customer_name: string;
+  outstanding_balance: number;
+  is_eligible_to_book: boolean;
+  reason: string;
+}
+
+export interface CustomerHistoryItem {
+  id: string;
+  appointment_id: string;
+  service_id: string;
+  staff_id: string;
+  service_name: string;
+  staff_name: string;
+  appointment_date: string | null;
+  appointment_time: string;
+  notes: string;
+  rating: number;
+  feedback: string;
+  status?: string;
+}
+
+export interface CustomerHistoryResponse {
+  history: CustomerHistoryItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
