@@ -200,3 +200,18 @@ class ServiceCommissionService:
         if rows:
             await self.session.flush()
         return len(rows)
+
+
+    async def get_pending_commissions(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> tuple[Sequence[ServiceCommission], Decimal]:
+        stmt = (
+            select(ServiceCommission)
+            .where(
+                ServiceCommission.tenant_id == tenant_id,
+                ServiceCommission.staff_id == staff_id,
+                ServiceCommission.status == "pending",
+            )
+            .order_by(ServiceCommission.earned_date.desc())
+        )
+        items = (await self.session.execute(stmt)).scalars().all()
+        total = sum((Decimal(str(i.commission_amount)) for i in items), Decimal("0"))
+        return items, total

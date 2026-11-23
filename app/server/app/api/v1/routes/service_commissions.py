@@ -60,12 +60,22 @@ async def commission_summary(
 
 
 @router.post("/{commission_id}/mark-paid", response_model=ServiceCommissionRead)
+@router.patch("/{commission_id}/mark-paid", response_model=ServiceCommissionRead)
 async def mark_paid(
     commission_id: uuid.UUID,
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceCommissionController(session).mark_paid(current_user.tenant_id, commission_id, current_user.id)
+
+
+@router.get("/staff/{staff_id}/pending")
+async def pending_commissions(
+    staff_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    return await ServiceCommissionController(session).pending(current_user.tenant_id, staff_id)
 
 
 @router.post("/staff/{staff_id}/mark-paid-batch")

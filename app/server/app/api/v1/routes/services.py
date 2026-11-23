@@ -16,7 +16,8 @@ router = APIRouter(prefix="/services", tags=["services"])
 
 @router.get("", response_model=ServiceListResponse)
 async def list_services(
-    active_only: bool = Query(default=False),
+    active_only: bool | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
     category: str | None = Query(default=None),
     search: str | None = Query(default=None),
     published_only: bool = Query(default=False),
@@ -26,9 +27,13 @@ async def list_services(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceController(session)
+    effective_active_only = active_only if active_only is not None else (is_active is True)
+    # legacy behavior: list excludes inactive by default when no filter is explicitly requested
+    if active_only is None and is_active is None and not published_only:
+        effective_active_only = True
     return await controller.list(
         current_user.tenant_id,
-        active_only=active_only,
+        active_only=effective_active_only,
         category=category,
         search=search,
         published_only=published_only,

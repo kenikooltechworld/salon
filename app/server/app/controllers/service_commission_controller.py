@@ -100,3 +100,10 @@ class ServiceCommissionController:
         else:
             await self.session.commit()
         return {"updated_count": count}
+
+    async def pending(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict:
+        commissions, total_pending = await self.service.get_pending_commissions(tenant_id, staff_id)
+        return {
+            "commissions": [ServiceCommissionRead.model_validate(c) for c in commissions],
+            "total_pending": float(total_pending),
+        }

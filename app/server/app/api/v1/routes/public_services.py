@@ -158,6 +158,13 @@ async def public_service_addons_by_host(
     return ServiceAddonListResponse(addons=[ServiceAddonRead.model_validate(i) for i in items], total=len(items))
 
 
+@router.get("/service-addons/{service_id}", response_model=list[ServiceAddonRead])
+async def public_service_addons_for_service(service_id: uuid.UUID, request: Request, session: AsyncSession = Depends(get_db)):
+    tenant = await _tenant_from_subdomain(request, session)
+    items = await ServiceAddonService(session).list_addons(tenant.id, is_active=True, service_id=service_id)
+    return [ServiceAddonRead.model_validate(i) for i in items]
+
+
 @router.get("/service-packages", response_model=ServicePackageListResponse)
 async def public_service_packages_by_host(
     request: Request,

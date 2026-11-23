@@ -42,7 +42,8 @@ class ServicePackageController:
             page_size=page_size,
         )
         packages = [await self.service.to_read(tenant_id, i) for i in items]
-        return ServicePackageListResponse(packages=packages, total=total, page=page, page_size=page_size)
+        total_pages = (total + page_size - 1) // page_size if page_size else 1
+        return ServicePackageListResponse(packages=packages, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
     async def create(self, tenant_id: uuid.UUID, data: ServicePackageCreate, user_id: uuid.UUID | None) -> ServicePackageRead:
         item = await self.service.create(tenant_id, data, user_id)

@@ -74,3 +74,27 @@ async def delete_package(
     session: AsyncSession = Depends(db_session),
 ):
     await ServicePackageController(session).delete(current_user.tenant_id, package_id, current_user.id)
+
+
+@router.post("/{package_id}/toggle-active", response_model=ServicePackageRead)
+async def toggle_package_active(
+    package_id: uuid.UUID,
+    current_user: User = Depends(require_roles("owner", "admin", "manager")),
+    session: AsyncSession = Depends(db_session),
+):
+    ctrl = ServicePackageController(session)
+    pkg = await ctrl.get(current_user.tenant_id, package_id)
+    from app.schemas.service_package import ServicePackageUpdate
+    return await ctrl.update(current_user.tenant_id, package_id, ServicePackageUpdate(is_active=not pkg.is_active), current_user.id)
+
+
+@router.post("/{package_id}/toggle-featured", response_model=ServicePackageRead)
+async def toggle_package_featured(
+    package_id: uuid.UUID,
+    current_user: User = Depends(require_roles("owner", "admin", "manager")),
+    session: AsyncSession = Depends(db_session),
+):
+    ctrl = ServicePackageController(session)
+    pkg = await ctrl.get(current_user.tenant_id, package_id)
+    from app.schemas.service_package import ServicePackageUpdate
+    return await ctrl.update(current_user.tenant_id, package_id, ServicePackageUpdate(is_featured=not pkg.is_featured), current_user.id)
