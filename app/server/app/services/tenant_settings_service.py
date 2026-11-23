@@ -5,7 +5,13 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tenant import Tenant
-from app.schemas.tenant_settings import CommissionSettingsSchema, TenantSettingsSchema, default_commission_settings
+from app.schemas.tenant_settings import (
+    CommissionSettingsSchema,
+    FinancialConfigSchema,
+    TenantSettingsSchema,
+    default_commission_settings,
+    default_financial_config,
+)
 
 
 DEFAULT_SETTINGS = TenantSettingsSchema(salon_name="My Salon", email="", phone="", address="").model_dump()
@@ -74,6 +80,23 @@ async def update_commission_settings(session: AsyncSession, tenant: Tenant, upda
     config = CommissionSettingsSchema(**updates).model_dump()
     current = dict(tenant.settings or {})
     current["commission_config"] = config
+    tenant.settings = current
+    await session.commit()
+    await session.refresh(tenant)
+    return {"data": config}
+
+
+def financial_settings_payload(tenant: Tenant) -> dict[str, Any]:
+    stored = dict(tenant.settings or {})
+    raw = stored.get("financial_config") or {}
+    config = FinancialConfigSchema(**raw).model_dump() if isinstance(raw, dict) else default_financial_config()
+    return {"data": config}
+
+
+async def update_financial_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:
+    config = FinancialConfigSchema(**updates).model_dump()
+    current = dict(tenant.settings or {})
+    current["financial_config"] = config
     tenant.settings = current
     await session.commit()
     await session.refresh(tenant)

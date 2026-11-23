@@ -13,13 +13,15 @@ from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.user import User
 from app.schemas.auth import TenantRead
-from app.schemas.tenant_settings import CommissionSettingsSchema, TenantSettingsSchema
+from app.schemas.tenant_settings import CommissionSettingsSchema, FinancialConfigSchema, TenantSettingsSchema
 from app.services.tenant_service import TenantService
 from app.services.tenant_settings_service import (
     commission_settings_payload,
+    financial_settings_payload,
     reset_tenant_settings,
     tenant_settings_payload,
     update_commission_settings,
+    update_financial_settings,
     update_tenant_settings,
 )
 
@@ -97,6 +99,27 @@ async def put_commission_settings(
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
     return await update_commission_settings(session, tenant, data.model_dump())
+
+
+@router.get("/settings/financial")
+async def get_financial_settings(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return financial_settings_payload(tenant)
+
+
+@router.put("/settings/financial")
+async def put_financial_settings(
+    data: FinancialConfigSchema,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    _require_owner(current_user)
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return await update_financial_settings(session, tenant, data.model_dump())
 
 
 @router.get("/owner/dashboard/metrics")

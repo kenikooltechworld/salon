@@ -42,6 +42,18 @@ class CommissionSettingsSchema(BaseModel):
     paymentSettings: CommissionPaymentSettings = Field(default_factory=CommissionPaymentSettings)
 
 
+class FinancialConfigSchema(BaseModel):
+    balance_enforcement_enabled: bool = True
+    minimum_balance_threshold: float = Field(default=0, ge=0)
+    refund_policy_enabled: bool = True
+    refund_window_days: int = Field(default=30, ge=1, le=365)
+    commission_tracking_enabled: bool = True
+    staff_commission_percentage: float = Field(default=10, ge=0, le=100)
+    service_commission_percentage: float = Field(default=5, ge=0, le=100)
+    invoice_numbering_prefix: str = Field(default="INV", min_length=1, max_length=20)
+    invoice_numbering_start: int = Field(default=1000, ge=1)
+
+
 def default_business_hours() -> Dict[str, BusinessHoursDay]:
     return {
         "monday": BusinessHoursDay(open_time="09:00", close_time="18:00"),
@@ -56,6 +68,10 @@ def default_business_hours() -> Dict[str, BusinessHoursDay]:
 
 def default_commission_settings() -> dict[str, Any]:
     return CommissionSettingsSchema().model_dump()
+
+
+def default_financial_config() -> dict[str, Any]:
+    return FinancialConfigSchema().model_dump()
 
 
 class TenantSettingsSchema(BaseModel):
