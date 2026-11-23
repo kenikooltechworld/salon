@@ -50,12 +50,8 @@ class ServiceCommissionController:
             page=page,
             page_size=page_size,
         )
-        return CommissionListResponse(
-            commissions=[ServiceCommissionRead.model_validate(i) for i in items],
-            total=total,
-            page=page,
-            page_size=page_size,
-        )
+        enriched = await self.service.enrich_commissions(tenant_id, items)
+        return CommissionListResponse(commissions=enriched, total=total, page=page, page_size=page_size)
 
     async def summary(
         self, tenant_id: uuid.UUID, staff_id: uuid.UUID, start_date: datetime | None, end_date: datetime | None
@@ -103,7 +99,5 @@ class ServiceCommissionController:
 
     async def pending(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict:
         commissions, total_pending = await self.service.get_pending_commissions(tenant_id, staff_id)
-        return {
-            "commissions": [ServiceCommissionRead.model_validate(c) for c in commissions],
-            "total_pending": float(total_pending),
-        }
+        enriched = await self.service.enrich_commissions(tenant_id, commissions)
+        return {"commissions": enriched, "total_pending": float(total_pending)}

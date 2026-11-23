@@ -215,3 +215,24 @@ class ServiceCommissionService:
         items = (await self.session.execute(stmt)).scalars().all()
         total = sum((Decimal(str(i.commission_amount)) for i in items), Decimal("0"))
         return items, total
+
+    async def enrich_commissions(self, tenant_id: uuid.UUID, items: Sequence[ServiceCommission]) -> list:
+        from app.schemas.service_commission import ServiceCommissionRead
+        svc_ids = list({i.service_id for i in items})
+        staff_ids = list({i.staff_id for i in items})
+        svc_names: dict[uuid.UUID, str] = {}
+        staff_names: dict[uuid.UUID, str] = {}
+        if svc_ids:
+            rows = (await self.session.execute(select(Service.id, Service.name).where(Service.tenant_id == tenant_id, Service.id.in_(svc_ids)))).all()
+            svc_names = {sid: name for sid, name in rows}
+        if staff_ids:
+            rows = (await self.session.execute(select(Staff.id, Staff.first_name, Staff.last_name, Staff.email).where(Staff.tenant_id == tenant_id, Staff.id.in_(staff_ids)))).all()
+            for sid, fn, ln, email in rows:
+                staff_names[sid] = " ".join([x for x in [fn, ln] if x]) or email or str(sid)
+        out = []
+        for i in items:
+            d = ServiceCommissionRead.model_validate(i).model_dump()
+            d["service_name"] = svc_names.get(i.service_id)
+            d["staff_name"] = staff_names.get(i.staff_id)
+            out.append(ServiceCommissionRead(**d))
+        return out

@@ -17,6 +17,8 @@ class ServiceCommissionRead(BaseModel):
     staff_id: uuid.UUID
     appointment_id: uuid.UUID
     service_id: uuid.UUID
+    service_name: str | None = None
+    staff_name: str | None = None
     service_price: Decimal
     commission_percentage: Decimal
     commission_amount: Decimal
