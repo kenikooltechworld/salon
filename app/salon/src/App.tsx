@@ -28,6 +28,8 @@ import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ServicesPage from "@/pages/services/ServicesPage";
 import ServiceDetailPage from "@/pages/services/ServiceDetailPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import NotificationsPage from "@/pages/notifications/NotificationsPage";
+import NotificationDetailPage from "@/pages/notifications/NotificationDetailPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import GeneralSettings from "@/pages/settings/GeneralSettings";
 import CommissionSettings from "@/pages/settings/CommissionSettings";
@@ -121,6 +123,8 @@ export default function App() {
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/notifications/:id" element={<NotificationDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<RoleRoute roles={["owner","admin"]}><SettingsPage /></RoleRoute>} />
             <Route path="/settings/general" element={<RoleRoute roles={["owner","admin"]}><GeneralSettings /></RoleRoute>} />

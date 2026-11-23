@@ -35,6 +35,7 @@ interface NotificationState {
   filters: NotificationFilters;
   load: (opts?: { reset?: boolean }) => Promise<void>;
   loadMore: () => Promise<void>;
+  getById: (id: string) => Promise<NotificationItem | null>;
   setFilters: (filters: Partial<NotificationFilters>) => void;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -121,6 +122,17 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     if (s.loading || s.loadingMore || !s.hasMore) return;
     set({ page: s.page + 1 });
     await get().load({ reset: false });
+  },
+
+  getById: async (id) => {
+    const existing = get().items.find((n) => n.id === id);
+    if (existing) return existing;
+    try {
+      const { data } = await api.get<NotificationItem>(`/notifications/${id}`);
+      return data;
+    } catch {
+      return null;
+    }
   },
 
   setFilters: (partial) => {

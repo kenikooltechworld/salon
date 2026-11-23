@@ -65,21 +65,6 @@ function formatTime(value: string) {
   return date.toLocaleDateString();
 }
 
-function resolveNotificationPath(item: NotificationItem): string | null {
-  const data = item.data ?? {};
-  const serviceId = data.service_id;
-  if (typeof serviceId === "string" && serviceId) return `/services/${serviceId}`;
-  const appointmentId = data.appointment_id;
-  if (typeof appointmentId === "string" && appointmentId) return `/dashboard`;
-  const customerId = data.customer_id;
-  if (typeof customerId === "string" && customerId) return `/customers`;
-  const t = item.notification_type;
-  if (t.startsWith("service")) return "/services";
-  if (t.startsWith("appointment")) return "/dashboard";
-  if (t.startsWith("commission")) return "/dashboard";
-  return null;
-}
-
 function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (item: NotificationItem) => void }) {
   const Icon = typeIcon(item.notification_type);
   return (
@@ -142,11 +127,8 @@ export function NotificationBell() {
 
   const handleNotificationClick = (item: NotificationItem) => {
     if (!item.is_read) void markRead(item.id);
-    const path = resolveNotificationPath(item);
-    if (path) {
-      setOpen(false);
-      navigate(path);
-    }
+    setOpen(false);
+    navigate(`/notifications/${item.id}`);
   };
 
   const unreadLabel = useMemo(() => (unreadCount > 99 ? "99+" : String(unreadCount)), [unreadCount]);
@@ -208,14 +190,19 @@ export function NotificationBell() {
                     {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
                   </Text>
                 </Box>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => void markAllRead()}
-                  disabled={unreadCount === 0}
-                >
-                  <LuCheckCheck /> Mark all read
-                </Button>
+                <HStack gap="1">
+                  <Button size="xs" variant="ghost" onClick={() => { setOpen(false); navigate("/notifications"); }}>
+                    View all
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => void markAllRead()}
+                    disabled={unreadCount === 0}
+                  >
+                    <LuCheckCheck /> Mark all read
+                  </Button>
+                </HStack>
               </HStack>
             </Drawer.Header>
 

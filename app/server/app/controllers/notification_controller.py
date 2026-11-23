@@ -36,6 +36,12 @@ class NotificationController:
             page_size=page_size,
         )
 
+    async def get(self, tenant_id: uuid.UUID, notification_id: uuid.UUID, recipient_id: uuid.UUID) -> NotificationRead:
+        row = await self.service.get(tenant_id, notification_id, recipient_id)
+        if row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        return NotificationRead.model_validate(row)
+
     async def mark_read(self, tenant_id: uuid.UUID, notification_id: uuid.UUID, recipient_id: uuid.UUID) -> NotificationRead:
         row = await self.service.mark_read(tenant_id, notification_id, recipient_id)
         if row is None:

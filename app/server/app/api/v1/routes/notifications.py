@@ -41,6 +41,17 @@ async def mark_all_read(
     return await NotificationController(session).mark_all_read(current_user.tenant_id, current_user.id)
 
 
+@router.get("/{notification_id}", response_model=NotificationRead)
+async def get_notification(
+    notification_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    return await NotificationController(session).get(
+        current_user.tenant_id, notification_id, current_user.id
+    )
+
+
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 async def mark_read(
     notification_id: uuid.UUID,
