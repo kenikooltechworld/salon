@@ -43,19 +43,20 @@ export function DashboardLayout() {
   const userName = user ? `${user.first_name} ${user.last_name}`.trim() : "Account";
 
   return (
-    <Flex minH="100vh" bg="bg">
+    <Flex h="100dvh" bg="bg" overflow="hidden">
       {isDesktop ? (
         <Splitter.Root
+          h="full"
           size={[size, 100 - size]}
           onResize={(e) => { const next = e.size[0]; if (next) setSize(Math.min(35, Math.max(6, next))); }}
           panels={[{ id: "sidebar", minSize: 6, maxSize: 35, collapsible: true, collapsedSize: 6 }, { id: "content", minSize: 60 }]}
         >
-          <Splitter.Panel id="sidebar" borderRightWidth="1px">
+          <Splitter.Panel id="sidebar" h="full" minH="0" borderRightWidth="1px">
             <AppSidebar items={items} subtitle={userName} isDesktop open={open} onOpenChange={setOpen} collapsed={collapsed} onLogout={logout} />
           </Splitter.Panel>
           <Splitter.ResizeTrigger id="sidebar:content" w="2" bg="transparent" _hover={{ bg: "brand.500/30" }} _active={{ bg: "brand.500/40" }} />
-          <Splitter.Panel id="content">
-            <Flex direction="column" minH="100vh" minW="0">
+          <Splitter.Panel id="content" h="full" minH="0">
+            <Flex direction="column" h="full" minH="0" minW="0" overflow="hidden">
               <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
                 <HStack gap="3"><Logo to="/dashboard" showText={false} size="sm" /><Text fontWeight="semibold">Dashboard</Text></HStack>
                 <HStack gap="2">
@@ -79,14 +80,14 @@ export function DashboardLayout() {
                   </Menu.Root>
                 </HStack>
               </HStack>
-              <Box flex="1" p={{ base: 4, md: 6 }}><Outlet /></Box>
+              <Box flex="1" minH="0" overflowY="auto" p={{ base: 4, md: 6 }}><Outlet /></Box>
             </Flex>
           </Splitter.Panel>
         </Splitter.Root>
       ) : (
         <>
           <AppSidebar items={items} subtitle={userName} isDesktop={false} open={open} onOpenChange={setOpen} collapsed={false} onLogout={logout} />
-          <Flex direction="column" flex="1" minW="0">
+          <Flex direction="column" flex="1" minH="0" minW="0" overflow="hidden">
             <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
               <HStack gap="2">
                 <IconButton aria-label="Open menu" variant="ghost" onClick={() => setOpen(true)}><LuMenuIcon /></IconButton>
@@ -98,7 +99,7 @@ export function DashboardLayout() {
                 <Avatar.Root size="sm" onClick={() => navigate("/profile")} cursor="pointer"><Avatar.Fallback name={userName} /></Avatar.Root>
               </HStack>
             </HStack>
-            <Box flex="1" p={{ base: 4, md: 6 }}><Outlet /></Box>
+            <Box flex="1" minH="0" overflowY="auto" p={{ base: 4, md: 6 }}><Outlet /></Box>
           </Flex>
         </>
       )}

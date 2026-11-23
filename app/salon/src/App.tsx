@@ -8,7 +8,8 @@ import { PublicLayout } from "@/layouts/PublicLayout";
 import AccountRecoveryPage from "@/pages/AccountRecoveryPage";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import ChangePasswordRequiredPage from "@/pages/ChangePasswordRequiredPage";
-import CustomersPage from "@/pages/CustomersPage";
+import CustomersPage from "@/pages/customers/CustomersPage";
+import CustomerDetailPage from "@/pages/customers/CustomerDetailPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import HomePage from "@/pages/Home";
@@ -40,6 +41,16 @@ function Protected({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!isAuthenticated && !user) return <Navigate to="/auth/login" replace />;
   return <>{children}</>;
+}
+
+function PublicTenantApp() {
+  return (
+    <Routes>
+      <Route path="/" element={<PublicBookingPage />} />
+      <Route path="/public/*" element={<PublicBookingPage />} />
+      <Route path="*" element={<PublicBookingPage />} />
+    </Routes>
+  );
 }
 
 function RoleRoute({ roles, children }: { roles: string[]; children: React.ReactNode }) {
@@ -99,6 +110,7 @@ export default function App() {
             <Route path="/services" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServicesPage /></RoleRoute>} />
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
+            <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<RoleRoute roles={["owner","admin"]}><SettingsPage /></RoleRoute>} />
             <Route path="/settings/general" element={<RoleRoute roles={["owner","admin"]}><GeneralSettings /></RoleRoute>} />

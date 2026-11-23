@@ -52,6 +52,9 @@ class CustomerRead(BaseModel):
     status: str
     outstanding_balance: Decimal
     is_guest: bool
+    email_verified: bool = False
+    phone_verified: bool = False
+    has_portal_access: bool = False
     notification_preferences: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
