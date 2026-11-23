@@ -1,6 +1,0 @@
-﻿import json, requests
-# wait a bit more and check deploy via openapi or commit-unknown; test again
-base="https://api.kenikoolsalon.com/api/v1"
-h={'X-Forwarded-Host':'prince-salon.kenikoolsalon.com'}
-r=requests.get(base+"/public/bookings/statistics", headers=h, timeout=20)
-print(r.status_code, r.text[:200])
