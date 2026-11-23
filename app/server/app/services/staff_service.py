@@ -79,13 +79,6 @@ class StaffService:
         rows = await self._attach_user_fields([item])
         return rows[0] if rows else None
 
-    async def get_read(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict | None:
-        item = await self.get(tenant_id, staff_id)
-        if item is None:
-            return None
-        rows = await self._attach_user_fields([item])
-        return rows[0] if rows else None
-
     async def update(
         self, tenant_id: uuid.UUID, staff_id: uuid.UUID, data: StaffUpdate
     ) -> dict | None:
