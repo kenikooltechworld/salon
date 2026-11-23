@@ -22,6 +22,7 @@ class Customer(UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin, Base):
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    profile_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     preferred_staff_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     preferred_services: Mapped[list | None] = mapped_column(JSONB, nullable=True, default=list)
     communication_preference: Mapped[str] = mapped_column(String(16), nullable=False, default="email")

@@ -7,6 +7,7 @@ export interface Customer {
   phone: string;
   address?: string | null;
   date_of_birth?: string | null;
+  profile_image_url?: string | null;
   preferred_staff_id?: string | null;
   preferred_services?: string[];
   communication_preference: "email" | "sms" | "phone" | "none";
@@ -35,6 +36,7 @@ export interface CustomerPayload {
   phone: string;
   address?: string | null;
   date_of_birth?: string | null;
+  profile_image_url?: string | null;
   preferred_staff_id?: string | null;
   preferred_services?: string[];
   communication_preference: "email" | "sms" | "phone" | "none";

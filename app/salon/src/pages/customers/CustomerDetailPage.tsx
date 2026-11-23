@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Portal, Skeleton, Stack, Tabs, Text, Textarea, NativeSelect,
+  Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Portal, Skeleton, Stack, Tabs, Text, Textarea, NativeSelect,
 } from "@chakra-ui/react";
 import { LuArrowLeft, LuMail, LuPencil, LuRefreshCw, LuTrash2 } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
@@ -88,25 +88,29 @@ export default function CustomerDetailPage() {
   return (
     <Stack gap="6">
       <Flex justify="space-between" gap="3" direction={{ base: "column", md: "row" }}>
-        <HStack align="start"><Button variant="ghost" onClick={() => navigate("/customers")}><LuArrowLeft /> Back</Button><Box>
-          <Heading size="xl">{customer.first_name} {customer.last_name}</Heading>
-          <Text color="fg.muted" fontSize="sm">{customer.email}</Text>
-        </Box></HStack>
-        {manage && <HStack flexWrap="wrap">
-          {!customer.has_portal_access && <Button variant="outline" loading={resendInvite.isPending} onClick={resend}><LuMail /> Send Portal Invite</Button>}
-          <Button variant="outline" onClick={() => setEditOpen(true)}><LuPencil /> Edit</Button>
-          {removeAllowed && <Button colorPalette="red" variant="outline" onClick={() => setDeleteOpen(true)}><LuTrash2 /> Delete</Button>}
-        </HStack>}
+        <HStack align="start" gap="3" minW="0">
+          <Button variant="ghost" onClick={() => navigate("/customers")} px="2"><LuArrowLeft /> Back</Button>
+          <Avatar.Root size={{ base: "md", md: "lg" }}><Avatar.Image src={customer.profile_image_url || undefined} /><Avatar.Fallback name={`${customer.first_name} ${customer.last_name}`} /></Avatar.Root>
+          <Box minW="0">
+            <Heading size={{ base: "lg", md: "xl" }} lineClamp={1}>{customer.first_name} {customer.last_name}</Heading>
+            <Text color="fg.muted" fontSize="sm" truncate>{customer.email}</Text>
+          </Box>
+        </HStack>
+        {manage && <Flex gap="2" flexWrap="wrap" w={{ base: "full", md: "auto" }}>
+          {!customer.has_portal_access && <Button variant="outline" size={{ base: "sm", md: "md" }} loading={resendInvite.isPending} onClick={resend}><LuMail /> Send Portal Invite</Button>}
+          <Button variant="outline" size={{ base: "sm", md: "md" }} onClick={() => setEditOpen(true)}><LuPencil /> Edit</Button>
+          {removeAllowed && <Button colorPalette="red" variant="outline" size={{ base: "sm", md: "md" }} onClick={() => setDeleteOpen(true)}><LuTrash2 /> Delete</Button>}
+        </Flex>}
       </Flex>
 
       <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap="6">
         <Box>
           <Tabs.Root defaultValue="profile">
-            <Tabs.List>
-              <Tabs.Trigger value="profile">Profile</Tabs.Trigger>
-              <Tabs.Trigger value="balance">Balance</Tabs.Trigger>
-              <Tabs.Trigger value="preferences">Preferences</Tabs.Trigger>
-              <Tabs.Trigger value="history">History</Tabs.Trigger>
+            <Tabs.List overflowX="auto" flexWrap={{ base: "nowrap", md: "wrap" }} css={{ "&::-webkit-scrollbar": { display: "none" } }}>
+              <Tabs.Trigger value="profile" whiteSpace="nowrap">Profile</Tabs.Trigger>
+              <Tabs.Trigger value="balance" whiteSpace="nowrap">Balance</Tabs.Trigger>
+              <Tabs.Trigger value="preferences" whiteSpace="nowrap">Preferences</Tabs.Trigger>
+              <Tabs.Trigger value="history" whiteSpace="nowrap">History</Tabs.Trigger>
             </Tabs.List>
 
             <Tabs.Content value="profile" pt="4">

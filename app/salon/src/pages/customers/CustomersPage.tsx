@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, Flex, Grid, Heading, HStack, IconButton, Input, NativeSelect, Skeleton, Stack, Table, Text, useBreakpointValue,
+  Avatar, Badge, Box, Button, Card, Flex, Grid, Heading, HStack, IconButton, Input, NativeSelect, Skeleton, Stack, Table, Text, useBreakpointValue,
 } from "@chakra-ui/react";
 import { LuChevronLeft, LuChevronRight, LuChevronsLeft, LuChevronsRight, LuPencil, LuPlus, LuSearch, LuTrash2 } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
@@ -130,7 +130,7 @@ export default function CustomersPage() {
                   <Table.Row key={i}>{Array.from({ length: 6 }).map((__, j) => <Table.Cell key={j}><Skeleton h="4" /></Table.Cell>)}</Table.Row>
                 )) : customers.length > 0 ? customers.map((c) => (
                   <Table.Row key={c.id} cursor="pointer" _hover={{ bg: "bg.muted" }} onClick={() => navigate(`/customers/${c.id}`)}>
-                    <Table.Cell><Text fontWeight="medium">{c.first_name} {c.last_name}</Text></Table.Cell>
+                    <Table.Cell><HStack gap="3"><Avatar.Root size="sm"><Avatar.Image src={c.profile_image_url || undefined} /><Avatar.Fallback name={`${c.first_name} ${c.last_name}`} /></Avatar.Root><Text fontWeight="medium">{c.first_name} {c.last_name}</Text></HStack></Table.Cell>
                     <Table.Cell><Text color="fg.muted">{c.email}</Text></Table.Cell>
                     <Table.Cell><Text color="fg.muted">{c.phone}</Text></Table.Cell>
                     <Table.Cell><StatusBadges c={c} /></Table.Cell>
@@ -156,11 +156,14 @@ export default function CustomersPage() {
             {isLoading ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} h="24" rounded="md" />) : customers.length > 0 ? customers.map((c) => (
               <Box key={c.id} bg="bg.muted" rounded="md" p="4" cursor="pointer" onClick={() => navigate(`/customers/${c.id}`)}>
                 <Flex justify="space-between" gap="3">
-                  <Box minW="0" flex="1">
-                    <Text fontWeight="semibold" truncate>{c.first_name} {c.last_name}</Text>
-                    <Text fontSize="sm" color="fg.muted" truncate>{c.email}</Text>
-                    <Text fontSize="sm" color="fg.muted">{c.phone}</Text>
-                  </Box>
+                  <HStack minW="0" flex="1" align="start" gap="3">
+                    <Avatar.Root size="sm"><Avatar.Image src={c.profile_image_url || undefined} /><Avatar.Fallback name={`${c.first_name} ${c.last_name}`} /></Avatar.Root>
+                    <Box minW="0">
+                      <Text fontWeight="semibold" truncate>{c.first_name} {c.last_name}</Text>
+                      <Text fontSize="sm" color="fg.muted" truncate>{c.email}</Text>
+                      <Text fontSize="sm" color="fg.muted">{c.phone}</Text>
+                    </Box>
+                  </HStack>
                   {manage && <HStack align="start" onClick={(e) => e.stopPropagation()}>
                     <IconButton aria-label="Edit" size="xs" variant="ghost" onClick={() => setEditCustomer(c)}><LuPencil /></IconButton>
                     {removeAllowed && <Box position="relative">
@@ -188,7 +191,9 @@ export default function CustomersPage() {
           <Flex justify="center" align="center" gap="1" mt="4" wrap="wrap">
             <IconButton aria-label="First page" size="sm" variant="outline" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}><LuChevronsLeft /></IconButton>
             <IconButton aria-label="Previous page" size="sm" variant="outline" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}><LuChevronLeft /></IconButton>
-            {pageNumbers().map((p, i) => typeof p === "string" ? <Text key={`e-${i}`} px="2" color="fg.muted">...</Text> : <Button key={p} size="sm" variant={p === currentPage ? "solid" : "outline"} colorPalette={p === currentPage ? "brand" : "gray"} onClick={() => setCurrentPage(p)}>{p}</Button>)}
+            <HStack gap="1" wrap="wrap" justify="center" maxW={{ base: "full", md: "auto" }}>
+              {pageNumbers().map((p, i) => typeof p === "string" ? <Text key={`e-${i}`} px="1" color="fg.muted" fontSize="sm">...</Text> : <Button key={p} size="sm" minW="8" px="2" variant={p === currentPage ? "solid" : "outline"} colorPalette={p === currentPage ? "brand" : "gray"} onClick={() => setCurrentPage(p)}>{p}</Button>)}
+            </HStack>
             <IconButton aria-label="Next page" size="sm" variant="outline" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}><LuChevronRight /></IconButton>
             <IconButton aria-label="Last page" size="sm" variant="outline" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}><LuChevronsRight /></IconButton>
           </Flex>

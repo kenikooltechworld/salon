@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import {
-  Badge, Box, Button, Dialog, Grid, HStack, Input, NativeSelect, Portal, Skeleton, Stack, Text, Textarea, Wrap, WrapItem,
+  Avatar, Badge, Box, Button, Dialog, Flex, Grid, HStack, IconButton, Input, NativeSelect, Portal, Skeleton, Stack, Text, Textarea, Wrap, WrapItem,
 } from "@chakra-ui/react";
+import { LuX } from "react-icons/lu";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { toaster } from "@/components/ui/toaster";
 import { Naira } from "@/components/ui/naira";
 import { useCreateCustomer, useUpdateCustomer, type Customer } from "@/features/customers";
@@ -10,10 +12,10 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 
 type FormState = {
-  first_name: string; last_name: string; email: string; phone: string; address: string; date_of_birth: string;
+  first_name: string; last_name: string; email: string; phone: string; address: string; date_of_birth: string; profile_image_url: string;
   preferred_staff_id: string; communication_preference: "email" | "sms" | "phone" | "none"; status: "active" | "inactive"; preferred_services: string[];
 };
-const empty: FormState = { first_name: "", last_name: "", email: "", phone: "", address: "", date_of_birth: "", preferred_staff_id: "", communication_preference: "email", status: "active", preferred_services: [] };
+const empty: FormState = { first_name: "", last_name: "", email: "", phone: "", address: "", date_of_birth: "", profile_image_url: "", preferred_staff_id: "", communication_preference: "email", status: "active", preferred_services: [] };
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return <Stack gap="1"><Text fontSize="sm" fontWeight="medium">{label}</Text>{children}{error && <Text fontSize="xs" color="red.500">{error}</Text>}</Stack>;
@@ -27,18 +29,22 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const servicesQ = useServices({ page: 1, page_size: 200, active_only: true });
   const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data, staleTime: 60000 });
+  const upload = useImageUpload({ folder: "salon-customers" });
   const services = servicesQ.data?.services || [];
   const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
 
   useEffect(() => {
     if (!open) return;
     setErrors({});
+    upload.clearPreview();
     setForm(customer ? {
       first_name: customer.first_name || "", last_name: customer.last_name || "", email: customer.email || "", phone: customer.phone || "",
-      address: customer.address || "", date_of_birth: customer.date_of_birth || "", preferred_staff_id: customer.preferred_staff_id || "",
+      address: customer.address || "", date_of_birth: customer.date_of_birth || "", profile_image_url: customer.profile_image_url || "",
+      preferred_staff_id: customer.preferred_staff_id || "",
       communication_preference: customer.communication_preference || "email", status: customer.status || "active",
       preferred_services: Array.isArray(customer.preferred_services) ? customer.preferred_services : [],
     } : empty);
+    if (customer?.profile_image_url) upload.setPreview(customer.profile_image_url);
   }, [open, customer]);
 
   const validate = () => {
@@ -56,7 +62,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
 
   const submit = async () => {
     if (!validate()) return;
-    const payload = { ...form, address: form.address.trim() || null, date_of_birth: form.date_of_birth || null, preferred_staff_id: form.preferred_staff_id || null, preferred_services: form.preferred_services };
+    const payload = { ...form, address: form.address.trim() || null, date_of_birth: form.date_of_birth || null, profile_image_url: form.profile_image_url || null, preferred_staff_id: form.preferred_staff_id || null, preferred_services: form.preferred_services };
     try {
       if (isEdit) await update.mutateAsync({ id: customer!.id, payload });
       else await create.mutateAsync(payload);
@@ -75,6 +81,22 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
         <Dialog.Header><Dialog.Title>{isEdit ? "Edit Customer" : "Add New Customer"}</Dialog.Title></Dialog.Header>
         <Dialog.Body>
           <Stack gap="4">
+            <Flex align="center" gap="4" direction={{ base: "column", sm: "row" }}>
+              <Box position="relative">
+                <Avatar.Root size="xl"><Avatar.Image src={upload.preview || form.profile_image_url || undefined} /><Avatar.Fallback name={`${form.first_name} ${form.last_name}`.trim() || "Customer"} /></Avatar.Root>
+                {(upload.preview || form.profile_image_url) && <IconButton aria-label="Remove image" position="absolute" top="-1" right="-1" size="2xs" colorPalette="red" rounded="full" onClick={() => { upload.clearPreview(); setForm((f) => ({ ...f, profile_image_url: "" })); }}><LuX /></IconButton>}
+              </Box>
+              <Stack gap="1" flex="1" w="full">
+                <Text fontSize="sm" fontWeight="medium">Profile Image</Text>
+                <Input type="file" accept="image/*" disabled={loading || upload.isUploading} onChange={async (e) => {
+                  const file = upload.handleFileChange(e);
+                  if (!file) return;
+                  try { const url = await upload.uploadImage(file); setForm((f) => ({ ...f, profile_image_url: url })); }
+                  catch (err: any) { toaster.create({ title: "Upload failed", description: err?.message, type: "error" }); }
+                }} />
+                <Text fontSize="xs" color="fg.muted">{upload.isUploading ? `Uploading ${upload.uploadProgress}%` : "PNG/JPG, max 5MB"}</Text>
+              </Stack>
+            </Flex>
             <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
               <Field label="First Name *" error={errors.first_name}><Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} disabled={loading} /></Field>
               <Field label="Last Name *" error={errors.last_name}><Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} disabled={loading} /></Field>
