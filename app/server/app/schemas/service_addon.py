@@ -19,8 +19,15 @@ class ServiceAddonCreate(BaseModel):
     image_url: Optional[str] = Field(default=None, max_length=500)
     is_active: bool = True
     applicable_service_ids: list[uuid.UUID] = Field(default_factory=list)
+    applicable_services: list[uuid.UUID] | None = None
     category: AddonCategory = "product"
     display_order: int = 0
+
+    @model_validator(mode="after")
+    def _normalize_applicable(self):
+        if self.applicable_services is not None and not self.applicable_service_ids:
+            self.applicable_service_ids = self.applicable_services
+        return self
 
 
 class ServiceAddonUpdate(BaseModel):
@@ -31,8 +38,15 @@ class ServiceAddonUpdate(BaseModel):
     image_url: Optional[str] = Field(default=None, max_length=500)
     is_active: Optional[bool] = None
     applicable_service_ids: Optional[list[uuid.UUID]] = None
+    applicable_services: Optional[list[uuid.UUID]] = None
     category: Optional[AddonCategory] = None
     display_order: Optional[int] = None
+
+    @model_validator(mode="after")
+    def _normalize_applicable(self):
+        if self.applicable_services is not None and self.applicable_service_ids is None:
+            self.applicable_service_ids = self.applicable_services
+        return self
 
 
 class ServiceAddonRead(BaseModel):
@@ -51,6 +65,12 @@ class ServiceAddonRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler):
+        d = handler(self)
+        d["applicable_services"] = d.get("applicable_service_ids", [])
+        return d
 
 
 class ServiceAddonListResponse(BaseModel):

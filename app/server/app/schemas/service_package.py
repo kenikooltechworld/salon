@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 
 class ServicePackageItem(BaseModel):
@@ -87,6 +87,21 @@ class ServicePackageRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler):
+        d = handler(self)
+        d["total_duration"] = d.get("total_duration_minutes", 0)
+        d["savings"] = {
+            "amount": float(d.get("discount_amount", 0) or 0),
+            "percentage": float(d.get("discount_percentage", 0) or 0),
+            "original_price": float(d.get("original_price", 0) or 0),
+            "package_price": float(d.get("package_price", 0) or 0),
+        }
+        for s in d.get("services", []):
+            if "service_duration" not in s and "service_duration_minutes" in s:
+                s["service_duration"] = s["service_duration_minutes"]
+        return d
 
 
 class ServicePackageListResponse(BaseModel):
