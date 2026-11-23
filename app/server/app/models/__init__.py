@@ -30,3 +30,5 @@ __all__ = [
     "User",
     "UUIDPrimaryKeyMixin",
 ]
+
+from app.models.availability import Availability

@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
+let refs = 0;
 
 function getSocketOrigin(): string {
   const api = (import.meta.env.VITE_API_URL as string | undefined) || "https://api.kenikoolsalon.com/api/v1";
@@ -12,7 +13,8 @@ function getSocketOrigin(): string {
   }
 }
 
-export function connectSocket(): Socket {
+export function acquireSocket(): Socket {
+  refs += 1;
   if (socket) {
     if (!socket.connected) socket.connect();
     return socket;
@@ -31,8 +33,9 @@ export function connectSocket(): Socket {
   return socket;
 }
 
-export function disconnectSocket(): void {
-  if (socket) {
+export function releaseSocket(): void {
+  refs = Math.max(0, refs - 1);
+  if (refs === 0 && socket) {
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;

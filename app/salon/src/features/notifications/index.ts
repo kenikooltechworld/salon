@@ -1,2 +1,2 @@
-export { useNotificationStore } from "./store";
-export type { NotificationItem } from "./store";
+export { useNotificationStore, matchesFilters } from "./store";
+export type { NotificationItem, NotificationFilters, NotificationCategory, NotificationStatusFilter } from "./store";

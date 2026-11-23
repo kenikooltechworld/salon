@@ -8,6 +8,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
 import { Logo } from "@/components/brand/Logo";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useNotificationStore } from "@/features/notifications";
 
 const baseItems: (SidebarItem & { roles?: string[] })[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", to: "/dashboard" },
@@ -36,6 +37,16 @@ export function DashboardLayout() {
     const role = (user?.role || "").toLowerCase();
     return baseItems.filter((i) => !i.roles || i.roles.includes(role));
   }, [user?.role]);
+
+  const connectRealtime = useNotificationStore((s) => s.connectRealtime);
+  const disconnectRealtime = useNotificationStore((s) => s.disconnectRealtime);
+  const loadNotifications = useNotificationStore((s) => s.load);
+
+  useEffect(() => {
+    connectRealtime();
+    void loadNotifications({ reset: true });
+    return () => disconnectRealtime();
+  }, [connectRealtime, disconnectRealtime, loadNotifications]);
 
   useEffect(() => { window.localStorage.setItem(SIDEBAR_KEY, String(size)); }, [size]);
 
