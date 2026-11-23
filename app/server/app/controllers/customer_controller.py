@@ -60,6 +60,12 @@ class CustomerController:
         await self.session.commit()
         return _to_read(item)
 
+    async def delete(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> None:
+        ok = await self.service.delete(tenant_id, customer_id)
+        if not ok:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        await self.session.commit()
+
     async def resend_portal_invitation(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
         ok, message = await self.service.resend_portal_invitation(tenant_id, customer_id)
         if not ok and message == "Customer not found":
@@ -68,3 +74,28 @@ class CustomerController:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
         await self.session.commit()
         return {"message": message}
+
+    async def get_balance(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
+        info = await self.service.get_balance(tenant_id, customer_id)
+        if info is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        return info
+
+    async def update_balance(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
+        info = await self.service.update_balance(tenant_id, customer_id)
+        if info is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        await self.session.commit()
+        return info
+
+    async def booking_eligibility(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
+        info = await self.service.booking_eligibility(tenant_id, customer_id)
+        if info is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        return info
+
+    async def get_history(self, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, page: int = 1, page_size: int = 20) -> dict:
+        info = await self.service.get_history(tenant_id, customer_id, page=page, page_size=page_size)
+        if info is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        return info

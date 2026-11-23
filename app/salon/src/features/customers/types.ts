@@ -8,6 +8,7 @@ export interface Customer {
   address?: string | null;
   date_of_birth?: string | null;
   preferred_staff_id?: string | null;
+  preferred_services?: string[];
   communication_preference: "email" | "sms" | "phone" | "none";
   status: "active" | "inactive";
   outstanding_balance: string | number;
@@ -35,7 +36,31 @@ export interface CustomerPayload {
   address?: string | null;
   date_of_birth?: string | null;
   preferred_staff_id?: string | null;
+  preferred_services?: string[];
   communication_preference: "email" | "sms" | "phone" | "none";
   status: "active" | "inactive";
   notification_preferences?: Record<string, unknown> | null;
+}
+
+export interface CustomerPreference {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  preferred_staff_ids: string[];
+  preferred_service_ids: string[];
+  communication_methods: string[];
+  preferred_time_slots: string[];
+  language: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerPreferenceUpdate {
+  preferred_staff_ids?: string[];
+  preferred_service_ids?: string[];
+  communication_methods?: string[];
+  preferred_time_slots?: string[];
+  language?: string;
+  notes?: string | null;
 }

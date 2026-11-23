@@ -20,6 +20,7 @@ class CustomerCreate(BaseModel):
     address: Optional[str] = Field(default=None, max_length=500)
     date_of_birth: Optional[date] = None
     preferred_staff_id: Optional[str] = Field(default=None, max_length=64)
+    preferred_services: list[str] = Field(default_factory=list)
     communication_preference: CommunicationPreference = "email"
     status: CustomerStatus = "active"
     notification_preferences: Optional[dict] = None
@@ -33,6 +34,7 @@ class CustomerUpdate(BaseModel):
     address: Optional[str] = Field(default=None, max_length=500)
     date_of_birth: Optional[date] = None
     preferred_staff_id: Optional[str] = Field(default=None, max_length=64)
+    preferred_services: Optional[list[str]] = None
     communication_preference: Optional[CommunicationPreference] = None
     status: Optional[CustomerStatus] = None
     notification_preferences: Optional[dict] = None
@@ -48,6 +50,7 @@ class CustomerRead(BaseModel):
     address: Optional[str] = None
     date_of_birth: Optional[date] = None
     preferred_staff_id: Optional[str] = None
+    preferred_services: list[str] = Field(default_factory=list)
     communication_preference: str
     status: str
     outstanding_balance: Decimal

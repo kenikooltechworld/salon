@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { customersApi } from "./api";
+import type { CustomerPreferenceUpdate } from "./types";
 
 export const customerKeys = {
   all: ["customers"] as const,
   list: (params: Record<string, unknown>) => [...customerKeys.all, "list", params] as const,
   detail: (id: string) => [...customerKeys.all, "detail", id] as const,
+  preferences: (id: string) => [...customerKeys.all, "preferences", id] as const,
 };
 
 export function useCustomers(params: Record<string, unknown> = {}) {
@@ -57,6 +59,25 @@ export function useResendCustomerPortalInvitation() {
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: customerKeys.all });
       qc.invalidateQueries({ queryKey: customerKeys.detail(id) });
+    },
+  });
+}
+
+export function useCustomerPreferences(id?: string) {
+  return useQuery({
+    queryKey: customerKeys.preferences(id || ""),
+    queryFn: async () => (await customersApi.getPreferences(id!)).data,
+    enabled: !!id,
+  });
+}
+
+export function useUpdateCustomerPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: CustomerPreferenceUpdate }) =>
+      customersApi.updatePreferences(id, payload),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: customerKeys.preferences(v.id) });
     },
   });
 }

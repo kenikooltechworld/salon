@@ -74,6 +74,48 @@ async def delete_customer(
     await controller.delete(current_user.tenant_id, customer_id)
 
 
+@router.get("/{customer_id}/balance")
+async def get_customer_balance(
+    customer_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = CustomerController(session)
+    return await controller.get_balance(current_user.tenant_id, customer_id)
+
+
+@router.put("/{customer_id}/balance")
+async def update_customer_balance(
+    customer_id: uuid.UUID,
+    current_user: User = Depends(require_roles("owner", "admin", "manager", "staff")),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = CustomerController(session)
+    return await controller.update_balance(current_user.tenant_id, customer_id)
+
+
+@router.get("/{customer_id}/booking-eligibility")
+async def get_customer_booking_eligibility(
+    customer_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = CustomerController(session)
+    return await controller.booking_eligibility(current_user.tenant_id, customer_id)
+
+
+@router.get("/{customer_id}/history")
+async def get_customer_history(
+    customer_id: uuid.UUID,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = CustomerController(session)
+    return await controller.get_history(current_user.tenant_id, customer_id, page=page, page_size=page_size)
+
+
 @router.post("/{customer_id}/resend-portal-invitation")
 async def resend_customer_portal_invitation(
     customer_id: uuid.UUID,

@@ -1,5 +1,11 @@
 import { apiClient } from "@/lib/api";
-import type { Customer, CustomerListResponse, CustomerPayload } from "./types";
+import type {
+  Customer,
+  CustomerListResponse,
+  CustomerPayload,
+  CustomerPreference,
+  CustomerPreferenceUpdate,
+} from "./types";
 
 const asParams = (obj: Record<string, unknown>) => {
   const p: Record<string, string | number | boolean> = {};
@@ -20,4 +26,8 @@ export const customersApi = {
   remove: (id: string) => apiClient.delete(`/customers/${id}`),
   resendPortalInvitation: (id: string) =>
     apiClient.post<{ message: string }>(`/customers/${id}/resend-portal-invitation`),
+  getPreferences: (id: string) =>
+    apiClient.get<CustomerPreference>(`/customers/${id}/preferences`),
+  updatePreferences: (id: string, payload: CustomerPreferenceUpdate) =>
+    apiClient.put<CustomerPreference>(`/customers/${id}/preferences`, payload),
 };

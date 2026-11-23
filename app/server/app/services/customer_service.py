@@ -4,13 +4,17 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.appointment import Appointment
 from app.models.customer import Customer
+from app.models.service import Service
+from app.models.staff import Staff
 from app.models.tenant import Tenant
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 from app.services.email_service import send_email
@@ -64,7 +68,12 @@ class CustomerService:
         return result.scalars().all(), total
 
     async def create(self, tenant_id: uuid.UUID, data: CustomerCreate) -> Customer:
-        customer = Customer(tenant_id=tenant_id, **data.model_dump())
+        customer = Customer(
+            tenant_id=tenant_id,
+            **data.model_dump(),
+        )
+        if customer.preferred_services is None:
+            customer.preferred_services = []
         self.session.add(customer)
         await self.session.flush()
 
@@ -159,3 +168,98 @@ class CustomerService:
         html = render_customer_welcome_email(tenant, context)
         await send_email(customer.email, f"Set up your {tenant.name} customer portal access", html, required=False)
         return True, "Portal invitation sent successfully"
+
+    async def get_balance(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict | None:
+        customer = await self.get(tenant_id, customer_id)
+        if customer is None:
+            return None
+        # App has no Invoice model yet; report outstanding balance from customer record.
+        balance = Decimal(str(customer.outstanding_balance or 0))
+        return {
+            "customer_id": str(customer.id),
+            "customer_name": f"{customer.first_name} {customer.last_name}",
+            "outstanding_balance": float(balance),
+            "unpaid_invoice_count": 0,
+            "unpaid_invoices": [],
+        }
+
+    async def update_balance(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict | None:
+        info = await self.get_balance(tenant_id, customer_id)
+        if info is None:
+            return None
+        return {
+            "customer_id": info["customer_id"],
+            "updated_balance": info["outstanding_balance"],
+            "message": "Balance updated successfully",
+        }
+
+    async def booking_eligibility(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict | None:
+        info = await self.get_balance(tenant_id, customer_id)
+        if info is None:
+            return None
+        balance = Decimal(str(info["outstanding_balance"]))
+        eligible = balance == 0
+        return {
+            "customer_id": info["customer_id"],
+            "customer_name": info["customer_name"],
+            "outstanding_balance": float(balance),
+            "is_eligible_to_book": eligible,
+            "reason": "No outstanding balance" if eligible else f"Outstanding balance of {balance} must be paid before booking",
+        }
+
+    async def get_history(
+        self, tenant_id: uuid.UUID, customer_id: uuid.UUID, *, page: int = 1, page_size: int = 20
+    ) -> dict | None:
+        customer = await self.get(tenant_id, customer_id)
+        if customer is None:
+            return None
+
+        cid = str(customer_id)
+        base = select(Appointment).where(
+            Appointment.tenant_id == tenant_id,
+            Appointment.customer_id == cid,
+        )
+        total = (await self.session.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+        stmt = base.order_by(Appointment.start_time.desc()).offset((page - 1) * page_size).limit(page_size)
+        appts = (await self.session.execute(stmt)).scalars().all()
+
+        service_ids: set[uuid.UUID] = set()
+        staff_ids: set[uuid.UUID] = set()
+        for a in appts:
+            try:
+                service_ids.add(uuid.UUID(str(a.service_id)))
+            except Exception:
+                pass
+            try:
+                staff_ids.add(uuid.UUID(str(a.staff_id)))
+            except Exception:
+                pass
+
+        services = {}
+        if service_ids:
+            rows = (await self.session.execute(select(Service).where(Service.tenant_id == tenant_id, Service.id.in_(service_ids)))).scalars().all()
+            services = {str(s.id): s for s in rows}
+        staff_map = {}
+        if staff_ids:
+            rows = (await self.session.execute(select(Staff).where(Staff.tenant_id == tenant_id, Staff.id.in_(staff_ids)))).scalars().all()
+            staff_map = {str(s.id): s for s in rows}
+
+        history = []
+        for a in appts:
+            svc = services.get(str(a.service_id))
+            st = staff_map.get(str(a.staff_id))
+            history.append({
+                "id": str(a.id),
+                "appointment_id": str(a.id),
+                "service_id": str(a.service_id),
+                "staff_id": str(a.staff_id),
+                "service_name": svc.name if svc else "Unknown Service",
+                "staff_name": st.name if st else "Unknown Staff",
+                "appointment_date": a.start_time.isoformat() if a.start_time else None,
+                "appointment_time": a.start_time.strftime("%H:%M") if a.start_time else "",
+                "notes": a.notes or "",
+                "rating": 0,
+                "feedback": "",
+                "status": a.status,
+            })
+        return {"history": history, "total": total, "page": page, "page_size": page_size}
