@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { apiClient } from "@/lib/api";
+import { apiClient, TIMEOUTS } from "@/lib/api";
 
 interface MediaUploadResponse { url: string; message?: string }
 interface UseImageUploadOptions {
@@ -61,7 +61,7 @@ export function useImageUpload(options: UseImageUploadOptions = {}) {
       progressInterval = setInterval(() => { progress += 1; if (progress <= 90) setUploadProgress(progress); }, 25);
       const response = await apiClient.post<MediaUploadResponse>("/media/upload", {
         base64_data: base64Data, media_type: mediaType, folder,
-      });
+      }, { timeout: TIMEOUTS.UPLOAD });
       if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
       setUploadProgress(95);
       await new Promise((r) => setTimeout(r, 80));
