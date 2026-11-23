@@ -86,3 +86,22 @@ export interface FinancialSettingsData {
 export interface FinancialSettingsResponse {
   data: FinancialSettingsData;
 }
+
+export interface OperationalSettingsData {
+  inventory_tracking_enabled: boolean;
+  low_stock_threshold: number;
+  waiting_room_enabled: boolean;
+  waiting_room_max_capacity: number;
+  resource_management_enabled: boolean;
+  notification_preferences_enabled: boolean;
+  sms_provider: "termii" | "twilio" | "none";
+  email_provider: "smtp" | "sendgrid" | "none";
+  backup_enabled: boolean;
+  backup_frequency: "daily" | "weekly" | "monthly";
+  cache_optimization_enabled: boolean;
+  cache_ttl_minutes: number;
+}
+
+export interface OperationalSettingsResponse {
+  data: OperationalSettingsData;
+}

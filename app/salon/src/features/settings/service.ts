@@ -1,4 +1,4 @@
-﻿import type { CommissionSettingsData, FinancialSettingsData, TenantSettingsData } from "./types";
+﻿import type { CommissionSettingsData, FinancialSettingsData, OperationalSettingsData, TenantSettingsData } from "./types";
 
 export const SETTINGS_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -50,6 +50,21 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettingsData = {
   invoice_numbering_start: 1000,
 };
 
+export const DEFAULT_OPERATIONAL_SETTINGS: OperationalSettingsData = {
+  inventory_tracking_enabled: true,
+  low_stock_threshold: 10,
+  waiting_room_enabled: true,
+  waiting_room_max_capacity: 50,
+  resource_management_enabled: true,
+  notification_preferences_enabled: true,
+  sms_provider: "termii",
+  email_provider: "smtp",
+  backup_enabled: true,
+  backup_frequency: "daily",
+  cache_optimization_enabled: true,
+  cache_ttl_minutes: 60,
+};
+
 export function normalizeTenantSettings(data?: Partial<TenantSettingsData> | null): TenantSettingsData {
   return {
     ...DEFAULT_TENANT_SETTINGS,
@@ -91,6 +106,26 @@ export function normalizeFinancialSettings(data?: Partial<FinancialSettingsData>
     service_commission_percentage: Math.min(100, Math.max(0, Number(data?.service_commission_percentage ?? 5))),
     invoice_numbering_prefix: String(data?.invoice_numbering_prefix || "INV").trim() || "INV",
     invoice_numbering_start: Math.max(1, Math.floor(Number(data?.invoice_numbering_start ?? 1000))),
+  };
+}
+
+export function normalizeOperationalSettings(data?: Partial<OperationalSettingsData> | null): OperationalSettingsData {
+  const sms = ["termii", "twilio", "none"] as const;
+  const email = ["smtp", "sendgrid", "none"] as const;
+  const freq = ["daily", "weekly", "monthly"] as const;
+  return {
+    inventory_tracking_enabled: data?.inventory_tracking_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.inventory_tracking_enabled,
+    low_stock_threshold: Math.max(0, Math.floor(Number(data?.low_stock_threshold ?? 10))),
+    waiting_room_enabled: data?.waiting_room_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.waiting_room_enabled,
+    waiting_room_max_capacity: Math.max(1, Math.floor(Number(data?.waiting_room_max_capacity ?? 50))),
+    resource_management_enabled: data?.resource_management_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.resource_management_enabled,
+    notification_preferences_enabled: data?.notification_preferences_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.notification_preferences_enabled,
+    sms_provider: sms.includes(data?.sms_provider as any) ? data!.sms_provider! : "termii",
+    email_provider: email.includes(data?.email_provider as any) ? data!.email_provider! : "smtp",
+    backup_enabled: data?.backup_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.backup_enabled,
+    backup_frequency: freq.includes(data?.backup_frequency as any) ? data!.backup_frequency! : "daily",
+    cache_optimization_enabled: data?.cache_optimization_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.cache_optimization_enabled,
+    cache_ttl_minutes: Math.max(1, Math.floor(Number(data?.cache_ttl_minutes ?? 60))),
   };
 }
 
