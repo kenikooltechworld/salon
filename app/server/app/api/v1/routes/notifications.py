@@ -17,13 +17,19 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 @router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     is_read: bool | None = Query(default=None),
+    category: str | None = Query(default=None, description="Filter by category: services, appointments, commissions, system"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_session),
 ):
     return await NotificationController(session).list(
-        current_user.tenant_id, current_user.id, is_read=is_read, page=page, page_size=page_size
+        current_user.tenant_id,
+        current_user.id,
+        is_read=is_read,
+        category=category,
+        page=page,
+        page_size=page_size,
     )
 
 

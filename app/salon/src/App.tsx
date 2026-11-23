@@ -17,6 +17,8 @@ import FeaturesPage from "@/pages/Features";
 import AboutPage from "@/pages/About";
 import PricingPage from "@/pages/Pricing";
 import LoginPage from "@/pages/LoginPage";
+import PublicBookingPage from "@/pages/public/PublicBookingPage";
+import { isPublicTenantHost } from "@/lib/domainConfig";
 import MfaPage from "@/pages/MfaPage";
 import MfaVerifyPage from "@/pages/MfaVerifyPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -73,6 +75,14 @@ export default function App() {
       <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
         <Spinner />
       </Box>
+    );
+  }
+
+  if (isPublicTenantHost()) {
+    return (
+      <BrowserRouter>
+        <PublicTenantApp />
+      </BrowserRouter>
     );
   }
 

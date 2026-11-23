@@ -21,11 +21,12 @@ class NotificationController:
         recipient_id: uuid.UUID,
         *,
         is_read: bool | None,
+        category: str | None = None,
         page: int,
         page_size: int,
     ) -> NotificationListResponse:
         rows, total, unread = await self.service.list_for_user(
-            tenant_id, recipient_id, is_read=is_read, page=page, page_size=page_size
+            tenant_id, recipient_id, is_read=is_read, category=category, page=page, page_size=page_size
         )
         return NotificationListResponse(
             notifications=[NotificationRead.model_validate(r) for r in rows],

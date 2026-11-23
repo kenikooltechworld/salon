@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lib.socketio import emit_to_user
@@ -73,12 +73,32 @@ class NotificationService:
             )
         return rows
 
+    CATEGORY_PREFIXES: dict[str, tuple[str, ...]] = {
+        "services": ("service",),
+        "appointments": ("appointment",),
+        "commissions": ("commission",),
+        "system": (),
+    }
+
+    @classmethod
+    def _category_filter(cls, category: str | None):
+        if not category:
+            return None
+        prefixes = cls.CATEGORY_PREFIXES.get(category)
+        if prefixes is None:
+            return None
+        if prefixes:
+            return or_(*[Notification.notification_type.like(f"{p}%") for p in prefixes])
+        known = [p for ps in cls.CATEGORY_PREFIXES.values() for p in ps]
+        return ~or_(*[Notification.notification_type.like(f"{p}%") for p in known])
+
     async def list_for_user(
         self,
         tenant_id: uuid.UUID,
         recipient_id: uuid.UUID,
         *,
         is_read: bool | None = None,
+        category: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[Sequence[Notification], int, int]:
@@ -91,6 +111,10 @@ class NotificationService:
         if is_read is not None:
             base = base.where(Notification.is_read.is_(is_read))
             count_base = count_base.where(Notification.is_read.is_(is_read))
+        cat_filter = self._category_filter(category)
+        if cat_filter is not None:
+            base = base.where(cat_filter)
+            count_base = count_base.where(cat_filter)
         total = (await self.session.execute(count_base)).scalar_one()
         unread = (
             await self.session.execute(
