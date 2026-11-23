@@ -45,6 +45,21 @@ class ServiceController:
             page_size=page_size,
         )
 
+    async def _notify_staff(self, tenant_id: uuid.UUID, staff_ids: list[uuid.UUID], *, notification_type: str, title: str, content: str, data: dict) -> None:
+        if not staff_ids:
+            return
+        from sqlalchemy import select
+        from app.models.staff import Staff
+        result = await self.session.execute(select(Staff.user_id).where(Staff.tenant_id == tenant_id, Staff.id.in_(staff_ids)))
+        user_ids = []
+        for uid in result.scalars().all():
+            try:
+                user_ids.append(uuid.UUID(str(uid)))
+            except Exception:
+                continue
+        if user_ids:
+            await self.notifications.create_for_users(tenant_id, user_ids, notification_type=notification_type, title=title, content=content, data=data)
+
     async def create(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, data: ServiceCreate) -> ServiceRead:
         item = await self.service.create(tenant_id, data)
         await self.session.flush()
@@ -58,6 +73,7 @@ class ServiceController:
                 data={"service_id": str(item.id)},
             ),
         )
+        await self._notify_staff(tenant_id, list(item.staff_ids or []), notification_type="service.assigned", title="Service assigned", content=f'You were assigned to service "{item.name}".', data={"service_id": str(item.id)})
         return ServiceRead.model_validate(item)
 
     async def get(self, tenant_id: uuid.UUID, service_id: uuid.UUID) -> ServiceRead:
@@ -83,6 +99,7 @@ class ServiceController:
                 data={"service_id": str(item.id)},
             ),
         )
+        await self._notify_staff(tenant_id, list(item.staff_ids or []), notification_type="service.updated", title="Service updated", content=f'Service "{item.name}" was updated.', data={"service_id": str(item.id)})
         return ServiceRead.model_validate(item)
 
     async def delete(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, service_id: uuid.UUID) -> ServiceRead:
