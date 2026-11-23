@@ -4,7 +4,6 @@ let socket: Socket | null = null;
 
 function getSocketOrigin(): string {
   const api = (import.meta.env.VITE_API_URL as string | undefined) || "https://api.kenikoolsalon.com/api/v1";
-  // strip /api/v1 or any path
   try {
     const u = new URL(api);
     return u.origin;
@@ -14,9 +13,8 @@ function getSocketOrigin(): string {
 }
 
 export function connectSocket(): Socket {
-  if (socket?.connected) return socket;
   if (socket) {
-    socket.connect();
+    if (!socket.connected) socket.connect();
     return socket;
   }
   socket = io(getSocketOrigin(), {
@@ -24,12 +22,18 @@ export function connectSocket(): Socket {
     withCredentials: true,
     transports: ["websocket", "polling"],
     autoConnect: true,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
+    timeout: 20000,
   });
   return socket;
 }
 
 export function disconnectSocket(): void {
   if (socket) {
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
   }

@@ -40,6 +40,7 @@ class NotificationController:
         if row is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
         await self.session.commit()
+        await self.session.refresh(row)
         return NotificationRead.model_validate(row)
 
     async def mark_all_read(self, tenant_id: uuid.UUID, recipient_id: uuid.UUID) -> dict:
