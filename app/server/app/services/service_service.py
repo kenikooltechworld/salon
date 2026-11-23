@@ -105,6 +105,18 @@ class ServiceService:
         await self.session.refresh(service)
         return True
 
+    async def _ensure_unique_name(
+        self, tenant_id: uuid.UUID, name: str, *, exclude_id: uuid.UUID | None = None
+    ) -> None:
+        stmt = select(Service.id).where(Service.tenant_id == tenant_id, func.lower(Service.name) == name.strip().lower())
+        if exclude_id is not None:
+            stmt = stmt.where(Service.id != exclude_id)
+        exists = (await self.session.execute(stmt)).scalar_one_or_none()
+        if exists is not None:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Service name already exists")
+
     async def _validate_staff_ids(self, tenant_id: uuid.UUID, staff_ids: list[uuid.UUID]) -> None:
         if not staff_ids:
             return
