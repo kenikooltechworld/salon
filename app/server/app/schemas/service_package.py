@@ -23,7 +23,7 @@ class ServicePackageItemRead(ServicePackageItem):
 class ServicePackageCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
-    services: list[ServicePackageItem] = Field(min_length=1)
+    services: list[ServicePackageItem] = Field(min_length=2)
     package_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
@@ -44,7 +44,7 @@ class ServicePackageCreate(BaseModel):
 class ServicePackageUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
-    services: Optional[list[ServicePackageItem]] = Field(default=None, min_length=1)
+    services: Optional[list[ServicePackageItem]] = Field(default=None, min_length=2)
     package_price: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None

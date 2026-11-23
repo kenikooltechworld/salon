@@ -2,23 +2,29 @@ import { useEffect, useState } from "react";
 import { Box, Button, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
 import { LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
-import { useCreateService, useCreateServiceCategory, useUpdateService, type Service, type ServiceCategory } from "@/features/services";
+import { useCreateService, useCreateServiceCategory, useUpdateService, useUpdateServiceCategory, type Service, type ServiceCategory } from "@/features/services";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
 const ICONS = ["Scissors","Sparkles","Droplets","Brush","Heart","Star","Flower2","Hand","User","Crown"];
 const COLORS = ["#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6","#EC4899","#14B8A6","#6366F1","#F97316","#64748B"];
 
-export function CategoryModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v:boolean)=>void }) {
+export function CategoryModal({ open, onOpenChange, category }: { open: boolean; onOpenChange: (v:boolean)=>void; category?: ServiceCategory | null }) {
   const create = useCreateServiceCategory();
+  const update = useUpdateServiceCategory();
+  const isEdit = !!category?.id;
   const [form, setForm] = useState({ name: "", description: "", color: "#3B82F6", icon: "Scissors", is_active: true });
-  useEffect(() => { if (open) setForm({ name: "", description: "", color: "#3B82F6", icon: "Scissors", is_active: true }); }, [open]);
+  useEffect(() => { if (open) setForm(category ? { name: category.name, description: category.description||"", color: category.color||"#3B82F6", icon: category.icon||"Scissors", is_active: category.is_active } : { name: "", description: "", color: "#3B82F6", icon: "Scissors", is_active: true }); }, [open, category?.id]);
   const submit = async () => {
     if (!form.name.trim()) { toaster.create({ title: "Category name is required", type: "error" }); return; }
-    try { await create.mutateAsync(form as any); toaster.create({ title: "Category created", type: "success" }); onOpenChange(false); }
-    catch (e: any) { toaster.create({ title: "Failed to create category", description: e?.response?.data?.detail || e?.message, type: "error" }); }
+    try {
+      if (isEdit) await update.mutateAsync({ id: category!.id, payload: form as any });
+      else await create.mutateAsync(form as any);
+      toaster.create({ title: isEdit ? "Category updated" : "Category created", type: "success" }); onOpenChange(false);
+    }
+    catch (e: any) { toaster.create({ title: isEdit ? "Failed to update category" : "Failed to create category", description: e?.response?.data?.detail || e?.message, type: "error" }); }
   };
   return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-    <Dialog.Header><Dialog.Title>Add Service Category</Dialog.Title></Dialog.Header>
+    <Dialog.Header><Dialog.Title>{isEdit ? "Edit Service Category" : "Add Service Category"}</Dialog.Title></Dialog.Header>
     <Dialog.Body><Stack gap="4">
       <Field.Root><Field.Label>Category Name *</Field.Label><Input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field.Root>
       <Field.Root><Field.Label>Description</Field.Label><Textarea value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
@@ -26,8 +32,9 @@ export function CategoryModal({ open, onOpenChange }: { open: boolean; onOpenCha
         <Field.Root><Field.Label>Color</Field.Label><HStack wrap="wrap">{COLORS.map(c => <Box key={c} as="button" {...({type:"button"} as any)} w="7" h="7" rounded="full" bg={c} borderWidth="2px" borderColor={form.color===c?"fg":"transparent"} onClick={()=>setForm({...form,color:c})} />)}</HStack></Field.Root>
         <Field.Root><Field.Label>Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
       </Grid>
+      <Button size="sm" w="fit-content" variant={form.is_active?"solid":"outline"} colorPalette={form.is_active?"green":"gray"} onClick={()=>setForm({...form,is_active:!form.is_active})}>{form.is_active?"Active":"Inactive"}</Button>
     </Stack></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="brand" loading={create.isPending} onClick={submit}>Create Category</Button></Dialog.Footer>
+    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="brand" loading={create.isPending||update.isPending} onClick={submit}>{isEdit?"Update Category":"Create Category"}</Button></Dialog.Footer>
   </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
 }
 

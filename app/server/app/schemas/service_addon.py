@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 AddonCategory = Literal["product", "upgrade", "treatment"]
 

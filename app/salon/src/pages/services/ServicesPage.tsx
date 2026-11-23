@@ -10,8 +10,8 @@ import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { CategoryModal, ServiceFormDialog } from "./ServiceFormDialog";
 import {
-  useDeleteService, useServiceCategories, useServices,
-  type Service,
+  useDeleteService, useDeleteServiceCategory, useServiceCategories, useServices,
+  type Service, type ServiceCategory,
 } from "@/features/services";
 import { apiClient } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -35,11 +35,13 @@ export default function ServicesPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ServiceCategory | null>(null);
   const [editing, setEditing] = useState<Service | null>(null);
   const [del, setDel] = useState<Service | null>(null);
   const { data, isLoading } = useServices({ page: 1, page_size: 100, search: search || undefined });
   const catsQ = useServiceCategories();
   const delSvc = useDeleteService();
+  const delCat = useDeleteServiceCategory();
   const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff")).data });
   const services = data?.services || [];
   const categories = catsQ.data?.categories || [];
@@ -103,8 +105,8 @@ export default function ServicesPage() {
     {!isLoading && filtered.length===0 && <Box textAlign="center" py="10" color="fg.muted">No services found</Box>}
 
     <ServiceFormDialog open={showForm} onOpenChange={setShowForm} service={editing} categories={categories} staff={staff} />
-    <CategoryModal open={showCategory} onOpenChange={setShowCategory} />
-    {manage && <Button variant="ghost" size="sm" w="fit-content" onClick={()=>setShowCategory(true)}><LuPlus /> Add Category</Button>}
+    <CategoryModal open={showCategory} onOpenChange={(v)=>{setShowCategory(v); if(!v) setEditingCategory(null);}} category={editingCategory} />
+    {manage && <Card.Root><Card.Body><Flex justify="space-between" align="center" mb="3"><Heading size="sm">Categories</Heading><Button size="sm" variant="outline" onClick={()=>{setEditingCategory(null); setShowCategory(true);}}><LuPlus /> Add Category</Button></Flex><Flex gap="2" wrap="wrap">{categories.map(c => <HStack key={c.id} borderWidth="1px" rounded="md" px="3" py="2" gap="2"><Box w="3" h="3" rounded="full" bg={c.color||"gray.400"} /><Text fontSize="sm">{c.name}</Text>{!c.is_active && <Badge size="sm">Inactive</Badge>}<IconButton aria-label="Edit category" size="xs" variant="ghost" onClick={()=>{setEditingCategory(c); setShowCategory(true);}}><LuPencil /></IconButton><IconButton aria-label="Delete category" size="xs" variant="ghost" colorPalette="red" loading={delCat.isPending} onClick={async()=>{ if(!confirm(`Delete category "${c.name}"?`)) return; try { await delCat.mutateAsync(c.id); toaster.create({title:"Category deleted", type:"success"}); } catch(e:any){ toaster.create({title:"Delete failed", description:e?.response?.data?.detail||e?.message, type:"error"}); } }}><LuTrash2 /></IconButton></HStack>)}{categories.length===0 && <Text fontSize="sm" color="fg.muted">No categories.</Text>}</Flex></Card.Body></Card.Root>}
     <ConfirmDialog open={!!del} onOpenChange={(v:boolean)=>!v && setDel(null)} title="Delete Service" desc={`Are you sure you want to delete "${del?.name}"? This action cannot be undone.`} onConfirm={onDelete} loading={delSvc.isPending} />
   </Stack>;
 }
