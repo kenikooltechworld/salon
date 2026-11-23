@@ -82,9 +82,12 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
       </Grid>
       <Field.Root><Field.Label>Description</Field.Label><Textarea rows={3} value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
       <Field.Root><Field.Label>Service Image</Field.Label>
-        {upload.preview || form.public_image_url ? <Box position="relative" mb="2"><Image src={upload.preview || form.public_image_url} alt="preview" w="full" h="180px" objectFit="cover" rounded="md" /><IconButton aria-label="Remove image" position="absolute" top="2" right="2" size="sm" colorPalette="red" onClick={()=>{upload.clearPreview(); setForm({...form,public_image_url:""});}}><LuX /></IconButton></Box> : null}
-        <Input type="file" accept="image/*" onChange={onFile} />
-        {upload.isUploading && <Text fontSize="xs" color="fg.muted">Uploading {upload.uploadProgress}%</Text>}
+        <Stack gap="2">
+          {upload.error && <Box p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" rounded="md" color="red.fg" fontSize="sm">{upload.error}</Box>}
+          {(upload.preview || form.public_image_url) && <Box position="relative"><Image src={upload.preview || form.public_image_url} alt="Service preview" w="full" h="180px" objectFit="cover" rounded="md" borderWidth="1px" /><IconButton aria-label="Remove image" position="absolute" top="2" right="2" size="sm" colorPalette="red" onClick={()=>{upload.clearPreview(); setForm({...form,public_image_url:""});}}><LuX /></IconButton></Box>}
+          <Input type="file" accept="image/*" onChange={onFile} disabled={upload.isUploading} />
+          {upload.isUploading && <Box><HStack justify="space-between" mb="1"><Text fontSize="xs" color="fg.muted">Uploading image...</Text><Text fontSize="xs" color="fg.muted">{upload.uploadProgress}%</Text></HStack><Box h="2" bg="bg.muted" rounded="full" overflow="hidden"><Box h="full" bg="brand.solid" w={`${upload.uploadProgress}%`} transition="width 0.2s ease" /></Box></Box>}
+        </Stack>
       </Field.Root>
       <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
         <Field.Root><Field.Label>Duration (minutes)</Field.Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e)=>setForm({...form,duration_minutes:e.target.value})} /></Field.Root>
