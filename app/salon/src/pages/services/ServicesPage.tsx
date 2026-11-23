@@ -1,10 +1,10 @@
+import { formatNaira } from "@/components/ui/naira";
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge, Box, Button, Card, Dialog, Flex, Heading, HStack, IconButton, Image, Input,
   Portal, SimpleGrid, Skeleton, Stack, Text, VStack,
 } from "@chakra-ui/react";
-import { formatNaira } from "@/components/ui/naira";
 import { motion } from "motion/react";
 import { LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";

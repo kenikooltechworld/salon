@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Card, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect, Portal, SimpleGrid, Skeleton, Stack, Switch, Text, Textarea } from "@chakra-ui/react";
 import { formatNaira } from "@/components/ui/naira";
@@ -55,9 +55,9 @@ function PackageForm({ open, onOpenChange, pkg }: { open:boolean; onOpenChange:(
         <Stack gap="2">{(form.services||[]).map((item:any)=>{ const svc=services.find(s=>s.id===item.service_id); return <Flex key={item.service_id} gap="2" align="center" borderWidth="1px" rounded="md" p="2"><Box flex="1"><Text fontSize="sm" fontWeight="medium">{svc?.name||item.service_id}</Text><Text fontSize="xs" color="fg.muted">{formatNaira(svc?.price)} each</Text></Box><Input w="80px" type="number" min={1} value={item.quantity} onChange={(e)=>updateQty(item.service_id, Number(e.target.value))} /><IconButton aria-label="Remove service" size="sm" variant="ghost" colorPalette="red" onClick={()=>removeService(item.service_id)}><LuX /></IconButton></Flex>; })}</Stack>
       </Box>
       <Grid templateColumns={{ base:"1fr", md:"1fr 1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Original Price</Field.Label><Input value={formatNaira(original)} readOnly /></Field.Root>
+        <Field.Root><Field.Label>Original Price</Field.Label><Input value={`₦${original.toLocaleString()}`} readOnly /></Field.Root>
         <Field.Root><Field.Label>Package Price (₦)</Field.Label><Input type="number" min={0} value={form.package_price} onChange={(e)=>setForm({...form,package_price:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Savings</Field.Label><Input value={formatNaira(Math.max(0, original - Number(form.package_price||0)))} readOnly /></Field.Root>
+        <Field.Root><Field.Label>Savings</Field.Label><Input value={`₦${Math.max(0, original - Number(form.package_price||0)).toLocaleString()}`} readOnly /></Field.Root>
       </Grid>
       <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
         <Field.Root><Field.Label>Valid from</Field.Label><Input type="date" value={form.valid_from||""} onChange={(e)=>setForm({...form,valid_from:e.target.value})} /></Field.Root>

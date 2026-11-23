@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Box, Button, Checkbox, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
 import { LuPlus, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
@@ -105,7 +105,7 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
         <Field.Root><Field.Label>Service Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon||"Scissors"} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
       </Grid>
 
-      <Field.Root><Field.Label>Price (₦) *</Field.Label><Input type="number" min={0} step="100" value={form.price} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field.Root>
+      <Field.Root><Field.Label>Price ({currency}) *</Field.Label><Input type="number" min={0} step="100" value={form.price} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field.Root>
 
       <Box>
         <Text fontSize="sm" fontWeight="medium" mb="2">Assigned Staff</Text>
