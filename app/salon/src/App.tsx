@@ -29,6 +29,7 @@ import RegisterSuccessPage from "@/pages/RegisterSuccessPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ServicesPage from "@/pages/services/ServicesPage";
 import ServiceDetailPage from "@/pages/services/ServiceDetailPage";
+import ServiceAddonsPage from "@/pages/services/ServiceAddonsPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
 import NotificationDetailPage from "@/pages/notifications/NotificationDetailPage";
@@ -122,6 +123,7 @@ export default function App() {
           <Route element={<Protected><DashboardLayout /></Protected>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/services" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServicesPage /></RoleRoute>} />
+            <Route path="/services/addons" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceAddonsPage /></RoleRoute>} />
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />
