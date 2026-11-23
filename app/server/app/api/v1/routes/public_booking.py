@@ -68,13 +68,6 @@ async def create_public_booking(request: Request, data: PublicBookingCreate, ses
     return _booking_read(appt)
 
 
-@router.get("/bookings/{booking_id}", response_model=PublicBookingRead)
-async def get_public_booking(booking_id: uuid.UUID, request: Request, session: AsyncSession = Depends(get_db)):
-    ctx = await _ctx(request, session)
-    appt = await PublicBookingService(session).get_booking(ctx.tenant.id, booking_id)
-    return _booking_read(appt)
-
-
 @router.get("/bookings/statistics", response_model=StatisticsRead)
 async def public_statistics(request: Request, session: AsyncSession = Depends(get_db)):
     ctx = await _ctx(request, session)
@@ -94,6 +87,13 @@ async def public_review(request: Request, data: ReviewCreate, session: AsyncSess
     ctx = await _ctx(request, session)
     result = await PublicBookingService(session).submit_review(ctx.tenant.id, data.booking_id, data.rating, data.feedback)
     return ReviewRead(**result)
+
+
+@router.get("/bookings/{booking_id}", response_model=PublicBookingRead)
+async def get_public_booking(booking_id: uuid.UUID, request: Request, session: AsyncSession = Depends(get_db)):
+    ctx = await _ctx(request, session)
+    appt = await PublicBookingService(session).get_booking(ctx.tenant.id, booking_id)
+    return _booking_read(appt)
 
 
 def _booking_read(appt) -> PublicBookingRead:
