@@ -8,6 +8,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
 import { Logo } from "@/components/brand/Logo";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useServiceRealtime } from "@/hooks/useServiceRealtime";
 import { useNotificationStore } from "@/features/notifications";
 
 const baseItems: (SidebarItem & { roles?: string[] })[] = [
@@ -23,6 +24,7 @@ const COLLAPSE_AT = 12;
 
 export function DashboardLayout() {
   useTenantSettings();
+  useServiceRealtime();
   const [open, setOpen] = useState(false);
   const [size, setSize] = useState<number>(() => {
     const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIDEBAR_KEY) : null;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge, Box, Button, Card, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect,
   Portal, SimpleGrid, Skeleton, Stack, Text, Textarea, VStack,
@@ -127,6 +127,7 @@ export default function ServicesPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const manage = canManage(role);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
@@ -139,6 +140,13 @@ export default function ServicesPage() {
   const services = data?.services || [];
   const categories = catsQ.data?.categories || [];
   const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || services.length === 0) return;
+    const s = services.find((x) => x.id === editId);
+    if (s) { setEditing(s); setShowForm(true); setSearchParams({}, { replace: true }); }
+  }, [searchParams, services, setSearchParams]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
