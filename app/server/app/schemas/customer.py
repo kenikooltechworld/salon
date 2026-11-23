@@ -4,9 +4,12 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field
+
+CommunicationPreference = Literal["email", "sms", "phone", "none"]
+CustomerStatus = Literal["active", "inactive"]
 
 
 class CustomerCreate(BaseModel):
@@ -17,7 +20,8 @@ class CustomerCreate(BaseModel):
     address: Optional[str] = Field(default=None, max_length=500)
     date_of_birth: Optional[date] = None
     preferred_staff_id: Optional[str] = Field(default=None, max_length=64)
-    communication_preference: str = Field(default="email", max_length=16)
+    communication_preference: CommunicationPreference = "email"
+    status: CustomerStatus = "active"
     notification_preferences: Optional[dict] = None
 
 
@@ -29,8 +33,8 @@ class CustomerUpdate(BaseModel):
     address: Optional[str] = Field(default=None, max_length=500)
     date_of_birth: Optional[date] = None
     preferred_staff_id: Optional[str] = Field(default=None, max_length=64)
-    communication_preference: Optional[str] = Field(default=None, max_length=16)
-    status: Optional[str] = Field(default=None, max_length=16)
+    communication_preference: Optional[CommunicationPreference] = None
+    status: Optional[CustomerStatus] = None
     notification_preferences: Optional[dict] = None
 
 
@@ -53,3 +57,10 @@ class CustomerRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CustomerListResponse(BaseModel):
+    customers: list[CustomerRead]
+    total: int
+    page: int
+    page_size: int

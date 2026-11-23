@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Avatar, Box, Flex, HStack, IconButton, Menu, Portal, Splitter, Text, useBreakpointValue } from "@chakra-ui/react";
 import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuLogOut } from "react-icons/lu";
@@ -9,12 +9,12 @@ import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar"
 import { Logo } from "@/components/brand/Logo";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
-const items: SidebarItem[] = [
+const baseItems: (SidebarItem & { roles?: string[] })[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", to: "/dashboard" },
-  { icon: LuScissors, label: "Services", to: "/services" },
-  { icon: LuUsers, label: "Customers", to: "/customers" },
+  { icon: LuScissors, label: "Services", to: "/services", roles: ["owner", "admin", "manager", "staff"] },
+  { icon: LuUsers, label: "Customers", to: "/customers", roles: ["owner", "admin", "manager", "staff"] },
   { icon: LuUser, label: "Profile", to: "/profile" },
-  { icon: LuSettings, label: "Settings", to: "/settings" },
+  { icon: LuSettings, label: "Settings", to: "/settings", roles: ["owner", "admin"] },
 ];
 
 const SIDEBAR_KEY = "dashboard.sidebar.size";
@@ -32,6 +32,10 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const collapsed = size <= COLLAPSE_AT;
+  const items = useMemo(() => {
+    const role = (user?.role || "").toLowerCase();
+    return baseItems.filter((i) => !i.roles || i.roles.includes(role));
+  }, [user?.role]);
 
   useEffect(() => { window.localStorage.setItem(SIDEBAR_KEY, String(size)); }, [size]);
 
@@ -55,8 +59,8 @@ export function DashboardLayout() {
               <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
                 <HStack gap="3"><Logo to="/dashboard" showText={false} size="sm" /><Text fontWeight="semibold">Dashboard</Text></HStack>
                 <HStack gap="2">
-                  <NotificationBell />
                   <ColorModeButton />
+                  <NotificationBell />
                   <Menu.Root>
                     <Menu.Trigger asChild>
                       <HStack as="button" gap="2" px="2" py="1" rounded="md" _hover={{ bg: "bg.muted" }}>
@@ -89,8 +93,8 @@ export function DashboardLayout() {
                 <Logo to="/dashboard" showText={false} size="sm" />
               </HStack>
               <HStack gap="2">
-                <NotificationBell />
                 <ColorModeButton />
+                <NotificationBell />
                 <Avatar.Root size="sm" onClick={() => navigate("/profile")} cursor="pointer"><Avatar.Fallback name={userName} /></Avatar.Root>
               </HStack>
             </HStack>

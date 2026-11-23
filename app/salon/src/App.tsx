@@ -22,7 +22,8 @@ import ProfilePage from "@/pages/ProfilePage";
 import RegisterPage from "@/pages/RegisterPage";
 import RegisterSuccessPage from "@/pages/RegisterSuccessPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
-import ServicesPage from "@/pages/ServicesPage";
+import ServicesPage from "@/pages/services/ServicesPage";
+import ServiceDetailPage from "@/pages/services/ServiceDetailPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import GeneralSettings from "@/pages/settings/GeneralSettings";
@@ -38,6 +39,14 @@ function Protected({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   if (!isAuthenticated && !user) return <Navigate to="/auth/login" replace />;
+  return <>{children}</>;
+}
+
+function RoleRoute({ roles, children }: { roles: string[]; children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  const role = (user?.role || "").toLowerCase();
+  if (!user) return <Navigate to="/auth/login" replace />;
+  if (roles.length > 0 && !roles.map((r) => r.toLowerCase()).includes(role)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -87,18 +96,19 @@ export default function App() {
 
           <Route element={<Protected><DashboardLayout /></Protected>}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/services" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServicesPage /></RoleRoute>} />
+            <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
+            <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/settings/general" element={<GeneralSettings />} />
-            <Route path="/settings/commission" element={<CommissionSettings />} />
-            <Route path="/settings/financial" element={<FinancialSettings />} />
-            <Route path="/settings/operational" element={<OperationalSettings />} />
-            <Route path="/settings/billing" element={<BillingSettings />} />
-            <Route path="/settings/notifications" element={<NotificationSettings />} />
-            <Route path="/settings/email-templates" element={<EmailTemplatesSettings />} />
-            <Route path="/settings/locations" element={<LocationsSettings />} />
+            <Route path="/settings" element={<RoleRoute roles={["owner","admin"]}><SettingsPage /></RoleRoute>} />
+            <Route path="/settings/general" element={<RoleRoute roles={["owner","admin"]}><GeneralSettings /></RoleRoute>} />
+            <Route path="/settings/commission" element={<RoleRoute roles={["owner","admin"]}><CommissionSettings /></RoleRoute>} />
+            <Route path="/settings/financial" element={<RoleRoute roles={["owner","admin"]}><FinancialSettings /></RoleRoute>} />
+            <Route path="/settings/operational" element={<RoleRoute roles={["owner","admin"]}><OperationalSettings /></RoleRoute>} />
+            <Route path="/settings/billing" element={<RoleRoute roles={["owner","admin"]}><BillingSettings /></RoleRoute>} />
+            <Route path="/settings/notifications" element={<RoleRoute roles={["owner","admin"]}><NotificationSettings /></RoleRoute>} />
+            <Route path="/settings/email-templates" element={<RoleRoute roles={["owner","admin"]}><EmailTemplatesSettings /></RoleRoute>} />
+            <Route path="/settings/locations" element={<RoleRoute roles={["owner","admin"]}><LocationsSettings /></RoleRoute>} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/mfa" element={<MfaPage />} />
             <Route path="/auth/mfa/setup" element={<MfaPage />} />
