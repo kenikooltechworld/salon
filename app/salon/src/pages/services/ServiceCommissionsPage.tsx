@@ -56,6 +56,8 @@ export default function ServiceCommissionsPage() {
         {[["Total earned", summary?.total_earned],["Pending", summary?.total_pending],["Paid", summary?.total_paid],["Services", summary?.total_services]].map(([label,val])=> <Card.Root key={String(label)}><Card.Body><Text fontSize="sm" color="fg.muted">{label}</Text><Heading size="lg">{label==="Services"?Number(val||0):fmt(val)}</Heading></Card.Body></Card.Root>)}
       </Grid>
 
+      {summaryQ.data?.breakdown?.length ? <Card.Root><Card.Body><Heading size="md" mb="3">Breakdown by service</Heading><Stack gap="2">{summaryQ.data.breakdown.map((b:any) => <Flex key={b.service_id} justify="space-between" borderBottomWidth="1px" pb="2"><Box><Text fontWeight="medium">{b.service_name || b.service_id}</Text><Text fontSize="xs" color="fg.muted">{b.count} commission(s)</Text></Box><Text fontWeight="semibold">{fmt(b.total_commission)}</Text></Flex>)}</Stack></Card.Body></Card.Root> : null}
+
       <Card.Root><Card.Body>
         <Flex justify="space-between" align="center" mb="4" gap="3" direction={{ base:"column", md:"row" }}>
           <Box><Heading size="md">Commissions</Heading><Text fontSize="sm" color="fg.muted">Pending total: {fmt(pending?.total_pending)} • {pending?.commissions?.length||0} pending entries</Text></Box>
