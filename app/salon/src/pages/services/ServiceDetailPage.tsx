@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Skeleton, Stack, Text } from "@chakra-ui/react";
+import { Badge, Box, Button, Card, CloseButton, Dialog, Flex, Grid, Heading, HStack, Portal, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
@@ -17,6 +17,7 @@ export default function ServiceDetailPage() {
   const manage = ["owner","admin","manager"].includes((role||"").toLowerCase());
   const { data: service, isLoading } = useService(id);
   const del = useDeleteService();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff")).data });
   const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
   const assigned = useMemo(() => staff.filter((s: any) => (service?.staff_ids || []).includes(s.id)), [staff, service?.staff_ids]);
@@ -25,16 +26,21 @@ export default function ServiceDetailPage() {
   if (!service) return <Card.Root><Card.Body><Text>Service not found.</Text><Button mt="3" onClick={() => navigate("/services")}>Back</Button></Card.Body></Card.Root>;
 
   const remove = async () => {
-    if (!confirm(`Delete ${service.name}?`)) return;
-    try { await del.mutateAsync(service.id); toaster.create({ title: "Service deactivated", type: "success" }); navigate("/services"); }
-    catch (e: any) { toaster.create({ title: "Delete failed", description: e?.message, type: "error" }); }
+    try {
+      await del.mutateAsync(service.id);
+      toaster.create({ title: "Service deactivated", type: "success" });
+      setConfirmOpen(false);
+      navigate("/services");
+    } catch (e: any) {
+      toaster.create({ title: "Delete failed", description: e?.message, type: "error" });
+    }
   };
 
   return (
     <Stack gap="6">
       <Flex justify="space-between" gap="3" direction={{ base: "column", md: "row" }}>
         <HStack><Button variant="ghost" onClick={() => navigate("/services")}><LuArrowLeft /> Back</Button><Box><Heading size="xl">{service.name}</Heading><Text color="fg.muted">{service.category}</Text></Box></HStack>
-        {manage && <HStack><Button variant="outline" onClick={() => navigate(`/services?edit=${service.id}`)}><LuPencil /> Edit in list</Button><Button colorPalette="red" variant="outline" loading={del.isPending} onClick={remove}><LuTrash2 /> Delete</Button></HStack>}
+        {manage && <HStack><Button variant="outline" onClick={() => navigate(`/services?edit=${service.id}`)}><LuPencil /> Edit in list</Button><Button colorPalette="red" variant="outline" onClick={() => setConfirmOpen(true)}><LuTrash2 /> Delete</Button></HStack>}
       </Flex>
 
       <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap="6">
@@ -60,6 +66,31 @@ export default function ServiceDetailPage() {
           <Card.Root><Card.Body><Heading size="md" mb="3">Tags</Heading><HStack gap="2" flexWrap="wrap">{(service.tags||[]).map(t => <Badge key={t}>{t}</Badge>)}{(!service.tags||service.tags.length===0) && <Text fontSize="sm" color="fg.muted">No tags.</Text>}</HStack></Card.Body></Card.Root>
         </Stack>
       </Grid>
+
+      <Dialog.Root open={confirmOpen} onOpenChange={(e) => setConfirmOpen(e.open)} role="alertdialog">
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title>Delete service</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Text>Are you sure you want to delete <Text as="span" fontWeight="semibold">{service.name}</Text>? This will deactivate the service.</Text>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Dialog.ActionTrigger asChild>
+                  <Button variant="outline" disabled={del.isPending}>Cancel</Button>
+                </Dialog.ActionTrigger>
+                <Button colorPalette="red" loading={del.isPending} onClick={remove}>Delete</Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </Stack>
   );
 }
