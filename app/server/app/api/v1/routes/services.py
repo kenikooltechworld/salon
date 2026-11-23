@@ -44,7 +44,7 @@ async def create_service(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceController(session)
-    return await controller.create(current_user.tenant_id, data)
+    return await controller.create(current_user.tenant_id, current_user.id, data)
 
 
 @router.get("/{service_id}", response_model=ServiceRead)
@@ -65,7 +65,7 @@ async def update_service(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceController(session)
-    return await controller.update(current_user.tenant_id, service_id, data)
+    return await controller.update(current_user.tenant_id, current_user.id, service_id, data)
 
 
 @router.delete("/{service_id}", response_model=ServiceRead)
@@ -76,4 +76,4 @@ async def delete_service(
 ):
     """Soft-delete a service (marks inactive, preserves history)."""
     controller = ServiceController(session)
-    return await controller.delete(current_user.tenant_id, service_id)
+    return await controller.delete(current_user.tenant_id, current_user.id, service_id)

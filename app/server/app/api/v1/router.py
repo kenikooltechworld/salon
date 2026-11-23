@@ -7,6 +7,7 @@ from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import customers as customer_routes
 from app.api.v1.routes import health as health_routes
 from app.api.v1.routes import media as media_routes
+from app.api.v1.routes import notifications as notification_routes
 from app.api.v1.routes import registration as registration_routes
 from app.api.v1.routes import service_addons as service_addon_routes
 from app.api.v1.routes import service_categories as service_category_routes
@@ -24,6 +25,7 @@ api_router.include_router(auth_routes.router)
 api_router.include_router(tenant_routes.router)
 api_router.include_router(settings_routes.router)
 api_router.include_router(media_routes.router)
+api_router.include_router(notification_routes.router)
 api_router.include_router(service_category_routes.router)
 api_router.include_router(service_routes.router)
 api_router.include_router(service_addon_routes.router)

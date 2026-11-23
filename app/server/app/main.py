@@ -6,6 +6,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
+import socketio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,6 +21,7 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.db import close_engine, init_engine
 from app.lib.csrf import enforce_csrf
+from app.lib.socketio import sio
 from app.routes.root_routes import router as root_router
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
@@ -62,4 +64,5 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+fastapi_app = create_app()
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

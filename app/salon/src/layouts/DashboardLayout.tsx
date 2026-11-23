@@ -7,6 +7,7 @@ import { useTenantSettings } from "@/features/settings";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { AppSidebar, type SidebarItem } from "@/components/dashboard/AppSidebar";
 import { Logo } from "@/components/brand/Logo";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const items: SidebarItem[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", to: "/dashboard" },
@@ -54,6 +55,7 @@ export function DashboardLayout() {
               <HStack h="16" px="4" borderBottomWidth="1px" bg="bg.panel" justify="space-between" position="sticky" top="0" zIndex="10">
                 <HStack gap="3"><Logo to="/dashboard" showText={false} size="sm" /><Text fontWeight="semibold">Dashboard</Text></HStack>
                 <HStack gap="2">
+                  <NotificationBell />
                   <ColorModeButton />
                   <Menu.Root>
                     <Menu.Trigger asChild>
@@ -87,6 +89,7 @@ export function DashboardLayout() {
                 <Logo to="/dashboard" showText={false} size="sm" />
               </HStack>
               <HStack gap="2">
+                <NotificationBell />
                 <ColorModeButton />
                 <Avatar.Root size="sm" onClick={() => navigate("/profile")} cursor="pointer"><Avatar.Fallback name={userName} /></Avatar.Root>
               </HStack>

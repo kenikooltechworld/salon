@@ -1,6 +1,7 @@
 ﻿from .appointment import Appointment
 from .base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from .customer import Customer
+from .notification import Notification
 from .service import Service
 from .service_addon import ServiceAddon
 from .service_category import ServiceCategory
@@ -15,6 +16,7 @@ __all__ = [
     "Appointment",
     "Base",
     "Customer",
+    "Notification",
     "Service",
     "ServiceAddon",
     "ServiceCategory",
