@@ -35,7 +35,7 @@ async def create_category(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)
-    return await controller.create(current_user.tenant_id, data)
+    return await controller.create(current_user.tenant_id, current_user.id, data)
 
 
 @router.get("/{category_id}", response_model=ServiceCategoryRead)
@@ -56,7 +56,7 @@ async def update_category(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)
-    return await controller.update(current_user.tenant_id, category_id, data)
+    return await controller.update(current_user.tenant_id, current_user.id, category_id, data)
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -66,4 +66,4 @@ async def delete_category(
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)
-    await controller.delete(current_user.tenant_id, category_id)
+    await controller.delete(current_user.tenant_id, current_user.id, category_id)

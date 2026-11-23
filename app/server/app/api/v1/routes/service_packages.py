@@ -73,4 +73,4 @@ async def delete_package(
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    await ServicePackageController(session).delete(current_user.tenant_id, package_id)
+    await ServicePackageController(session).delete(current_user.tenant_id, package_id, current_user.id)

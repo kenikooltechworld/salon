@@ -33,7 +33,7 @@ async def create_addon(
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    return await ServiceAddonController(session).create(current_user.tenant_id, data)
+    return await ServiceAddonController(session).create(current_user.tenant_id, current_user.id, data)
 
 
 @router.get("/{addon_id}", response_model=ServiceAddonRead)
@@ -52,7 +52,7 @@ async def update_addon(
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    return await ServiceAddonController(session).update(current_user.tenant_id, addon_id, data)
+    return await ServiceAddonController(session).update(current_user.tenant_id, current_user.id, addon_id, data)
 
 
 @router.delete("/{addon_id}", response_model=ServiceAddonRead)
@@ -61,4 +61,4 @@ async def delete_addon(
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    return await ServiceAddonController(session).delete(current_user.tenant_id, addon_id)
+    return await ServiceAddonController(session).delete(current_user.tenant_id, current_user.id, addon_id)
