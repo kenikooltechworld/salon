@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Box, Button, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
-import { LuX } from "react-icons/lu";
+import { Box, Button, Checkbox, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
+import { LuPlus, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useCreateService, useCreateServiceCategory, useUpdateService, useUpdateServiceCategory, type Service, type ServiceCategory } from "@/features/services";
 import { useImageUpload } from "@/hooks/useImageUpload";
@@ -42,6 +42,7 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
   const create = useCreateService(); const update = useUpdateService();
   const upload = useImageUpload({ folder: "salon-services" });
   const isEdit = !!service?.id;
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [form, setForm] = useState<any>({});
   useEffect(() => {
     if (!open) return;
@@ -73,14 +74,15 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
     } catch (e:any) { toaster.create({ title:"Save failed", description: e?.response?.data?.detail || e?.message, type:"error" }); }
   };
 
-  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)} size="xl" scrollBehavior="inside"><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
+  const setChecked = (key: string, checked: boolean | "indeterminate") => setForm((p:any)=>({ ...p, [key]: checked === true }));
+
+  return <>
+  <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)} size="xl" scrollBehavior="inside"><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
     <Dialog.Header><Dialog.Title>{isEdit ? "Edit Service" : "Create Service"}</Dialog.Title></Dialog.Header>
     <Dialog.Body><Stack gap="4">
-      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Service Name *</Field.Label><Input value={form.name||""} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Category *</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.category||""} onChange={(e)=>setForm({...form,category:e.target.value})}><option value="">Select category</option>{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
-      </Grid>
-      <Field.Root><Field.Label>Description</Field.Label><Textarea rows={3} value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
+      <Field.Root><Field.Label>Service Name *</Field.Label><Input value={form.name||""} onChange={(e)=>setForm({...form,name:e.target.value})} placeholder="e.g., Haircut" /></Field.Root>
+      <Field.Root><Field.Label>Description</Field.Label><Textarea rows={3} value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} placeholder="Service description" /></Field.Root>
+
       <Field.Root><Field.Label>Service Image</Field.Label>
         <Stack gap="2">
           {upload.error && <Box p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" rounded="md" color="red.fg" fontSize="sm">{upload.error}</Box>}
@@ -89,26 +91,71 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
           {upload.isUploading && <Box><HStack justify="space-between" mb="1"><Text fontSize="xs" color="fg.muted">Uploading image...</Text><Text fontSize="xs" color="fg.muted">{upload.uploadProgress}%</Text></HStack><Box h="2" bg="bg.muted" rounded="full" overflow="hidden"><Box h="full" bg="brand.solid" w={`${upload.uploadProgress}%`} transition="width 0.2s ease" /></Box></Box>}
         </Stack>
       </Field.Root>
-      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Duration (minutes)</Field.Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e)=>setForm({...form,duration_minutes:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Price (₦)</Field.Label><Input type="number" min={0} value={form.price} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field.Root>
-      </Grid>
-      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Color</Field.Label><HStack wrap="wrap">{COLORS.map(c=><Box key={c} as="button" {...({type:"button"} as any)} w="7" h="7" rounded="full" bg={c} borderWidth="2px" borderColor={form.color===c?"fg":"transparent"} onClick={()=>setForm({...form,color:c})} />)}</HStack></Field.Root>
-        <Field.Root><Field.Label>Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon||"Scissors"} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
-      </Grid>
-      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Commission %</Field.Label><Input type="number" min={0} max={100} value={form.commission_percentage ?? ""} onChange={(e)=>setForm({...form,commission_percentage:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Public Description</Field.Label><Input value={form.public_description||""} onChange={(e)=>setForm({...form,public_description:e.target.value})} /></Field.Root>
-      </Grid>
-      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Tags (comma separated)</Field.Label><Input value={form.tags||""} onChange={(e)=>setForm({...form,tags:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Benefits (comma separated)</Field.Label><Input value={form.benefits||""} onChange={(e)=>setForm({...form,benefits:e.target.value})} /></Field.Root>
-      </Grid>
-      <Box><Text fontSize="sm" fontWeight="medium" mb="2">Assigned Staff</Text><Flex gap="2" wrap="wrap">{staff.map((s:any)=>{ const active=form.staff_ids?.includes(s.id); const name = [s.first_name,s.last_name].filter(Boolean).join(" ") || s.email || s.user_id; return <Button key={s.id} size="xs" variant={active?"solid":"outline"} colorPalette={active?"brand":"gray"} onClick={()=>toggleStaff(s.id)}>{name}</Button>; })}{staff.length===0 && <Text fontSize="sm" color="fg.muted">No staff members found.</Text>}</Flex></Box>
-      <HStack gap="3" wrap="wrap">{[["is_active","Active"],["is_published","Published"],["allow_public_booking","Public booking"],["allow_pay_now","Pay now"]].map(([k,label])=> <Button key={k} size="sm" variant={form[k]?"solid":"outline"} colorPalette={form[k]?"green":"gray"} onClick={()=>setForm({...form,[k]:!form[k]})}>{label}</Button>)}</HStack>
-    </Stack></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="brand" loading={create.isPending||update.isPending||upload.isUploading} onClick={submit}>{isEdit?"Update Service":"Create Service"}</Button></Dialog.Footer>
-  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
-}
 
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root>
+          <Flex justify="space-between" align="center" mb="1"><Field.Label mb="0">Category *</Field.Label><Button type="button" size="xs" variant="ghost" colorPalette="brand" onClick={()=>setShowCategoryModal(true)}><LuPlus /> Add</Button></Flex>
+          <NativeSelect.Root><NativeSelect.Field value={form.category||""} onChange={(e)=>setForm({...form,category:e.target.value})}><option value="">Select a category</option>{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+        </Field.Root>
+        <Field.Root><Field.Label>Duration (minutes) *</Field.Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e)=>setForm({...form,duration_minutes:e.target.value})} /></Field.Root>
+      </Grid>
+
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Service Color</Field.Label><HStack wrap="wrap">{COLORS.map(c=><Box key={c} as="button" {...({type:"button"} as any)} w="7" h="7" rounded="full" bg={c} borderWidth="2px" borderColor={form.color===c?"fg":"transparent"} onClick={()=>setForm({...form,color:c})} />)}</HStack></Field.Root>
+        <Field.Root><Field.Label>Service Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon||"Scissors"} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+      </Grid>
+
+      <Field.Root><Field.Label>Price (₦) *</Field.Label><Input type="number" min={0} step="100" value={form.price} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field.Root>
+
+      <Box>
+        <Text fontSize="sm" fontWeight="medium" mb="2">Assigned Staff</Text>
+        <Box borderWidth="1px" rounded="md" maxH="48" overflowY="auto" divideY="1px">
+          {staff.length === 0 ? <Text fontSize="sm" color="fg.muted" p="3">No staff members found.</Text> : staff.map((s:any) => {
+            const id = s.id;
+            const checked = (form.staff_ids||[]).includes(id);
+            const name = [s.first_name, s.last_name].filter(Boolean).join(" ") || s.email || s.user_id;
+            const specialties = Array.isArray(s.specialties) ? s.specialties : [];
+            return <Flex key={id} as="label" align="center" gap="3" px="3" py="2" cursor="pointer" bg={checked?"brand.subtle":"transparent"} _hover={{ bg: checked?"brand.subtle":"bg.muted" }}>
+              <Checkbox.Root checked={checked} onCheckedChange={() => toggleStaff(id)}>
+                <Checkbox.HiddenInput />
+                <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+              </Checkbox.Root>
+              <Box flex="1" minW="0">
+                <Text fontSize="sm" fontWeight="medium" truncate>{name}</Text>
+                {specialties.length > 0 && <Text fontSize="xs" color="fg.muted" truncate>{specialties.join(", ")}</Text>}
+              </Box>
+            </Flex>;
+          })}
+        </Box>
+      </Box>
+
+      <Box borderTopWidth="1px" pt="4">
+        <Stack gap="3">
+          <Checkbox.Root checked={!!form.is_active} onCheckedChange={(e)=>setChecked("is_active", e.checked)}><Checkbox.HiddenInput /><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control><Checkbox.Label>Active</Checkbox.Label></Checkbox.Root>
+          <Checkbox.Root checked={!!form.is_published} onCheckedChange={(e)=>setChecked("is_published", e.checked)}><Checkbox.HiddenInput /><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control><Checkbox.Label>Published</Checkbox.Label></Checkbox.Root>
+        </Stack>
+      </Box>
+
+      <Box borderTopWidth="1px" pt="4">
+        <Text fontSize="sm" fontWeight="semibold" mb="3">Public / Booking Settings</Text>
+        <Stack gap="3">
+          <Checkbox.Root checked={!!form.allow_public_booking} onCheckedChange={(e)=>setChecked("allow_public_booking", e.checked)}><Checkbox.HiddenInput /><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control><Checkbox.Label>Allow public booking</Checkbox.Label></Checkbox.Root>
+          <Checkbox.Root checked={!!form.allow_pay_now} onCheckedChange={(e)=>setChecked("allow_pay_now", e.checked)}><Checkbox.HiddenInput /><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control><Checkbox.Label>Allow pay now</Checkbox.Label></Checkbox.Root>
+          <Field.Root><Field.Label>Public Description</Field.Label><Textarea rows={2} value={form.public_description||""} onChange={(e)=>setForm({...form,public_description:e.target.value})} placeholder="Optional description shown on public booking page" /></Field.Root>
+        </Stack>
+      </Box>
+
+      <Box borderTopWidth="1px" pt="4">
+        <Text fontSize="sm" fontWeight="semibold" mb="3">Advanced</Text>
+        <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+          <Field.Root><Field.Label>Commission %</Field.Label><Input type="number" min={0} max={100} step="0.01" value={form.commission_percentage ?? ""} onChange={(e)=>setForm({...form,commission_percentage:e.target.value})} placeholder="Optional" /></Field.Root>
+          <Field.Root><Field.Label>Tags (comma separated)</Field.Label><Input value={form.tags||""} onChange={(e)=>setForm({...form,tags:e.target.value})} placeholder="e.g. popular, bridal" /></Field.Root>
+        </Grid>
+        <Field.Root mt="4"><Field.Label>Benefits (comma separated)</Field.Label><Textarea rows={2} value={form.benefits||""} onChange={(e)=>setForm({...form,benefits:e.target.value})} placeholder="e.g. Long lasting, Includes consultation" /></Field.Root>
+      </Box>
+    </Stack></Dialog.Body>
+    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)} disabled={create.isPending||update.isPending||upload.isUploading}>Cancel</Button><Button colorPalette="brand" loading={create.isPending||update.isPending||upload.isUploading} onClick={submit}>{upload.isUploading ? "Uploading..." : isEdit ? "Update Service" : "Create Service"}</Button></Dialog.Footer>
+  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>
+  <CategoryModal open={showCategoryModal} onOpenChange={setShowCategoryModal} />
+  </>;
+}
