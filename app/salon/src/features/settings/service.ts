@@ -1,4 +1,4 @@
-﻿import type { CommissionSettingsData, TenantSettingsData } from "./types";
+﻿import type { CommissionSettingsData, FinancialSettingsData, TenantSettingsData } from "./types";
 
 export const SETTINGS_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -38,6 +38,18 @@ export const DEFAULT_COMMISSION_SETTINGS: CommissionSettingsData = {
   paymentSettings: { autoSettlement: false, settlementDay: 1 },
 };
 
+export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettingsData = {
+  balance_enforcement_enabled: true,
+  minimum_balance_threshold: 0,
+  refund_policy_enabled: true,
+  refund_window_days: 30,
+  commission_tracking_enabled: true,
+  staff_commission_percentage: 10,
+  service_commission_percentage: 5,
+  invoice_numbering_prefix: "INV",
+  invoice_numbering_start: 1000,
+};
+
 export function normalizeTenantSettings(data?: Partial<TenantSettingsData> | null): TenantSettingsData {
   return {
     ...DEFAULT_TENANT_SETTINGS,
@@ -65,6 +77,20 @@ export function normalizeCommissionSettings(data?: Partial<CommissionSettingsDat
       autoSettlement: data?.paymentSettings?.autoSettlement ?? false,
       settlementDay: Math.min(31, Math.max(1, Number(data?.paymentSettings?.settlementDay ?? 1))),
     },
+  };
+}
+
+export function normalizeFinancialSettings(data?: Partial<FinancialSettingsData> | null): FinancialSettingsData {
+  return {
+    balance_enforcement_enabled: data?.balance_enforcement_enabled ?? DEFAULT_FINANCIAL_SETTINGS.balance_enforcement_enabled,
+    minimum_balance_threshold: Math.max(0, Number(data?.minimum_balance_threshold ?? 0)),
+    refund_policy_enabled: data?.refund_policy_enabled ?? DEFAULT_FINANCIAL_SETTINGS.refund_policy_enabled,
+    refund_window_days: Math.min(365, Math.max(1, Number(data?.refund_window_days ?? 30))),
+    commission_tracking_enabled: data?.commission_tracking_enabled ?? DEFAULT_FINANCIAL_SETTINGS.commission_tracking_enabled,
+    staff_commission_percentage: Math.min(100, Math.max(0, Number(data?.staff_commission_percentage ?? 10))),
+    service_commission_percentage: Math.min(100, Math.max(0, Number(data?.service_commission_percentage ?? 5))),
+    invoice_numbering_prefix: String(data?.invoice_numbering_prefix || "INV").trim() || "INV",
+    invoice_numbering_start: Math.max(1, Math.floor(Number(data?.invoice_numbering_start ?? 1000))),
   };
 }
 

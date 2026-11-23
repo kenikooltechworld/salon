@@ -70,3 +70,19 @@ export interface CommissionSettingsData {
 export interface CommissionSettingsResponse {
   data: CommissionSettingsData;
 }
+
+export interface FinancialSettingsData {
+  balance_enforcement_enabled: boolean;
+  minimum_balance_threshold: number;
+  refund_policy_enabled: boolean;
+  refund_window_days: number;
+  commission_tracking_enabled: boolean;
+  staff_commission_percentage: number;
+  service_commission_percentage: number;
+  invoice_numbering_prefix: string;
+  invoice_numbering_start: number;
+}
+
+export interface FinancialSettingsResponse {
+  data: FinancialSettingsData;
+}

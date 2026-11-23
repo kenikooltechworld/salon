@@ -1,12 +1,13 @@
 ﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/store";
 import { settingsApi } from "./api";
-import { getErrorMessage, normalizeCommissionSettings, normalizeTenantSettings } from "./service";
+import { getErrorMessage, normalizeCommissionSettings, normalizeFinancialSettings, normalizeTenantSettings } from "./service";
 import { useSettingsStore } from "./store";
-import type { CommissionSettingsData, TenantSettingsData } from "./types";
+import type { CommissionSettingsData, FinancialSettingsData, TenantSettingsData } from "./types";
 
 export const SETTINGS_KEY = ["tenant-settings"] as const;
 export const COMMISSION_SETTINGS_KEY = ["commission-settings"] as const;
+export const FINANCIAL_SETTINGS_KEY = ["financial-settings"] as const;
 
 function syncAuthTenant(data: TenantSettingsData) {
   const { tenant, user, setSession } = useAuthStore.getState();
@@ -77,6 +78,24 @@ export function useUpdateCommissionSettings() {
     mutationFn: async (payload: CommissionSettingsData) => normalizeCommissionSettings((await settingsApi.updateCommission(payload)).data.data),
     onSuccess: (data) => {
       qc.setQueryData(COMMISSION_SETTINGS_KEY, data);
+    },
+  });
+}
+
+export function useFinancialSettings() {
+  return useQuery({
+    queryKey: FINANCIAL_SETTINGS_KEY,
+    queryFn: async () => normalizeFinancialSettings((await settingsApi.getFinancial()).data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateFinancialSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: FinancialSettingsData) => normalizeFinancialSettings((await settingsApi.updateFinancial(payload)).data.data),
+    onSuccess: (data) => {
+      qc.setQueryData(FINANCIAL_SETTINGS_KEY, data);
     },
   });
 }
