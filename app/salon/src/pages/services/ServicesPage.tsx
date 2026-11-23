@@ -155,7 +155,7 @@ export default function ServicesPage() {
   return <Stack gap="6">
     <Flex justify="space-between" gap="4" direction={{ base:"column", md:"row" }} align={{ md:"center" }}>
       <Box><Heading size="xl">Services</Heading><Text color="fg.muted">Manage your salon services and add-ons</Text></Box>
-      {manage && <HStack gap="2" wrap="wrap"><Button variant="outline" onClick={()=>navigate("/services/addons")}>Manage Add-ons</Button><Button variant="outline" onClick={()=>navigate("/services/packages")}>Packages</Button><Button colorPalette="brand" onClick={()=>{setEditing(null); setShowForm(true);}}><LuPlus /> Add Service</Button></HStack>}
+      {manage && <HStack gap="2" wrap="wrap"><Button variant="outline" onClick={()=>navigate("/services/addons")}>Manage Add-ons</Button><Button variant="outline" onClick={()=>navigate("/services/packages")}>Packages</Button><Button variant="outline" onClick={()=>navigate("/services/commissions")}>Commissions</Button><Button colorPalette="brand" onClick={()=>{setEditing(null); setShowForm(true);}}><LuPlus /> Add Service</Button></HStack>}
     </Flex>
 
     <HStack><Box color="fg.muted"><LuSearch /></Box><Input placeholder="Search services..." value={search} onChange={(e)=>setSearch(e.target.value)} /></HStack>
