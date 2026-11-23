@@ -1,14 +1,15 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, IconButton, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
+import { Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
 import { formatNaira } from "@/components/ui/naira";
-import { LuArrowLeft, LuPencil, LuTrash2, LuUsers, LuX } from "react-icons/lu";
+import { LuArrowLeft, LuPencil, LuTrash2, LuUsers } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { useDeleteService, useService, useServiceCategories } from "@/features/services";
 import { apiClient } from "@/lib/api";
 import { ServiceFormDialog } from "./ServiceFormDialog";
+import { ImageLightbox } from "@/components/services/ImageLightbox";
 
 
 export default function ServiceDetailPage() {
@@ -78,8 +79,6 @@ export default function ServiceDetailPage() {
       </Dialog.Content></Dialog.Positioner></Portal>
     </Dialog.Root>
 
-    <Dialog.Root open={lightbox} onOpenChange={(e) => setLightbox(e.open)} size="cover">
-      <Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content bg="blackAlpha.900"><Dialog.Body p="4"><Flex justify="end"><IconButton aria-label="Close" variant="ghost" color="white" onClick={() => setLightbox(false)}><LuX /></IconButton></Flex><Flex justify="center"><Image src={service.public_image_url || ""} alt={service.name} maxH="85vh" objectFit="contain" /></Flex></Dialog.Body></Dialog.Content></Dialog.Positioner></Portal>
-    </Dialog.Root>
+    {service.public_image_url && <ImageLightbox isOpen={lightbox} imageUrl={service.public_image_url} alt={service.name} onClose={() => setLightbox(false)} />}
   </Stack>;
 }

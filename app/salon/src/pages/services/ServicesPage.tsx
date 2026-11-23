@@ -10,6 +10,7 @@ import { LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers } from "reac
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { CategoryModal, ServiceFormDialog } from "./ServiceFormDialog";
+import { ImageLightbox } from "@/components/services/ImageLightbox";
 import {
   useDeleteService, useDeleteServiceCategory, useServiceCategories, useServices,
   type Service, type ServiceCategory,
@@ -39,6 +40,7 @@ export default function ServicesPage() {
   const [editing, setEditing] = useState<Service | null>(null);
   const [del, setDel] = useState<Service | null>(null);
   const [delCat, setDelCatState] = useState<ServiceCategory | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; alt: string } | null>(null);
   const { data, isLoading } = useServices({ page: 1, page_size: 100, search: search || undefined });
   const catsQ = useServiceCategories();
   const delSvc = useDeleteService();
@@ -80,7 +82,7 @@ export default function ServicesPage() {
       : filtered.map((service) => (
         <motion.div key={service.id} whileHover={{ y: -2 }}>
           <Card.Root overflow="hidden" cursor="pointer" onClick={()=>navigate(`/services/${service.id}`)} _hover={{ shadow:"md" }}>
-            {service.public_image_url ? <Image src={service.public_image_url} alt={service.name} h="160px" w="full" objectFit="cover" /> : <Flex h="160px" bg="bg.muted" align="center" justify="center" color="fg.muted"><VStack gap="2"><LuImagePlus size={28} /><Text fontSize="sm">No image</Text></VStack></Flex>}
+            {service.public_image_url ? <Image src={service.public_image_url} alt={service.name} h="160px" w="full" objectFit="cover" cursor="zoom-in" transition="opacity 0.2s" _hover={{ opacity: 0.9 }} onClick={(e) => { e.stopPropagation(); setLightbox({ url: service.public_image_url!, alt: service.name }); }} /> : <Flex h="160px" bg="bg.muted" align="center" justify="center" color="fg.muted"><VStack gap="2"><LuImagePlus size={28} /><Text fontSize="sm">No image</Text></VStack></Flex>}
             <Card.Body><Stack gap="3">
               <Flex justify="space-between" gap="3" align="start">
                 <Box minW="0"><Heading size="sm" lineClamp="1">{service.name}</Heading><Text fontSize="xs" color="fg.muted">{service.category}</Text></Box>
@@ -110,5 +112,6 @@ export default function ServicesPage() {
     {manage && <Card.Root><Card.Body><Flex justify="space-between" align="center" mb="3"><Heading size="sm">Categories</Heading><Button size="sm" variant="outline" onClick={()=>{setEditingCategory(null); setShowCategory(true);}}><LuPlus /> Add Category</Button></Flex><Flex gap="2" wrap="wrap">{categories.map(c => <HStack key={c.id} borderWidth="1px" rounded="md" px="3" py="2" gap="2"><Box w="3" h="3" rounded="full" bg={c.color||"gray.400"} /><Text fontSize="sm">{c.name}</Text>{!c.is_active && <Badge size="sm">Inactive</Badge>}<IconButton aria-label="Edit category" size="xs" variant="ghost" onClick={()=>{setEditingCategory(c); setShowCategory(true);}}><LuPencil /></IconButton><IconButton aria-label="Delete category" size="xs" variant="ghost" colorPalette="red" onClick={()=>setDelCatState(c)}><LuTrash2 /></IconButton></HStack>)}{categories.length===0 && <Text fontSize="sm" color="fg.muted">No categories.</Text>}</Flex></Card.Body></Card.Root>}
     <ConfirmDialog open={!!del} onOpenChange={(v:boolean)=>!v && setDel(null)} title="Delete Service" desc={`Are you sure you want to delete "${del?.name}"? This action cannot be undone.`} onConfirm={onDelete} loading={delSvc.isPending} />
     <ConfirmDialog open={!!delCat} onOpenChange={(v:boolean)=>!v && setDelCatState(null)} title="Delete Category" desc={`Delete category "${delCat?.name}"?`} onConfirm={async()=>{ if(!delCat) return; try { await delCatMut.mutateAsync(delCat.id); toaster.create({title:"Category deleted", type:"success"}); setDelCatState(null);} catch(e:any){ toaster.create({title:"Delete failed", description:e?.response?.data?.detail||e?.message, type:"error"}); } }} loading={delCatMut.isPending} />
+    {lightbox && <ImageLightbox isOpen={!!lightbox} imageUrl={lightbox.url} alt={lightbox.alt} onClose={() => setLightbox(null)} />}
   </Stack>;
 }
