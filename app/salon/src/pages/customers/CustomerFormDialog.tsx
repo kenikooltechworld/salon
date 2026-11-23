@@ -3,6 +3,7 @@ import {
   Badge, Box, Button, Dialog, Grid, HStack, Input, NativeSelect, Portal, Skeleton, Stack, Text, Textarea, Wrap, WrapItem,
 } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster";
+import { Naira } from "@/components/ui/naira";
 import { useCreateCustomer, useUpdateCustomer, type Customer } from "@/features/customers";
 import { useServices } from "@/features/services";
 import { useQuery } from "@tanstack/react-query";
@@ -80,7 +81,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
               <Field label="Email *" error={errors.email}><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={loading} /></Field>
               <Field label="Phone *" error={errors.phone}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={loading} /></Field>
               <Field label="Date of Birth"><Input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} disabled={loading} /></Field>
-              <Field label="Preferred Staff"><NativeSelect.Root disabled={loading || staffQ.isLoading}><NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}><option value="">No preference</option>{staff.map((s: any) => <option key={s.id} value={s.id}>{s.user_id || s.id}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
+              <Field label="Preferred Staff"><NativeSelect.Root disabled={loading || staffQ.isLoading}><NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}><option value="">No preference</option>{staff.map((s: any) => <option key={s.id} value={s.id}>{s.name || [s.first_name, s.last_name].filter(Boolean).join(" ") || s.email || (() => { throw new Error(`Missing staff display name for ${s.id}`); })()}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Communication Preference"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.communication_preference} onChange={(e) => setForm({ ...form, communication_preference: e.target.value as FormState["communication_preference"] })}><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="none">None</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Status"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState["status"] })}><option value="active">Active</option><option value="inactive">Inactive</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
             </Grid>
@@ -93,13 +94,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
                       <input type="checkbox" checked={form.preferred_services.includes(s.id)} onChange={() => toggleService(s.id)} disabled={loading} style={{ marginTop: 3 }} />
                       <Box>
                         <Text fontSize="sm" fontWeight="medium">{s.name}</Text>
-                        <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · ₦{Number(s.price || 0).toLocaleString()}</Text>
+                        <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · <Naira value={s.price} /></Text>
                       </Box>
                     </HStack>
                   ))}
                 </Stack>}
               </Box>
-              {form.preferred_services.length > 0 && <Wrap mt="2">{form.preferred_services.map((sid) => { const s = services.find((x: any) => x.id === sid); return <WrapItem key={sid}><Badge colorPalette="blue">{s?.name || sid}</Badge></WrapItem>; })}</Wrap>}
+              {form.preferred_services.length > 0 && <Wrap mt="2">{form.preferred_services.map((sid) => { const s = services.find((x: any) => x.id === sid); if (!s?.name) throw new Error(`Missing service name for service ${sid}`); return <WrapItem key={sid}><Badge colorPalette="blue">{s.name}</Badge></WrapItem>; })}</Wrap>}
             </Field>
           </Stack>
         </Dialog.Body>

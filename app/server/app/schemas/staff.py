@@ -39,6 +39,10 @@ class StaffRead(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID
     user_id: str
+    name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
     specialties: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
     payment_type: str

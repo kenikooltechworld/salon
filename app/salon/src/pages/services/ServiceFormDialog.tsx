@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useCurrency } from "@/components/ui/naira";
+import { useEffect, useState } from "react";
 import { Box, Button, Checkbox, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
 import { LuPlus, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
@@ -39,6 +40,7 @@ export function CategoryModal({ open, onOpenChange, category }: { open: boolean;
 }
 
 export function ServiceFormDialog({ open, onOpenChange, service, categories, staff }: { open:boolean; onOpenChange:(v:boolean)=>void; service?:Service|null; categories:ServiceCategory[]; staff:any[] }) {
+  const currency = useCurrency();
   const create = useCreateService(); const update = useUpdateService();
   const upload = useImageUpload({ folder: "salon-services" });
   const isEdit = !!service?.id;

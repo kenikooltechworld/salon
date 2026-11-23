@@ -25,7 +25,7 @@ class StaffController:
         return StaffRead.model_validate(item)
 
     async def get(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> StaffRead:
-        item = await self.service.get(tenant_id, staff_id)
+        item = await self.service.get_read(tenant_id, staff_id)
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
         return StaffRead.model_validate(item)
