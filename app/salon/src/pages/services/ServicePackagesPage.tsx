@@ -36,7 +36,7 @@ function PackageForm({ open, onOpenChange, pkg }: { open:boolean; onOpenChange:(
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = upload.handleFileChange(e); if (!file) return; try { const url = await upload.uploadImage(file); setForm((p:any)=>({...p,image_url:url})); } catch(err:any){ toaster.create({ title:"Upload failed", description:err?.message, type:"error" }); } };
   const submit = async () => {
     if (!form.name?.trim()) { toaster.create({ title:"Name is required", type:"error" }); return; }
-    if ((form.services||[]).length < 1) { toaster.create({ title:"Add at least one service", type:"error" }); return; }
+    if ((form.services||[]).length < 2) { toaster.create({ title:"Add at least two services", type:"error" }); return; }
     const payload = { ...form, package_price: Number(form.package_price||0), display_order:Number(form.display_order||0), max_bookings_per_customer: form.max_bookings_per_customer===""?null:Number(form.max_bookings_per_customer), total_bookings_limit: form.total_bookings_limit===""?null:Number(form.total_bookings_limit), valid_from: form.valid_from||null, valid_until: form.valid_until||null };
     try { if (isEdit) await update.mutateAsync({ id: pkg!.id, payload }); else await create.mutateAsync(payload); toaster.create({ title: isEdit?"Package updated":"Package created", type:"success" }); onOpenChange(false); }
     catch(e:any){ toaster.create({ title:"Save failed", description:e?.response?.data?.detail||e?.message, type:"error" }); }
