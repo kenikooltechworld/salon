@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Card, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect, Portal, SimpleGrid, Skeleton, Stack, Switch, Text, Textarea } from "@chakra-ui/react";
+import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuEye, LuEyeOff, LuImagePlus, LuPencil, LuPlus, LuStar, LuTrash2, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { useCreateServicePackage, useDeleteServicePackage, useServicePackages, useServices, useTogglePackageActive, useTogglePackageFeatured, useUpdateServicePackage, type ServicePackage } from "@/features/services";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
-const fmt = (v:any) => `₦${Number(v||0).toLocaleString()}`;
 const canManage = (role?: string) => ["owner","admin","manager"].includes((role||"").toLowerCase());
 
 function Confirm({ open, onOpenChange, onConfirm, loading, title, desc }: any) {
@@ -49,13 +49,13 @@ function PackageForm({ open, onOpenChange, pkg }: { open:boolean; onOpenChange:(
       <Field.Root><Field.Label>Description</Field.Label><Textarea rows={3} value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
       <Field.Root><Field.Label>Image</Field.Label>{upload.preview||form.image_url ? <Box position="relative" mb="2"><Image src={upload.preview||form.image_url} alt="preview" w="full" h="160px" objectFit="cover" rounded="md" /><IconButton aria-label="Remove image" position="absolute" top="2" right="2" size="sm" colorPalette="red" onClick={()=>{upload.clearPreview(); setForm({...form,image_url:""});}}><LuX /></IconButton></Box>:null}<Input type="file" accept="image/*" onChange={onFile} /></Field.Root>
       <Box><Text fontSize="sm" fontWeight="medium" mb="2">Services</Text>
-        <NativeSelect.Root mb="2"><NativeSelect.Field defaultValue="" onChange={(e)=>{addService(e.target.value); e.target.value="";}}><option value="">Add a service...</option>{services.filter(s=>!(form.services||[]).some((x:any)=>x.service_id===s.id)).map(s=><option key={s.id} value={s.id}>{s.name} - {fmt(s.price)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
-        <Stack gap="2">{(form.services||[]).map((item:any)=>{ const svc=services.find(s=>s.id===item.service_id); return <Flex key={item.service_id} gap="2" align="center" borderWidth="1px" rounded="md" p="2"><Box flex="1"><Text fontSize="sm" fontWeight="medium">{svc?.name||item.service_id}</Text><Text fontSize="xs" color="fg.muted">{fmt(svc?.price)} each</Text></Box><Input w="80px" type="number" min={1} value={item.quantity} onChange={(e)=>updateQty(item.service_id, Number(e.target.value))} /><IconButton aria-label="Remove service" size="sm" variant="ghost" colorPalette="red" onClick={()=>removeService(item.service_id)}><LuX /></IconButton></Flex>; })}</Stack>
+        <NativeSelect.Root mb="2"><NativeSelect.Field defaultValue="" onChange={(e)=>{addService(e.target.value); e.target.value="";}}><option value="">Add a service...</option>{services.filter(s=>!(form.services||[]).some((x:any)=>x.service_id===s.id)).map(s=><option key={s.id} value={s.id}>{s.name} - {formatNaira(s.price)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+        <Stack gap="2">{(form.services||[]).map((item:any)=>{ const svc=services.find(s=>s.id===item.service_id); return <Flex key={item.service_id} gap="2" align="center" borderWidth="1px" rounded="md" p="2"><Box flex="1"><Text fontSize="sm" fontWeight="medium">{svc?.name||item.service_id}</Text><Text fontSize="xs" color="fg.muted">{formatNaira(svc?.price)} each</Text></Box><Input w="80px" type="number" min={1} value={item.quantity} onChange={(e)=>updateQty(item.service_id, Number(e.target.value))} /><IconButton aria-label="Remove service" size="sm" variant="ghost" colorPalette="red" onClick={()=>removeService(item.service_id)}><LuX /></IconButton></Flex>; })}</Stack>
       </Box>
       <Grid templateColumns={{ base:"1fr", md:"1fr 1fr 1fr" }} gap="4">
-        <Field.Root><Field.Label>Original Price</Field.Label><Input value={fmt(original)} readOnly /></Field.Root>
+        <Field.Root><Field.Label>Original Price</Field.Label><Input value={formatNaira(original)} readOnly /></Field.Root>
         <Field.Root><Field.Label>Package Price (₦)</Field.Label><Input type="number" min={0} value={form.package_price} onChange={(e)=>setForm({...form,package_price:e.target.value})} /></Field.Root>
-        <Field.Root><Field.Label>Savings</Field.Label><Input value={fmt(Math.max(0, original - Number(form.package_price||0)))} readOnly /></Field.Root>
+        <Field.Root><Field.Label>Savings</Field.Label><Input value={formatNaira(Math.max(0, original - Number(form.package_price||0)))} readOnly /></Field.Root>
       </Grid>
       <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
         <Field.Root><Field.Label>Valid from</Field.Label><Input type="date" value={form.valid_from||""} onChange={(e)=>setForm({...form,valid_from:e.target.value})} /></Field.Root>
@@ -116,7 +116,7 @@ export default function ServicePackagesPage() {
               <Box><Text fontSize="xs" color="fg.muted">Services</Text><Text fontWeight="medium">{pkg.services?.length||0} services</Text></Box>
               <Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontWeight="medium">{pkg.total_duration_minutes||pkg.total_duration||0} min</Text></Box>
               <Box><Text fontSize="xs" color="fg.muted">Bookings</Text><Text fontWeight="medium">{pkg.current_bookings_count}{pkg.total_bookings_limit?` / ${pkg.total_bookings_limit}`:""}</Text></Box>
-              <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="medium">{fmt(pkg.package_price)} <Text as="span" fontSize="xs" color="fg.muted" textDecoration="line-through">{fmt(pkg.original_price)}</Text></Text></Box>
+              <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="medium">{formatNaira(pkg.package_price)} <Text as="span" fontSize="xs" color="fg.muted" textDecoration="line-through">{formatNaira(pkg.original_price)}</Text></Text></Box>
             </SimpleGrid>
           </Box>
         </Flex>

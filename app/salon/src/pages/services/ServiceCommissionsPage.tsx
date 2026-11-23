@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Input, NativeSelect, Skeleton, Stack, Table, Text } from "@chakra-ui/react";
+import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuCheck, LuDollarSign } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
 import { toaster } from "@/components/ui/toaster";
@@ -8,7 +9,6 @@ import { useAuthStore } from "@/features/auth";
 import { useCommissionSummary, useMarkCommissionPaid, useMarkCommissionsPaidBatch, usePendingCommissions, useStaffCommissions } from "@/features/services";
 import { apiClient } from "@/lib/api";
 
-const fmt = (v:any) => `₦${Number(v||0).toLocaleString()}`;
 const canManage = (role?: string) => ["owner","admin","manager"].includes((role||"").toLowerCase());
 
 export default function ServiceCommissionsPage() {
@@ -53,14 +53,14 @@ export default function ServiceCommissionsPage() {
 
     {!staffId ? <Card.Root><Card.Body><Text color="fg.muted">Select a staff member to view commissions.</Text></Card.Body></Card.Root> : <>
       <Grid templateColumns={{ base:"1fr", md:"repeat(4,1fr)" }} gap="4">
-        {[["Total earned", summary?.total_earned],["Pending", summary?.total_pending],["Paid", summary?.total_paid],["Services", summary?.total_services]].map(([label,val])=> <Card.Root key={String(label)}><Card.Body><Text fontSize="sm" color="fg.muted">{label}</Text><Heading size="lg">{label==="Services"?Number(val||0):fmt(val)}</Heading></Card.Body></Card.Root>)}
+        {[["Total earned", summary?.total_earned],["Pending", summary?.total_pending],["Paid", summary?.total_paid],["Services", summary?.total_services]].map(([label,val])=> <Card.Root key={String(label)}><Card.Body><Text fontSize="sm" color="fg.muted">{label}</Text><Heading size="lg">{label==="Services"?Number(val||0):formatNaira(val)}</Heading></Card.Body></Card.Root>)}
       </Grid>
 
-      {summaryQ.data?.breakdown?.length ? <Card.Root><Card.Body><Heading size="md" mb="3">Breakdown by service</Heading><Stack gap="2">{summaryQ.data.breakdown.map((b:any) => <Flex key={b.service_id} justify="space-between" borderBottomWidth="1px" pb="2"><Box><Text fontWeight="medium">{b.service_name || b.service_id}</Text><Text fontSize="xs" color="fg.muted">{b.count} commission(s)</Text></Box><Text fontWeight="semibold">{fmt(b.total_commission)}</Text></Flex>)}</Stack></Card.Body></Card.Root> : null}
+      {summaryQ.data?.breakdown?.length ? <Card.Root><Card.Body><Heading size="md" mb="3">Breakdown by service</Heading><Stack gap="2">{summaryQ.data.breakdown.map((b:any) => <Flex key={b.service_id} justify="space-between" borderBottomWidth="1px" pb="2"><Box><Text fontWeight="medium">{b.service_name || b.service_id}</Text><Text fontSize="xs" color="fg.muted">{b.count} commission(s)</Text></Box><Text fontWeight="semibold">{formatNaira(b.total_commission)}</Text></Flex>)}</Stack></Card.Body></Card.Root> : null}
 
       <Card.Root><Card.Body>
         <Flex justify="space-between" align="center" mb="4" gap="3" direction={{ base:"column", md:"row" }}>
-          <Box><Heading size="md">Commissions</Heading><Text fontSize="sm" color="fg.muted">Pending total: {fmt(pending?.total_pending)} • {pending?.commissions?.length||0} pending entries</Text></Box>
+          <Box><Heading size="md">Commissions</Heading><Text fontSize="sm" color="fg.muted">Pending total: {formatNaira(pending?.total_pending)} • {pending?.commissions?.length||0} pending entries</Text></Box>
           {manage && <Button colorPalette="brand" disabled={selected.length===0} loading={markBatch.isPending} onClick={markSelected}><LuCheck /> Mark selected paid ({selected.length})</Button>}
         </Flex>
         <Box overflowX="auto">
@@ -72,9 +72,9 @@ export default function ServiceCommissionsPage() {
                 <Table.Cell><input type="checkbox" checked={selected.includes(c.id)} onChange={()=>toggle(c.id)} disabled={c.status!=="pending" || !manage} /></Table.Cell>
                 <Table.Cell>{new Date(c.earned_date).toLocaleDateString()}</Table.Cell>
                 <Table.Cell><Text fontSize="sm">{c.service_name || c.service_id}</Text></Table.Cell>
-                <Table.Cell textAlign="end">{fmt(c.service_price)}</Table.Cell>
+                <Table.Cell textAlign="end">{formatNaira(c.service_price)}</Table.Cell>
                 <Table.Cell textAlign="end">{Number(c.commission_percentage)}%</Table.Cell>
-                <Table.Cell textAlign="end" fontWeight="medium">{fmt(c.commission_amount)}</Table.Cell>
+                <Table.Cell textAlign="end" fontWeight="medium">{formatNaira(c.commission_amount)}</Table.Cell>
                 <Table.Cell><Badge colorPalette={c.status==="paid"?"green":"yellow"}>{c.status}</Badge></Table.Cell>
                 <Table.Cell textAlign="end">{manage && c.status==="pending" && <Button size="xs" variant="outline" loading={markOne.isPending} onClick={async()=>{ try{ await markOne.mutateAsync(c.id); toaster.create({title:"Marked paid", type:"success"});}catch(e:any){toaster.create({title:"Failed", description:e?.response?.data?.detail||e?.message, type:"error"});} }}><LuDollarSign /> Mark paid</Button>}</Table.Cell>
               </Table.Row>)}

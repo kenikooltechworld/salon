@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, IconButton, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
+import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuPencil, LuTrash2, LuUsers, LuX } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
 import { toaster } from "@/components/ui/toaster";
@@ -9,7 +10,6 @@ import { useDeleteService, useService, useServiceCategories } from "@/features/s
 import { apiClient } from "@/lib/api";
 import { ServiceFormDialog } from "./ServiceFormDialog";
 
-const fmt = (v: any) => `₦${Number(v || 0).toLocaleString()}`;
 
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +49,7 @@ export default function ServiceDetailPage() {
         <Card.Root><Card.Body><Heading size="md" mb="3">Description</Heading><Text color="fg.muted" whiteSpace="pre-wrap">{service.description || "No description provided."}</Text></Card.Body></Card.Root>
         <Card.Root><Card.Body><Heading size="md" mb="4">Details</Heading><Grid templateColumns={{ base: "1fr 1fr", md: "repeat(4,1fr)" }} gap="4">
           <Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontWeight="semibold">{service.duration_minutes} min</Text></Box>
-          <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="semibold">{fmt(service.price)}</Text></Box>
+          <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="semibold">{formatNaira(service.price)}</Text></Box>
           <Box><Text fontSize="xs" color="fg.muted">Status</Text><Badge colorPalette={service.is_active ? "green" : "gray"}>{service.is_active ? "Active" : "Inactive"}</Badge></Box>
           <Box><Text fontSize="xs" color="fg.muted">Published</Text><Badge colorPalette={service.is_published ? "blue" : "gray"}>{service.is_published ? "Published" : "Hidden"}</Badge></Box>
         </Grid></Card.Body></Card.Root>

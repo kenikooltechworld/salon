@@ -4,6 +4,7 @@ import {
   Badge, Box, Button, Card, Dialog, Flex, Heading, HStack, IconButton, Image, Input,
   Portal, SimpleGrid, Skeleton, Stack, Text, VStack,
 } from "@chakra-ui/react";
+import { formatNaira } from "@/components/ui/naira";
 import { motion } from "motion/react";
 import { LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
@@ -16,7 +17,6 @@ import {
 import { apiClient } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
-const fmt = (v: any) => `â‚¦${Number(v || 0).toLocaleString()}`;
 const canManage = (role?: string) => ["owner","admin","manager"].includes((role||"").toLowerCase());
 
 function ConfirmDialog({ open, onOpenChange, title, desc, onConfirm, loading }: any) {
@@ -92,7 +92,7 @@ export default function ServicesPage() {
               <Text fontSize="sm" color="fg.muted" lineClamp="2">{service.description || "No description"}</Text>
               <Flex justify="space-between" pt="2" borderTopWidth="1px">
                 <Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontSize="sm" fontWeight="medium">{service.duration_minutes} min</Text></Box>
-                <Box textAlign="right"><Text fontSize="xs" color="fg.muted">Price</Text><Text fontSize="sm" fontWeight="medium">{fmt(service.price)}</Text></Box>
+                <Box textAlign="right"><Text fontSize="xs" color="fg.muted">Price</Text><Text fontSize="sm" fontWeight="medium">{formatNaira(service.price)}</Text></Box>
               </Flex>
               <HStack justify="space-between">
                 <HStack gap="1" color="fg.muted" fontSize="xs"><LuUsers /><Text>{service.staff_ids?.length || 0} staff assigned</Text></HStack>

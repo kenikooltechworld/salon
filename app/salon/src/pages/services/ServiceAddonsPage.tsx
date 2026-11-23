@@ -4,13 +4,13 @@ import {
   Badge, Box, Button, Card, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect,
   Portal, SimpleGrid, Skeleton, Stack, Text, Textarea, VStack,
 } from "@chakra-ui/react";
+import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { useCreateServiceAddon, useDeleteServiceAddon, useServiceAddons, useServices, useUpdateServiceAddon, type ServiceAddon } from "@/features/services";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
-const fmt = (v: any) => `₦${Number(v || 0).toLocaleString()}`;
 const canManage = (role?: string) => ["owner","admin","manager"].includes((role||"").toLowerCase());
 
 function ConfirmDialog({ open, onOpenChange, title, desc, onConfirm, loading }: any) {
@@ -92,7 +92,7 @@ export default function ServiceAddonsPage() {
             {manage && <HStack gap="1"><IconButton aria-label="Edit add-on" size="xs" variant="ghost" onClick={()=>{setEditing(addon); setShowForm(true);}}><LuPencil /></IconButton><IconButton aria-label="Delete add-on" size="xs" variant="ghost" colorPalette="red" onClick={()=>setDel(addon)}><LuTrash2 /></IconButton></HStack>}
           </Flex>
           <Text fontSize="sm" color="fg.muted" lineClamp="2">{addon.description}</Text>
-          <Flex justify="space-between" pt="2" borderTopWidth="1px"><Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontSize="sm" fontWeight="medium">+{addon.duration_minutes} min</Text></Box><Box textAlign="right"><Text fontSize="xs" color="fg.muted">Price</Text><Text fontSize="sm" fontWeight="medium">{fmt(addon.price)}</Text></Box></Flex>
+          <Flex justify="space-between" pt="2" borderTopWidth="1px"><Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontSize="sm" fontWeight="medium">+{addon.duration_minutes} min</Text></Box><Box textAlign="right"><Text fontSize="xs" color="fg.muted">Price</Text><Text fontSize="sm" fontWeight="medium">{formatNaira(addon.price)}</Text></Box></Flex>
         </Stack></Card.Body>
       </Card.Root>)}
     </SimpleGrid>
