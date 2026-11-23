@@ -1,20 +1,8 @@
 import { apiClient } from "@/lib/api";
-import type {
-  CommissionListResponse, CommissionSummaryResponse,
-  Service, ServiceAddon, ServiceAddonListResponse,
-  ServiceCategory, ServiceCategoryListResponse,
-  ServiceCommission, ServiceListResponse,
-  ServicePackage, ServicePackageListResponse,
-} from "./types";
+import type { CommissionListResponse, CommissionSummaryResponse, Service, ServiceAddon, ServiceAddonListResponse, ServiceCategory, ServiceCategoryListResponse, ServiceCommission, ServiceListResponse, ServicePackage, ServicePackageListResponse } from "./types";
 
-const asParams = (obj: Record<string, unknown>) => {
-  const p: Record<string, string | number | boolean> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === undefined || v === null || v === "") continue;
-    p[k] = v as any;
-  }
-  return p;
-};
+const params = (obj: Record<string, unknown>) => { const p: Record<string, any> = {}; for (const [k, v] of Object.entries(obj)) if (v !== undefined && v !== null && v !== "") p[k] = v; return p; };
+const normAddon = (p: any) => ({ ...p, applicable_service_ids: p?.applicable_service_ids ?? p?.applicable_services ?? [] });
 
 export const servicesApi = {
   listCategories: () => apiClient.get<ServiceCategoryListResponse>("/service-categories"),
@@ -22,26 +10,28 @@ export const servicesApi = {
   updateCategory: (id: string, payload: Partial<ServiceCategory>) => apiClient.put<ServiceCategory>(`/service-categories/${id}`, payload),
   deleteCategory: (id: string) => apiClient.delete(`/service-categories/${id}`),
 
-  list: (params: Record<string, unknown> = {}) => apiClient.get<ServiceListResponse>("/services", { params: asParams(params) }),
+  list: (q: Record<string, unknown> = {}) => apiClient.get<ServiceListResponse>("/services", { params: params(q) }),
   get: (id: string) => apiClient.get<Service>(`/services/${id}`),
-  create: (payload: Partial<Service>) => apiClient.post<Service>("/services", payload),
-  update: (id: string, payload: Partial<Service>) => apiClient.put<Service>(`/services/${id}`, payload),
+  create: (payload: any) => apiClient.post<Service>("/services", payload),
+  update: (id: string, payload: any) => apiClient.put<Service>(`/services/${id}`, payload),
   remove: (id: string) => apiClient.delete<Service>(`/services/${id}`),
 
-  listAddons: (params: Record<string, unknown> = {}) => apiClient.get<ServiceAddonListResponse>("/service-addons", { params: asParams(params) }),
-  createAddon: (payload: Partial<ServiceAddon>) => apiClient.post<ServiceAddon>("/service-addons", payload),
-  updateAddon: (id: string, payload: Partial<ServiceAddon>) => apiClient.put<ServiceAddon>(`/service-addons/${id}`, payload),
-  removeAddon: (id: string) => apiClient.delete<ServiceAddon>(`/service-addons/${id}`),
+  listAddons: (q: Record<string, unknown> = {}) => apiClient.get<ServiceAddonListResponse>("/service-addons", { params: params(q) }),
+  createAddon: (payload: any) => apiClient.post<ServiceAddon>("/service-addons", normAddon(payload)),
+  updateAddon: (id: string, payload: any) => apiClient.put<ServiceAddon>(`/service-addons/${id}`, normAddon(payload)),
+  removeAddon: (id: string) => apiClient.delete(`/service-addons/${id}`),
 
-  listPackages: (params: Record<string, unknown> = {}) => apiClient.get<ServicePackageListResponse>("/service-packages", { params: asParams(params) }),
+  listPackages: (q: Record<string, unknown> = {}) => apiClient.get<ServicePackageListResponse>("/service-packages", { params: params(q) }),
   getPackage: (id: string) => apiClient.get<ServicePackage>(`/service-packages/${id}`),
   createPackage: (payload: any) => apiClient.post<ServicePackage>("/service-packages", payload),
   updatePackage: (id: string, payload: any) => apiClient.put<ServicePackage>(`/service-packages/${id}`, payload),
   removePackage: (id: string) => apiClient.delete(`/service-packages/${id}`),
+  togglePackageActive: (id: string) => apiClient.post<ServicePackage>(`/service-packages/${id}/toggle-active`),
+  togglePackageFeatured: (id: string) => apiClient.post<ServicePackage>(`/service-packages/${id}/toggle-featured`),
 
-  calculateCommission: (appointmentId: string) => apiClient.post<ServiceCommission>(`/service-commissions/calculate/${appointmentId}`),
-  listStaffCommissions: (staffId: string, params: Record<string, unknown> = {}) => apiClient.get<CommissionListResponse>(`/service-commissions/staff/${staffId}`, { params: asParams(params) }),
-  commissionSummary: (staffId: string, params: Record<string, unknown> = {}) => apiClient.get<CommissionSummaryResponse>(`/service-commissions/staff/${staffId}/summary`, { params: asParams(params) }),
+  listStaffCommissions: (staffId: string, q: Record<string, unknown> = {}) => apiClient.get<CommissionListResponse>(`/service-commissions/staff/${staffId}`, { params: params(q) }),
+  commissionSummary: (staffId: string, q: Record<string, unknown> = {}) => apiClient.get<CommissionSummaryResponse>(`/service-commissions/staff/${staffId}/summary`, { params: params(q) }),
+  pendingCommissions: (staffId: string) => apiClient.get<{ commissions: ServiceCommission[]; total_pending: number }>(`/service-commissions/staff/${staffId}/pending`),
   markCommissionPaid: (id: string) => apiClient.post<ServiceCommission>(`/service-commissions/${id}/mark-paid`),
   markCommissionsPaidBatch: (staffId: string, commissionIds: string[]) => apiClient.post(`/service-commissions/staff/${staffId}/mark-paid-batch`, commissionIds),
 };
