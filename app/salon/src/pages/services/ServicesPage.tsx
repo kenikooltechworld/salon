@@ -1,181 +1,125 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, IconButton, Input, NativeSelect,
-  Portal, Skeleton, Stack, Table, Tabs, Text, Textarea,
+  Badge, Box, Button, Card, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect,
+  Portal, SimpleGrid, Skeleton, Stack, Text, Textarea, VStack,
 } from "@chakra-ui/react";
 import { motion } from "motion/react";
-import { LuCheck, LuPencil, LuPlus, LuSearch, LuTrash2, LuX } from "react-icons/lu";
+import { LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import {
-  useCreateService, useCreateServiceAddon, useCreateServiceCategory, useCreateServicePackage,
-  useDeleteService, useDeleteServiceAddon, useDeleteServiceCategory, useDeleteServicePackage,
-  useServiceAddons, useServiceCategories, useServicePackages, useServices,
-  useUpdateService, useUpdateServiceAddon, useUpdateServiceCategory, useUpdateServicePackage,
-  type Service, type ServiceAddon, type ServiceCategory, type ServicePackage,
+  useCreateService, useCreateServiceCategory, useDeleteService, useServiceCategories, useServices, useUpdateService,
+  type Service, type ServiceCategory,
 } from "@/features/services";
+import { useImageUpload } from "@/hooks/useImageUpload";
 import { apiClient } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
-function money(v: string | number | null | undefined) {
-  const n = typeof v === "number" ? v : Number(v || 0);
-  return `₦${n.toLocaleString()}`;
-}
-function canManage(role?: string) { return ["owner", "admin", "manager"].includes((role || "").toLowerCase()); }
+const fmt = (v: any) => `₦${Number(v || 0).toLocaleString()}`;
+const canManage = (role?: string) => ["owner","admin","manager"].includes((role||"").toLowerCase());
+const ICONS = ["Scissors","Sparkles","Droplets","Brush","Heart","Star","Flower2","Hand","User","Crown"];
+const COLORS = ["#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6","#EC4899","#14B8A6","#6366F1","#F97316","#64748B"];
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <Box><Text fontSize="sm" mb="1" fontWeight="medium">{label}</Text>{children}</Box>;
-}
-
-function ConfirmDelete({ open, onOpenChange, title, onConfirm, loading }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; onConfirm: () => void; loading?: boolean }) {
-  return (
-    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}>
-      <Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-        <Dialog.Header><Dialog.Title>Confirm Delete</Dialog.Title></Dialog.Header>
-        <Dialog.Body><Text>{title}</Text></Dialog.Body>
-        <Dialog.Footer>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button colorPalette="red" loading={loading} onClick={onConfirm}>Delete</Button>
-        </Dialog.Footer>
-      </Dialog.Content></Dialog.Positioner></Portal>
-    </Dialog.Root>
-  );
+function ConfirmDialog({ open, onOpenChange, title, desc, onConfirm, loading }: any) {
+  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
+    <Dialog.Header><Dialog.Title>{title}</Dialog.Title></Dialog.Header>
+    <Dialog.Body><Text color="fg.muted">{desc}</Text></Dialog.Body>
+    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="red" loading={loading} onClick={onConfirm}>Delete</Button></Dialog.Footer>
+  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
 }
 
-function ServiceFormDialog({ open, onOpenChange, service, categories, staff }: { open: boolean; onOpenChange: (v: boolean) => void; service?: Service | null; categories: ServiceCategory[]; staff: any[] }) {
+function CategoryModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v:boolean)=>void }) {
+  const create = useCreateServiceCategory();
+  const [form, setForm] = useState({ name: "", description: "", color: "#3B82F6", icon: "Scissors", is_active: true });
+  useEffect(() => { if (open) setForm({ name: "", description: "", color: "#3B82F6", icon: "Scissors", is_active: true }); }, [open]);
+  const submit = async () => {
+    if (!form.name.trim()) { toaster.create({ title: "Category name is required", type: "error" }); return; }
+    try { await create.mutateAsync(form as any); toaster.create({ title: "Category created", type: "success" }); onOpenChange(false); }
+    catch (e: any) { toaster.create({ title: "Failed to create category", description: e?.response?.data?.detail || e?.message, type: "error" }); }
+  };
+  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
+    <Dialog.Header><Dialog.Title>Add Service Category</Dialog.Title></Dialog.Header>
+    <Dialog.Body><Stack gap="4">
+      <Field.Root><Field.Label>Category Name *</Field.Label><Input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field.Root>
+      <Field.Root><Field.Label>Description</Field.Label><Textarea value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
+      <Grid templateColumns="1fr 1fr" gap="4">
+        <Field.Root><Field.Label>Color</Field.Label><HStack wrap="wrap">{COLORS.map(c => <Box key={c} as="button" {...({type:"button"} as any)} w="7" h="7" rounded="full" bg={c} borderWidth="2px" borderColor={form.color===c?"fg":"transparent"} onClick={()=>setForm({...form,color:c})} />)}</HStack></Field.Root>
+        <Field.Root><Field.Label>Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+      </Grid>
+    </Stack></Dialog.Body>
+    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="brand" loading={create.isPending} onClick={submit}>Create Category</Button></Dialog.Footer>
+  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
+}
+
+function ServiceFormModal({ open, onOpenChange, service, categories, staff }: { open:boolean; onOpenChange:(v:boolean)=>void; service?:Service|null; categories:ServiceCategory[]; staff:any[] }) {
   const create = useCreateService(); const update = useUpdateService();
-  const [form, setForm] = useState<any>({});
+  const upload = useImageUpload({ folder: "salon-services" });
   const isEdit = !!service?.id;
-  useMemo(() => {
+  const [form, setForm] = useState<any>({});
+  useEffect(() => {
+    if (!open) return;
+    upload.clearPreview();
     setForm(service ? {
       name: service.name, description: service.description || "", duration_minutes: service.duration_minutes, price: String(service.price),
-      category: service.category, color: service.color || "#3B82F6", icon: service.icon || "Scissors", is_active: service.is_active,
-      is_published: service.is_published, public_description: service.public_description || "", public_image_url: service.public_image_url || "",
-      allow_public_booking: service.allow_public_booking, allow_pay_now: service.allow_pay_now, tags: (service.tags || []).join(", "),
-      benefits: (service.benefits || []).join(", "), commission_percentage: service.commission_percentage ?? "", staff_ids: service.staff_ids || [],
-    } : { name: "", description: "", duration_minutes: 30, price: "0", category: categories[0]?.name || "General", color: "#3B82F6", icon: "Scissors", is_active: true, is_published: false, public_description: "", public_image_url: "", allow_public_booking: false, allow_pay_now: false, tags: "", benefits: "", commission_percentage: "", staff_ids: [] });
-  }, [service, open, categories]);
+      category: service.category || categories[0]?.name || "", color: service.color || "#3B82F6", icon: service.icon || "Scissors",
+      public_image_url: service.public_image_url || "", public_description: service.public_description || "",
+      is_active: service.is_active, is_published: service.is_published, allow_public_booking: service.allow_public_booking, allow_pay_now: service.allow_pay_now,
+      tags: (service.tags||[]).join(", "), benefits: (service.benefits||[]).join(", "), commission_percentage: service.commission_percentage ?? "", staff_ids: service.staff_ids || [],
+    } : { name:"", description:"", duration_minutes:30, price:"0", category:categories[0]?.name||"", color:"#3B82F6", icon:"Scissors", public_image_url:"", public_description:"", is_active:true, is_published:false, allow_public_booking:false, allow_pay_now:false, tags:"", benefits:"", commission_percentage:"", staff_ids:[] });
+    if (service?.public_image_url) upload.setPreview(service.public_image_url);
+  }, [open, service?.id]);
 
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = upload.handleFileChange(e);
+    if (!file) return;
+    try { const url = await upload.uploadImage(file); setForm((p:any)=>({...p, public_image_url:url})); toaster.create({ title:"Image uploaded", type:"success" }); }
+    catch (err:any) { toaster.create({ title:"Upload failed", description: err?.message, type:"error" }); }
+  };
+  const toggleStaff = (id: string) => setForm((p:any)=>({ ...p, staff_ids: p.staff_ids.includes(id) ? p.staff_ids.filter((x:string)=>x!==id) : [...p.staff_ids,id] }));
   const submit = async () => {
-    const payload = {
-      ...form,
-      duration_minutes: Number(form.duration_minutes),
-      price: form.price,
-      commission_percentage: form.commission_percentage === "" ? null : form.commission_percentage,
-      tags: String(form.tags || "").split(",").map((s: string) => s.trim()).filter(Boolean),
-      benefits: String(form.benefits || "").split(",").map((s: string) => s.trim()).filter(Boolean),
-    };
+    if (!form.name?.trim() || !form.category) { toaster.create({ title:"Name and category are required", type:"error" }); return; }
+    const payload = { ...form, duration_minutes:Number(form.duration_minutes), price:String(form.price), commission_percentage: form.commission_percentage===""?null:form.commission_percentage, tags:String(form.tags||"").split(",").map((s:string)=>s.trim()).filter(Boolean), benefits:String(form.benefits||"").split(",").map((s:string)=>s.trim()).filter(Boolean) };
     try {
       if (isEdit) await update.mutateAsync({ id: service!.id, payload });
       else await create.mutateAsync(payload);
-      toaster.create({ title: isEdit ? "Service updated" : "Service created", type: "success" });
-      onOpenChange(false);
-    } catch (e: any) {
-      toaster.create({ title: "Save failed", description: e?.message || "Request failed", type: "error" });
-    }
+      toaster.create({ title: isEdit ? "Service updated" : "Service created", type: "success" }); onOpenChange(false);
+    } catch (e:any) { toaster.create({ title:"Save failed", description: e?.response?.data?.detail || e?.message, type:"error" }); }
   };
 
-  const toggleStaff = (id: string) => setForm((p: any) => ({ ...p, staff_ids: p.staff_ids.includes(id) ? p.staff_ids.filter((x: string) => x !== id) : [...p.staff_ids, id] }));
-
-  return (
-    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} size="xl" scrollBehavior="inside">
-      <Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-        <Dialog.Header><Dialog.Title>{isEdit ? "Edit Service" : "Create Service"}</Dialog.Title></Dialog.Header>
-        <Dialog.Body>
-          <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
-            <Field label="Name"><Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="Category">
-              <NativeSelect.Root><NativeSelect.Field value={form.category || ""} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
-            </Field>
-            <Field label="Duration (minutes)"><Input type="number" value={form.duration_minutes ?? 30} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} /></Field>
-            <Field label="Price"><Input value={form.price ?? ""} onChange={(e) => setForm({ ...form, price: e.target.value })} /></Field>
-            <Box gridColumn={{ md: "span 2" }}><Field label="Description"><Textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field></Box>
-            <Box gridColumn={{ md: "span 2" }}><Field label="Public description"><Textarea value={form.public_description || ""} onChange={(e) => setForm({ ...form, public_description: e.target.value })} /></Field></Box>
-            <Field label="Public image URL"><Input value={form.public_image_url || ""} onChange={(e) => setForm({ ...form, public_image_url: e.target.value })} /></Field>
-            <Field label="Commission %"><Input value={form.commission_percentage ?? ""} onChange={(e) => setForm({ ...form, commission_percentage: e.target.value })} /></Field>
-            <Field label="Tags (comma separated)"><Input value={form.tags || ""} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></Field>
-            <Field label="Benefits (comma separated)"><Input value={form.benefits || ""} onChange={(e) => setForm({ ...form, benefits: e.target.value })} /></Field>
-            <Field label="Color"><Input value={form.color || "#3B82F6"} onChange={(e) => setForm({ ...form, color: e.target.value })} /></Field>
-            <Field label="Icon"><Input value={form.icon || "Scissors"} onChange={(e) => setForm({ ...form, icon: e.target.value })} /></Field>
-          </Grid>
-          <HStack gap="4" mt="4" flexWrap="wrap">
-            {[
-              ["is_active", "Active"], ["is_published", "Published"], ["allow_public_booking", "Public booking"], ["allow_pay_now", "Allow pay now"],
-            ].map(([k, label]) => (
-              <Button key={k} size="sm" variant={form[k] ? "solid" : "outline"} colorPalette={form[k] ? "green" : "gray"} onClick={() => setForm({ ...form, [k]: !form[k] })}>
-                {form[k] ? <LuCheck /> : <LuX />} {label}
-              </Button>
-            ))}
-          </HStack>
-          <Box mt="4">
-            <Text fontSize="sm" fontWeight="medium" mb="2">Assigned staff</Text>
-            <Flex gap="2" wrap="wrap">
-              {staff.map((s: any) => (
-                <Button key={s.id} size="xs" variant={form.staff_ids?.includes(s.id) ? "solid" : "outline"} onClick={() => toggleStaff(s.id)}>
-                  {s.first_name ? `${s.first_name} ${s.last_name || ""}`.trim() : s.user_id}
-                </Button>
-              ))}
-              {staff.length === 0 && <Text fontSize="sm" color="fg.muted">No staff found.</Text>}
-            </Flex>
-          </Box>
-        </Dialog.Body>
-        <Dialog.Footer>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button colorPalette="brand" loading={create.isPending || update.isPending} onClick={submit}>{isEdit ? "Update" : "Create"}</Button>
-        </Dialog.Footer>
-      </Dialog.Content></Dialog.Positioner></Portal>
-    </Dialog.Root>
-  );
-}
-
-function CategoryDialog({ open, onOpenChange, category }: { open: boolean; onOpenChange: (v: boolean) => void; category?: ServiceCategory | null }) {
-  const create = useCreateServiceCategory(); const update = useUpdateServiceCategory();
-  const [form, setForm] = useState<any>({ name: "", description: "", color: "#3B82F6", icon: "Tag", is_active: true });
-  useMemo(() => setForm(category ? { name: category.name, description: category.description || "", color: category.color || "#3B82F6", icon: category.icon || "Tag", is_active: category.is_active } : { name: "", description: "", color: "#3B82F6", icon: "Tag", is_active: true }), [category, open]);
-  const submit = async () => {
-    try {
-      if (category) await update.mutateAsync({ id: category.id, payload: form });
-      else await create.mutateAsync(form);
-      toaster.create({ title: category ? "Category updated" : "Category created", type: "success" }); onOpenChange(false);
-    } catch (e: any) { toaster.create({ title: "Failed", description: e?.message, type: "error" }); }
-  };
-  return <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-    <Dialog.Header><Dialog.Title>{category ? "Edit Category" : "Create Category"}</Dialog.Title></Dialog.Header>
-    <Dialog.Body><Stack gap="3"><Field label="Name"><Input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field><Field label="Description"><Textarea value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field><Grid templateColumns="1fr 1fr" gap="3"><Field label="Color"><Input value={form.color} onChange={(e)=>setForm({...form,color:e.target.value})} /></Field><Field label="Icon"><Input value={form.icon} onChange={(e)=>setForm({...form,icon:e.target.value})} /></Field></Grid></Stack></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button loading={create.isPending||update.isPending} onClick={submit}>Save</Button></Dialog.Footer>
-  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
-}
-
-function AddonDialog({ open, onOpenChange, addon, services }: { open: boolean; onOpenChange: (v: boolean) => void; addon?: ServiceAddon | null; services: Service[] }) {
-  const create = useCreateServiceAddon(); const update = useUpdateServiceAddon();
-  const [form, setForm] = useState<any>({});
-  useMemo(() => setForm(addon ? { ...addon, price: String(addon.price), applicable_service_ids: addon.applicable_service_ids || [] } : { name: "", description: "", price: "0", duration_minutes: 0, image_url: "", is_active: true, applicable_service_ids: [], category: "product", display_order: 0 }), [addon, open]);
-  const submit = async () => { try { const payload = { ...form, duration_minutes: Number(form.duration_minutes), display_order: Number(form.display_order) }; if (addon) await update.mutateAsync({ id: addon.id, payload }); else await create.mutateAsync(payload); toaster.create({ title: "Saved", type: "success" }); onOpenChange(false); } catch (e: any) { toaster.create({ title: "Failed", description: e?.message, type: "error" }); } };
-  const toggleSvc = (id: string) => setForm((p: any) => ({ ...p, applicable_service_ids: p.applicable_service_ids.includes(id) ? p.applicable_service_ids.filter((x: string) => x !== id) : [...p.applicable_service_ids, id] }));
-  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)} size="lg"><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-    <Dialog.Header><Dialog.Title>{addon ? "Edit Add-on" : "Create Add-on"}</Dialog.Title></Dialog.Header>
-    <Dialog.Body><Stack gap="3"><Grid templateColumns={{base:"1fr",md:"1fr 1fr"}} gap="3"><Field label="Name"><Input value={form.name||""} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field><Field label="Category"><NativeSelect.Root><NativeSelect.Field value={form.category||"product"} onChange={(e)=>setForm({...form,category:e.target.value})}><option value="product">product</option><option value="upgrade">upgrade</option><option value="treatment">treatment</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field><Field label="Price"><Input value={form.price||"0"} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field><Field label="Duration minutes"><Input type="number" value={form.duration_minutes??0} onChange={(e)=>setForm({...form,duration_minutes:e.target.value})} /></Field></Grid><Field label="Description"><Textarea value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field><Field label="Image URL"><Input value={form.image_url||""} onChange={(e)=>setForm({...form,image_url:e.target.value})} /></Field><Box><Text fontSize="sm" mb="1">Applicable services</Text><Flex gap="2" wrap="wrap">{services.map(s=><Button key={s.id} size="xs" variant={form.applicable_service_ids?.includes(s.id)?"solid":"outline"} onClick={()=>toggleSvc(s.id)}>{s.name}</Button>)}</Flex></Box></Stack></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button loading={create.isPending||update.isPending} onClick={submit}>Save</Button></Dialog.Footer>
-  </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
-}
-
-function PackageDialog({ open, onOpenChange, pkg, services }: { open: boolean; onOpenChange: (v: boolean) => void; pkg?: ServicePackage | null; services: Service[] }) {
-  const create = useCreateServicePackage(); const update = useUpdateServicePackage();
-  const [form, setForm] = useState<any>({});
-  useMemo(() => setForm(pkg ? { name: pkg.name, description: pkg.description || "", package_price: String(pkg.package_price), is_active: pkg.is_active, is_featured: pkg.is_featured, services: pkg.services.map(s => ({ service_id: s.service_id, quantity: s.quantity })) } : { name: "", description: "", package_price: "0", is_active: true, is_featured: false, services: [] }), [pkg, open]);
-  const setQty = (service_id: string, qty: number) => setForm((p: any) => {
-    const existing = p.services.filter((s: any) => s.service_id !== service_id);
-    if (qty > 0) existing.push({ service_id, quantity: qty });
-    return { ...p, services: existing };
-  });
-  const submit = async () => { try { const payload = { ...form, services: form.services }; if (pkg) await update.mutateAsync({ id: pkg.id, payload }); else await create.mutateAsync(payload); toaster.create({ title: "Saved", type: "success" }); onOpenChange(false); } catch (e: any) { toaster.create({ title: "Failed", description: e?.message, type: "error" }); } };
-  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)} size="lg"><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-    <Dialog.Header><Dialog.Title>{pkg ? "Edit Package" : "Create Package"}</Dialog.Title></Dialog.Header>
-    <Dialog.Body><Stack gap="3"><Field label="Name"><Input value={form.name||""} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field><Field label="Description"><Textarea value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field><Field label="Package price"><Input value={form.package_price||"0"} onChange={(e)=>setForm({...form,package_price:e.target.value})} /></Field><Box><Text fontSize="sm" mb="2">Services in package</Text><Stack gap="2">{services.map(s=>{ const sel=form.services?.find((x:any)=>x.service_id===s.id); return <HStack key={s.id} justify="space-between"><Text fontSize="sm">{s.name}</Text><Input w="90px" type="number" min={0} value={sel?.quantity||0} onChange={(e)=>setQty(s.id, Number(e.target.value||0))} /></HStack>; })}</Stack></Box></Stack></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button loading={create.isPending||update.isPending} onClick={submit}>Save</Button></Dialog.Footer>
+  return <Dialog.Root open={open} onOpenChange={(e)=>onOpenChange(e.open)} size="xl" scrollBehavior="inside"><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
+    <Dialog.Header><Dialog.Title>{isEdit ? "Edit Service" : "Create Service"}</Dialog.Title></Dialog.Header>
+    <Dialog.Body><Stack gap="4">
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Service Name *</Field.Label><Input value={form.name||""} onChange={(e)=>setForm({...form,name:e.target.value})} /></Field.Root>
+        <Field.Root><Field.Label>Category *</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.category||""} onChange={(e)=>setForm({...form,category:e.target.value})}><option value="">Select category</option>{categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+      </Grid>
+      <Field.Root><Field.Label>Description</Field.Label><Textarea rows={3} value={form.description||""} onChange={(e)=>setForm({...form,description:e.target.value})} /></Field.Root>
+      <Field.Root><Field.Label>Service Image</Field.Label>
+        {upload.preview || form.public_image_url ? <Box position="relative" mb="2"><Image src={upload.preview || form.public_image_url} alt="preview" w="full" h="180px" objectFit="cover" rounded="md" /><IconButton aria-label="Remove image" position="absolute" top="2" right="2" size="sm" colorPalette="red" onClick={()=>{upload.clearPreview(); setForm({...form,public_image_url:""});}}><LuX /></IconButton></Box> : null}
+        <Input type="file" accept="image/*" onChange={onFile} />
+        {upload.isUploading && <Text fontSize="xs" color="fg.muted">Uploading {upload.uploadProgress}%</Text>}
+      </Field.Root>
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Duration (minutes)</Field.Label><Input type="number" min={5} step={5} value={form.duration_minutes} onChange={(e)=>setForm({...form,duration_minutes:e.target.value})} /></Field.Root>
+        <Field.Root><Field.Label>Price (₦)</Field.Label><Input type="number" min={0} value={form.price} onChange={(e)=>setForm({...form,price:e.target.value})} /></Field.Root>
+      </Grid>
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Color</Field.Label><HStack wrap="wrap">{COLORS.map(c=><Box key={c} as="button" {...({type:"button"} as any)} w="7" h="7" rounded="full" bg={c} borderWidth="2px" borderColor={form.color===c?"fg":"transparent"} onClick={()=>setForm({...form,color:c})} />)}</HStack></Field.Root>
+        <Field.Root><Field.Label>Icon</Field.Label><NativeSelect.Root><NativeSelect.Field value={form.icon||"Scissors"} onChange={(e)=>setForm({...form,icon:e.target.value})}>{ICONS.map(i=><option key={i} value={i}>{i}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+      </Grid>
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Commission %</Field.Label><Input type="number" min={0} max={100} value={form.commission_percentage ?? ""} onChange={(e)=>setForm({...form,commission_percentage:e.target.value})} /></Field.Root>
+        <Field.Root><Field.Label>Public Description</Field.Label><Input value={form.public_description||""} onChange={(e)=>setForm({...form,public_description:e.target.value})} /></Field.Root>
+      </Grid>
+      <Grid templateColumns={{ base:"1fr", md:"1fr 1fr" }} gap="4">
+        <Field.Root><Field.Label>Tags (comma separated)</Field.Label><Input value={form.tags||""} onChange={(e)=>setForm({...form,tags:e.target.value})} /></Field.Root>
+        <Field.Root><Field.Label>Benefits (comma separated)</Field.Label><Input value={form.benefits||""} onChange={(e)=>setForm({...form,benefits:e.target.value})} /></Field.Root>
+      </Grid>
+      <Box><Text fontSize="sm" fontWeight="medium" mb="2">Assigned Staff</Text><Flex gap="2" wrap="wrap">{staff.map((s:any)=>{ const active=form.staff_ids?.includes(s.id); const name = [s.first_name,s.last_name].filter(Boolean).join(" ") || s.email || s.user_id; return <Button key={s.id} size="xs" variant={active?"solid":"outline"} colorPalette={active?"brand":"gray"} onClick={()=>toggleStaff(s.id)}>{name}</Button>; })}{staff.length===0 && <Text fontSize="sm" color="fg.muted">No staff members found.</Text>}</Flex></Box>
+      <HStack gap="3" wrap="wrap">{[["is_active","Active"],["is_published","Published"],["allow_public_booking","Public booking"],["allow_pay_now","Pay now"]].map(([k,label])=> <Button key={k} size="sm" variant={form[k]?"solid":"outline"} colorPalette={form[k]?"green":"gray"} onClick={()=>setForm({...form,[k]:!form[k]})}>{label}</Button>)}</HStack>
+    </Stack></Dialog.Body>
+    <Dialog.Footer><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button><Button colorPalette="brand" loading={create.isPending||update.isPending||upload.isUploading} onClick={submit}>{isEdit?"Update Service":"Create Service"}</Button></Dialog.Footer>
   </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
 }
 
@@ -183,149 +127,72 @@ export default function ServicesPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const manage = canManage(role);
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("");
-  const [activeOnly, setActiveOnly] = useState<string>("all");
-  const [tab, setTab] = useState("services");
-
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [showCategory, setShowCategory] = useState(false);
+  const [editing, setEditing] = useState<Service | null>(null);
+  const [del, setDel] = useState<Service | null>(null);
+  const { data, isLoading } = useServices({ page: 1, page_size: 100, search: search || undefined });
   const catsQ = useServiceCategories();
-  const servicesQ = useServices({ page: 1, page_size: 100, search: q || undefined, category: category || undefined, active_only: activeOnly === "all" ? undefined : activeOnly === "active" });
-  const addonsQ = useServiceAddons();
-  const packagesQ = useServicePackages({ page: 1, page_size: 100 });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data });
-
+  const delSvc = useDeleteService();
+  const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff")).data });
+  const services = data?.services || [];
   const categories = catsQ.data?.categories || [];
-  const services = servicesQ.data?.services || [];
-  const addons = addonsQ.data?.addons || [];
-  const packages = packagesQ.data?.packages || [];
   const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
 
-  const [svcOpen, setSvcOpen] = useState(false); const [editingSvc, setEditingSvc] = useState<Service | null>(null);
-  const [catOpen, setCatOpen] = useState(false); const [editingCat, setEditingCat] = useState<ServiceCategory | null>(null);
-  const [addonOpen, setAddonOpen] = useState(false); const [editingAddon, setEditingAddon] = useState<ServiceAddon | null>(null);
-  const [pkgOpen, setPkgOpen] = useState(false); const [editingPkg, setEditingPkg] = useState<ServicePackage | null>(null);
-  const [del, setDel] = useState<{ type: string; id: string; name: string } | null>(null);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return services;
+    return services.filter((s) => s.name.toLowerCase().includes(q) || (s.category||"").toLowerCase().includes(q));
+  }, [services, search]);
 
-  const delSvc = useDeleteService(); const delCat = useDeleteServiceCategory(); const delAddon = useDeleteServiceAddon(); const delPkg = useDeleteServicePackage();
-  const doDelete = async () => {
+  const onDelete = async () => {
     if (!del) return;
-    try {
-      if (del.type === "service") await delSvc.mutateAsync(del.id);
-      if (del.type === "category") await delCat.mutateAsync(del.id);
-      if (del.type === "addon") await delAddon.mutateAsync(del.id);
-      if (del.type === "package") await delPkg.mutateAsync(del.id);
-      toaster.create({ title: "Deleted", type: "success" }); setDel(null);
-    } catch (e: any) { toaster.create({ title: "Delete failed", description: e?.message, type: "error" }); }
+    try { await delSvc.mutateAsync(del.id); toaster.create({ title: "Service deleted", type: "success" }); setDel(null); }
+    catch (e:any) { toaster.create({ title: "Delete failed", description: e?.response?.data?.detail || e?.message, type: "error" }); }
   };
 
-  return (
-    <Stack gap="6">
-      <Flex justify="space-between" align={{ base: "stretch", md: "center" }} gap="4" direction={{ base: "column", md: "row" }}>
-        <Box>
-          <Heading size="xl">Services</Heading>
-          <Text color="fg.muted">Manage services, categories, add-ons, and packages.</Text>
-        </Box>
-        {manage && <HStack><Button variant="outline" onClick={() => { setEditingCat(null); setCatOpen(true); }}><LuPlus /> Category</Button><Button colorPalette="brand" onClick={() => { setEditingSvc(null); setSvcOpen(true); }}><LuPlus /> Service</Button></HStack>}
-      </Flex>
+  return <Stack gap="6">
+    <Flex justify="space-between" gap="4" direction={{ base:"column", md:"row" }} align={{ md:"center" }}>
+      <Box><Heading size="xl">Services</Heading><Text color="fg.muted">Manage your salon services and add-ons</Text></Box>
+      {manage && <HStack gap="2"><Button variant="outline" onClick={()=>navigate("/services/addons")}><LuPlus /> Manage Add-ons</Button><Button colorPalette="brand" onClick={()=>{setEditing(null); setShowForm(true);}}><LuPlus /> Add Service</Button></HStack>}
+    </Flex>
 
-      <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value)} variant="enclosed">
-        <Tabs.List>
-          <Tabs.Trigger value="services">Services</Tabs.Trigger>
-          <Tabs.Trigger value="addons">Add-ons</Tabs.Trigger>
-          <Tabs.Trigger value="packages">Packages</Tabs.Trigger>
-        </Tabs.List>
+    <HStack><Box color="fg.muted"><LuSearch /></Box><Input placeholder="Search services..." value={search} onChange={(e)=>setSearch(e.target.value)} /></HStack>
 
-        <Tabs.Content value="services" pt="4">
-          <Card.Root><Card.Body><Stack gap="4">
-            <Grid templateColumns={{ base: "1fr", md: "1fr 220px 180px" }} gap="3">
-              <HStack><Box color="fg.muted"><LuSearch /></Box><Input placeholder="Search services" value={q} onChange={(e) => setQ(e.target.value)} /></HStack>
-              <NativeSelect.Root><NativeSelect.Field value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option>{categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
-              <NativeSelect.Root><NativeSelect.Field value={activeOnly} onChange={(e) => setActiveOnly(e.target.value)}><option value="all">All statuses</option><option value="active">Active only</option><option value="inactive">Include inactive</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
-            </Grid>
+    <SimpleGrid columns={{ base:1, sm:2, lg:3 }} gap="4">
+      {isLoading ? [...Array(6)].map((_,i)=><Card.Root key={i} overflow="hidden"><Skeleton h="160px" /><Card.Body><Stack gap="3"><Skeleton h="5" w="70%" /><Skeleton h="4" w="40%" /><Skeleton h="12" /><Skeleton h="8" /></Stack></Card.Body></Card.Root>)
+      : filtered.map((service) => (
+        <motion.div key={service.id} whileHover={{ y: -2 }}>
+          <Card.Root overflow="hidden" cursor="pointer" onClick={()=>navigate(`/services/${service.id}`)} _hover={{ shadow:"md" }}>
+            {service.public_image_url ? <Image src={service.public_image_url} alt={service.name} h="160px" w="full" objectFit="cover" /> : <Flex h="160px" bg="bg.muted" align="center" justify="center" color="fg.muted"><VStack gap="2"><LuImagePlus size={28} /><Text fontSize="sm">No image</Text></VStack></Flex>}
+            <Card.Body><Stack gap="3">
+              <Flex justify="space-between" gap="3" align="start">
+                <Box minW="0"><Heading size="sm" lineClamp="1">{service.name}</Heading><Text fontSize="xs" color="fg.muted">{service.category}</Text></Box>
+                {manage && <HStack gap="1" onClick={(e)=>e.stopPropagation()}>
+                  <IconButton aria-label="Edit service" size="xs" variant="ghost" onClick={()=>{setEditing(service); setShowForm(true);}}><LuPencil /></IconButton>
+                  <IconButton aria-label="Delete service" size="xs" variant="ghost" colorPalette="red" onClick={()=>setDel(service)}><LuTrash2 /></IconButton>
+                </HStack>}
+              </Flex>
+              <Text fontSize="sm" color="fg.muted" lineClamp="2">{service.description || "No description"}</Text>
+              <Flex justify="space-between" pt="2" borderTopWidth="1px">
+                <Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontSize="sm" fontWeight="medium">{service.duration_minutes} min</Text></Box>
+                <Box textAlign="right"><Text fontSize="xs" color="fg.muted">Price</Text><Text fontSize="sm" fontWeight="medium">{fmt(service.price)}</Text></Box>
+              </Flex>
+              <HStack justify="space-between">
+                <HStack gap="1" color="fg.muted" fontSize="xs"><LuUsers /><Text>{service.staff_ids?.length || 0} staff assigned</Text></HStack>
+                <HStack gap="1">{!service.is_active && <Badge colorPalette="gray">Inactive</Badge>}{service.is_published && <Badge colorPalette="green">Published</Badge>}</HStack>
+              </HStack>
+            </Stack></Card.Body>
+          </Card.Root>
+        </motion.div>
+      ))}
+    </SimpleGrid>
+    {!isLoading && filtered.length===0 && <Box textAlign="center" py="10" color="fg.muted">No services found</Box>}
 
-            {servicesQ.isLoading ? <Stack>{[...Array(5)].map((_, i) => <Skeleton key={i} h="12" />)}</Stack> : (
-              <Box overflowX="auto">
-                <Table.Root size="sm">
-                  <Table.Header><Table.Row>
-                    <Table.ColumnHeader>Service</Table.ColumnHeader><Table.ColumnHeader>Category</Table.ColumnHeader><Table.ColumnHeader>Duration</Table.ColumnHeader><Table.ColumnHeader>Price</Table.ColumnHeader><Table.ColumnHeader>Status</Table.ColumnHeader><Table.ColumnHeader textAlign="end">Actions</Table.ColumnHeader>
-                  </Table.Row></Table.Header>
-                  <Table.Body>
-                    {services.map((s) => (
-                      <Table.Row key={s.id} cursor="pointer" _hover={{ bg: "bg.muted" }} onClick={() => navigate(`/services/${s.id}`)}>
-                        <Table.Cell><Text fontWeight="medium">{s.name}</Text><Text fontSize="xs" color="fg.muted" lineClamp="1">{s.description}</Text></Table.Cell>
-                        <Table.Cell>{s.category}</Table.Cell>
-                        <Table.Cell>{s.duration_minutes} min</Table.Cell>
-                        <Table.Cell>{money(s.price)}</Table.Cell>
-                        <Table.Cell><HStack gap="1"><Badge colorPalette={s.is_active ? "green" : "gray"}>{s.is_active ? "Active" : "Inactive"}</Badge>{s.is_published && <Badge colorPalette="blue">Published</Badge>}</HStack></Table.Cell>
-                        <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                          {manage && <HStack justify="end"><IconButton aria-label="Edit" size="xs" variant="ghost" onClick={() => { setEditingSvc(s); setSvcOpen(true); }}><LuPencil /></IconButton><IconButton aria-label="Delete" size="xs" variant="ghost" colorPalette="red" onClick={() => setDel({ type: "service", id: s.id, name: s.name })}><LuTrash2 /></IconButton></HStack>}
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                    {services.length === 0 && <Table.Row><Table.Cell colSpan={6}><Text color="fg.muted">No services found.</Text></Table.Cell></Table.Row>}
-                  </Table.Body>
-                </Table.Root>
-              </Box>
-            )}
-          </Stack></Card.Body></Card.Root>
-
-          <Card.Root mt="4"><Card.Body>
-            <Flex justify="space-between" mb="3"><Heading size="md">Categories</Heading></Flex>
-            <Flex gap="2" wrap="wrap">
-              {categories.map((c) => (
-                <HStack key={c.id} borderWidth="1px" rounded="full" px="3" py="1" gap="2">
-                  <Box w="2.5" h="2.5" rounded="full" bg={c.color || "gray.400"} />
-                  <Text fontSize="sm">{c.name}</Text>
-                  {manage && <><IconButton aria-label="Edit category" size="2xs" variant="ghost" onClick={() => { setEditingCat(c); setCatOpen(true); }}><LuPencil /></IconButton><IconButton aria-label="Delete category" size="2xs" variant="ghost" colorPalette="red" onClick={() => setDel({ type: "category", id: c.id, name: c.name })}><LuTrash2 /></IconButton></>}
-                </HStack>
-              ))}
-            </Flex>
-          </Card.Body></Card.Root>
-        </Tabs.Content>
-
-        <Tabs.Content value="addons" pt="4">
-          <Card.Root><Card.Body><Stack gap="4">
-            <Flex justify="space-between"><Heading size="md">Add-ons</Heading>{manage && <Button size="sm" onClick={() => { setEditingAddon(null); setAddonOpen(true); }}><LuPlus /> Add-on</Button>}</Flex>
-            <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)", xl: "repeat(3,1fr)" }} gap="4">
-              {addons.map((a) => (
-                <motion.div key={a.id} whileHover={{ y: -2 }}>
-                  <Card.Root variant="outline"><Card.Body><Stack gap="2">
-                    <Flex justify="space-between"><Heading size="sm">{a.name}</Heading><Badge>{a.category}</Badge></Flex>
-                    <Text fontSize="sm" color="fg.muted" lineClamp="2">{a.description}</Text>
-                    <HStack justify="space-between"><Text fontWeight="semibold">{money(a.price)}</Text><Text fontSize="xs" color="fg.muted">{a.duration_minutes} min</Text></HStack>
-                    {manage && <HStack justify="end"><IconButton aria-label="Edit addon" size="xs" variant="ghost" onClick={() => { setEditingAddon(a); setAddonOpen(true); }}><LuPencil /></IconButton><IconButton aria-label="Delete addon" size="xs" variant="ghost" colorPalette="red" onClick={() => setDel({ type: "addon", id: a.id, name: a.name })}><LuTrash2 /></IconButton></HStack>}
-                  </Stack></Card.Body></Card.Root>
-                </motion.div>
-              ))}
-            </Grid>
-          </Stack></Card.Body></Card.Root>
-        </Tabs.Content>
-
-        <Tabs.Content value="packages" pt="4">
-          <Card.Root><Card.Body><Stack gap="4">
-            <Flex justify="space-between"><Heading size="md">Packages</Heading>{manage && <Button size="sm" onClick={() => { setEditingPkg(null); setPkgOpen(true); }}><LuPlus /> Package</Button>}</Flex>
-            <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
-              {packages.map((p) => (
-                <motion.div key={p.id} whileHover={{ y: -2 }}>
-                  <Card.Root variant="outline"><Card.Body><Stack gap="2">
-                    <Flex justify="space-between" gap="2"><Heading size="sm">{p.name}</Heading><HStack>{p.is_featured && <Badge colorPalette="purple">Featured</Badge>}<Badge colorPalette={p.is_active ? "green" : "gray"}>{p.is_active ? "Active" : "Inactive"}</Badge></HStack></Flex>
-                    <Text fontSize="sm" color="fg.muted" lineClamp="2">{p.description}</Text>
-                    <HStack justify="space-between"><Text fontWeight="semibold">{money(p.package_price)}</Text><Text fontSize="xs" color="fg.muted">Save {money(p.discount_amount)} ({Number(p.discount_percentage).toFixed(0)}%)</Text></HStack>
-                    <Text fontSize="xs" color="fg.muted">{p.services?.length || 0} services · {p.total_duration_minutes} min</Text>
-                    {manage && <HStack justify="end"><IconButton aria-label="Edit package" size="xs" variant="ghost" onClick={() => { setEditingPkg(p); setPkgOpen(true); }}><LuPencil /></IconButton><IconButton aria-label="Delete package" size="xs" variant="ghost" colorPalette="red" onClick={() => setDel({ type: "package", id: p.id, name: p.name })}><LuTrash2 /></IconButton></HStack>}
-                  </Stack></Card.Body></Card.Root>
-                </motion.div>
-              ))}
-            </Grid>
-          </Stack></Card.Body></Card.Root>
-        </Tabs.Content>
-      </Tabs.Root>
-
-      <ServiceFormDialog open={svcOpen} onOpenChange={setSvcOpen} service={editingSvc} categories={categories} staff={staff} />
-      <CategoryDialog open={catOpen} onOpenChange={setCatOpen} category={editingCat} />
-      <AddonDialog open={addonOpen} onOpenChange={setAddonOpen} addon={editingAddon} services={services} />
-      <PackageDialog open={pkgOpen} onOpenChange={setPkgOpen} pkg={editingPkg} services={services} />
-      <ConfirmDelete open={!!del} onOpenChange={(v) => !v && setDel(null)} title={`Delete ${del?.name || "item"}?`} onConfirm={doDelete} loading={delSvc.isPending || delCat.isPending || delAddon.isPending || delPkg.isPending} />
-    </Stack>
-  );
+    <ServiceFormModal open={showForm} onOpenChange={setShowForm} service={editing} categories={categories} staff={staff} />
+    <CategoryModal open={showCategory} onOpenChange={setShowCategory} />
+    {manage && <Button variant="ghost" size="sm" w="fit-content" onClick={()=>setShowCategory(true)}><LuPlus /> Add Category</Button>}
+    <ConfirmDialog open={!!del} onOpenChange={(v:boolean)=>!v && setDel(null)} title="Delete Service" desc={`Are you sure you want to delete "${del?.name}"? This action cannot be undone.`} onConfirm={onDelete} loading={delSvc.isPending} />
+  </Stack>;
 }
