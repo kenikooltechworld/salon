@@ -87,13 +87,15 @@ export default function ProfilePage() {
       </SimpleGrid>
 
       <Tabs.Root value={activeTab} onValueChange={(e) => setActiveTab(e.value as any)}>
-        <Tabs.List>
-          <Tabs.Trigger value="profile"><LuUser /> Personal Profile</Tabs.Trigger>
-          <Tabs.Trigger value="business"><LuBuilding2 /> Business Profile</Tabs.Trigger>
-          <Tabs.Trigger value="activity"><LuTrendingUp /> Activity</Tabs.Trigger>
-          <Tabs.Trigger value="notifications"><LuBell /> Notifications</Tabs.Trigger>
-          <Tabs.Trigger value="security"><LuShield /> Security</Tabs.Trigger>
-        </Tabs.List>
+        <Box overflowX="auto" pb="1">
+          <Tabs.List minW="max-content" flexWrap={{ base: "nowrap", md: "wrap" }}>
+            <Tabs.Trigger value="profile" whiteSpace="nowrap"><LuUser /> Personal Profile</Tabs.Trigger>
+            <Tabs.Trigger value="business" whiteSpace="nowrap"><LuBuilding2 /> Business Profile</Tabs.Trigger>
+            <Tabs.Trigger value="activity" whiteSpace="nowrap"><LuTrendingUp /> Activity</Tabs.Trigger>
+            <Tabs.Trigger value="notifications" whiteSpace="nowrap"><LuBell /> Notifications</Tabs.Trigger>
+            <Tabs.Trigger value="security" whiteSpace="nowrap"><LuShield /> Security</Tabs.Trigger>
+          </Tabs.List>
+        </Box>
 
         <Tabs.Content value="profile">
           <Card.Root><Card.Body><form onSubmit={handleUpdateProfile}><Stack gap="4">
