@@ -52,6 +52,7 @@ class ServiceService:
 
     async def create(self, tenant_id: uuid.UUID, data: ServiceCreate) -> Service:
         payload = data.model_dump()
+        await self._ensure_unique_name(tenant_id, payload["name"])
         staff_ids = [uuid.UUID(str(x)) for x in (payload.get("staff_ids") or [])]
         payload["staff_ids"] = list(dict.fromkeys(staff_ids))
         await self._validate_staff_ids(tenant_id, payload["staff_ids"])
@@ -76,6 +77,8 @@ class ServiceService:
             return None
         payload = data.model_dump(exclude_unset=True)
         previous_staff_ids = list(service.staff_ids or [])
+        if "name" in payload and payload["name"]:
+            await self._ensure_unique_name(tenant_id, payload["name"], exclude_id=service_id)
         if "staff_ids" in payload:
             staff_ids = [uuid.UUID(str(x)) for x in (payload.get("staff_ids") or [])]
             payload["staff_ids"] = list(dict.fromkeys(staff_ids))
