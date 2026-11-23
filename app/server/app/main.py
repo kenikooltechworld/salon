@@ -19,7 +19,7 @@ if sys.platform == "win32":
 
 from app.api.v1.router import api_router
 from app.config import settings
-from app.db import SessionLocal, close_engine, init_engine
+from app.db import close_engine, get_session_factory, init_engine
 from app.lib.csrf import enforce_csrf
 from app.lib.socketio import sio
 from app.lib.tenant_context import resolve_tenant_from_request
@@ -57,8 +57,10 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def subdomain_tenant_middleware(request: Request, call_next):
         try:
-            async with SessionLocal() as session:
-                await resolve_tenant_from_request(request, session)
+            factory = get_session_factory() or init_engine() and get_session_factory()
+            if factory is not None:
+                async with factory() as session:
+                    await resolve_tenant_from_request(request, session)
         except Exception as e:
             from fastapi import HTTPException
             from fastapi.responses import JSONResponse
