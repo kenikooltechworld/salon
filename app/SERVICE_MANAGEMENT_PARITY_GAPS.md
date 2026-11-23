@@ -13,7 +13,7 @@ Status legend: `[ ]` missing / incomplete, `[~]` partial, `[x]` done.
 - [ ] **Realtime updates** - `notification:new` / domain mutations refresh service/category/addon/package/commission queries where relevant.
 - [ ] **Validation/toasts/errors** - Form validation, duplicate checks, API error display, success/error toasts, confirmation modals.
 - [ ] **Responsive design** - Mobile/tablet/desktop parity with legacy service UX; skeleton/loading/empty states.
-- [ ] **Tests** - Backend pytest for service domain (categories/services/addons/packages/commissions/public catalog), frontend typecheck/build, live Render smoke tests with `.env.test`.
+- [~] **Tests** - `python -m compileall app/server/app`, `npx tsc -b --pretty false`, and `npm run build` pass; backend pytest blocked locally by missing `boto3`; no new service-domain pytest/live Render smoke yet.
 
 ## 1. Backend - Services (`/api/v1/services`)
 
