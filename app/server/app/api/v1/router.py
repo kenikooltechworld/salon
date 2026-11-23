@@ -8,7 +8,9 @@ from app.api.v1.routes import customers as customer_routes
 from app.api.v1.routes import customer_preferences as customer_preference_routes
 from app.api.v1.routes import health as health_routes
 from app.api.v1.routes import media as media_routes
+from app.api.v1.routes import invoices as invoice_routes
 from app.api.v1.routes import notifications as notification_routes
+from app.api.v1.routes import payments as payment_routes
 from app.api.v1.routes import public_booking as public_booking_routes
 from app.api.v1.routes import public_services as public_service_routes
 from app.api.v1.routes import public_tenant as public_tenant_routes
@@ -40,5 +42,7 @@ api_router.include_router(service_package_routes.router)
 api_router.include_router(service_commission_routes.router)
 api_router.include_router(customer_routes.router)
 api_router.include_router(customer_preference_routes.router)
+api_router.include_router(invoice_routes.router)
+api_router.include_router(payment_routes.router)
 api_router.include_router(staff_routes.router)
 api_router.include_router(appointment_routes.router)

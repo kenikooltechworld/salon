@@ -64,14 +64,14 @@ async def update_customer(
     return await controller.update(current_user.tenant_id, customer_id, data)
 
 
-@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{customer_id}")
 async def delete_customer(
     customer_id: uuid.UUID,
     current_user: User = Depends(require_roles("owner", "admin", "manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = CustomerController(session)
-    await controller.delete(current_user.tenant_id, customer_id)
+    return await controller.delete(current_user.tenant_id, customer_id)
 
 
 @router.get("/{customer_id}/balance")
@@ -114,6 +114,17 @@ async def get_customer_history(
 ):
     controller = CustomerController(session)
     return await controller.get_history(current_user.tenant_id, customer_id, page=page, page_size=page_size)
+
+
+@router.get("/{customer_id}/history/{history_id}")
+async def get_customer_history_item(
+    customer_id: uuid.UUID,
+    history_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = CustomerController(session)
+    return await controller.get_history_item(current_user.tenant_id, customer_id, history_id)
 
 
 @router.post("/{customer_id}/resend-portal-invitation")

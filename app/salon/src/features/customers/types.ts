@@ -100,6 +100,7 @@ export interface CustomerHistoryItem {
   rating: number;
   feedback: string;
   status?: string;
+  amount_paid?: number;
 }
 
 export interface CustomerHistoryResponse {

@@ -60,11 +60,16 @@ class CustomerController:
         await self.session.commit()
         return _to_read(item)
 
-    async def delete(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> None:
-        ok = await self.service.delete(tenant_id, customer_id)
-        if not ok:
+    async def delete(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
+        result = await self.service.delete(tenant_id, customer_id)
+        if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
         await self.session.commit()
+        return {
+            "message": "Customer and all related data deleted successfully",
+            "deleted_records": result.get("total_related_records_deleted", 0),
+            "details": result.get("deleted_records", {}),
+        }
 
     async def resend_portal_invitation(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:
         ok, message = await self.service.resend_portal_invitation(tenant_id, customer_id)
@@ -98,4 +103,10 @@ class CustomerController:
         info = await self.service.get_history(tenant_id, customer_id, page=page, page_size=page_size)
         if info is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        return info
+
+    async def get_history_item(self, tenant_id: uuid.UUID, customer_id: uuid.UUID, history_id: uuid.UUID) -> dict:
+        info = await self.service.get_history_item(tenant_id, customer_id, history_id)
+        if info is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History entry not found")
         return info

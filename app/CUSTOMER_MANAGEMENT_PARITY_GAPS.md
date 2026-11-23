@@ -8,12 +8,12 @@ Status legend: `[ ]` missing, `[~]` partial, `[x]` done, `[!]` blocked by missin
 ## 0. Cross-cutting
 - [x] **Legacy contract matrix** - admin customer management routes/components audited; app has matching admin endpoints/UI surfaces.
 - [x] **UI parity pass** - list/detail/balance/preferences/history/appointments drill-in/resend invite/create-edit/delete implemented in app Chakra UI.
-- [~] **Backend parity pass** - CRUD, preferences, balance, booking-eligibility, history, resend invite implemented; semantics limited where Invoice/Payment/AppointmentHistory models missing.
+- [x] **Backend parity pass** - CRUD, preferences, invoice-backed balance/eligibility, AppointmentHistory-backed history/item, resend invite, and app-model customer deletion cascade implemented; legacy-only missing domains remain N/A until modeled.
 - [x] **RBAC/UI guards** - manage roles owner/admin/manager/staff; delete owner/admin/manager in UI; backend role guards on mutating routes.
 - [x] **Toasts/errors/loading/empty states** - list/detail/forms/history/balance/preferences covered.
 - [~] **Realtime/refresh** - query invalidation/refetch after mutations; no realtime socket parity.
 - [x] **Responsive/mobile parity** - desktop table + mobile compact/expand card view on customers list.
-- [x] **Tests/smoke** - `cd app/salon && npm run build` passes; `cd app/server && python -m py_compile ...` passes for customer backend files.
+- [x] **Tests/smoke** - `cd app/salon && npm run build` passes; `cd app/server && python -m py_compile ...` passes for customer/invoice/payment/history backend files; `alembic heads` shows `c1d2e3f4a5b6`.
 
 ## 1. Customers List (`/customers`)
 - [x] **Page shell** - title, total count, Add Customer.
@@ -43,40 +43,40 @@ Status legend: `[ ]` missing, `[~]` partial, `[x]` done, `[!]` blocked by missin
 - [x] **Loading/not-found states** - skeleton and not-found card.
 
 ## 4. Balance (admin customer management)
-- [~] **Backend endpoint** - `GET/PUT /customers/{id}/balance` exists; approximation without Invoice model.
+- [x] **Backend endpoint** - `GET/PUT /customers/{id}/balance` uses `Invoice` records (`issued`/`overdue`) and syncs `Customer.outstanding_balance`.
 - [x] **Frontend display** - outstanding balance, eligible/cannot book badge, reason, recalculate action.
 - [x] **Unpaid invoices list parity** - renders invoice rows when present; empty state shown.
-- [!] **True invoice parity** - requires Invoice/Payment domain in app.
+- [~] **True invoice parity** - `Invoice`/`Payment` models, schemas, services, controllers, routes, and migration added in app; live parity still depends on deployed API/data and broader invoice/payment workflows.
 
 ## 5. Booking Eligibility
-- [~] **Backend endpoint** - `GET /customers/{id}/booking-eligibility` exists.
+- [x] **Backend endpoint** - `GET /customers/{id}/booking-eligibility` exists and uses invoice-backed balance.
 - [x] **UI parity** - shown in balance tab.
-- [!] **True eligibility parity** - depends on real outstanding balance/invoice logic.
+- [~] **True eligibility parity** - uses real invoice balance in app; deployment/data parity still external.
 
 ## 6. Preferences
-- [~] **Backend endpoints** - `GET/PUT /customers/{id}/preferences` exist in app.
+- [x] **Backend endpoints** - `GET/PUT /customers/{id}/preferences` exist in app.
 - [x] **Basic UI** - communication methods, time slots, language, notes.
 - [x] **Legacy panel parity** - preferred staff/service checkboxes, read-only badges, edit/cancel/save.
 - [~] **Data sources** - uses `/services` and `/staff` queries; staff labels fallback to user_id/id until richer staff-user shape available.
-- [!] **Full parity** - depends on richer staff identity and any missing legacy preference semantics.
+- [~] **Full parity** - depends on richer staff identity and any missing legacy preference semantics.
 
 ## 7. History / Appointments drill-in
-- [~] **Backend history endpoint** - `GET /customers/{id}/history` exists; mapped from appointments, no rating/feedback/history model.
+- [x] **Backend history endpoint** - `GET /customers/{id}/history` uses `AppointmentHistory` with appointment fallback for pre-history records; returns rating/feedback/status/amount_paid.
+- [x] **History item endpoint** - `GET /customers/{id}/history/{historyId}` added (supports history entry or appointment fallback id).
 - [x] **Detail tab history preview** - recent history with View All Appointments.
 - [x] **View All Appointments route** - `/customers/:id/appointments` page added.
-- [x] **Appointment detail route** - `/customers/:id/appointments/:appointmentId` page added.
-- [~] **History item parity** - service/staff/date/time/notes/rating/feedback/status displayed when available.
-- [!] **True history parity** - legacy uses AppointmentHistory/rating/feedback; app lacks those models.
+- [x] **Appointment detail route** - `/customers/:id/appointments/:appointmentId` page added; uses history-item endpoint with list fallback.
+- [~] **History item parity** - service/staff/date/time/notes/rating/feedback/status displayed when available; creating/updating ratings/feedback UI/workflow not yet exposed.
 
 ## 8. Resend Portal Invitation (admin action)
-- [~] **Backend endpoint** - `POST /customers/{id}/resend-portal-invitation` exists.
+- [x] **Backend endpoint** - `POST /customers/{id}/resend-portal-invitation` exists.
 - [x] **Detail button** - shown when no portal access.
 - [x] **Parity behavior** - loading state, success/error toast messages.
 
 ## 9. Customer Deletion
-- [~] **Backend delete** - app deletes customer row; legacy cascades related records via `CustomerDeletionService`.
-- [ ] **Cascade parity** - define app-equivalent cascade across existing models; report deleted counts where possible.
-- [!] **Full cascade parity** - blocked for domains/models not present in app.
+- [x] **Backend delete** - deletes customer and cascades existing app models: appointment_history, customer_preferences, invoices, payments, appointments, customer notifications; returns deleted counts.
+- [~] **Cascade parity** - covers models present in app; cannot delete legacy-only domains not modeled in app rebuild.
+- [~] **Full cascade parity** - depends on future app domain parity (memberships, carts, receipts, etc., if/when added).
 
 ## 10. Files touched
 - `app/salon/src/pages/customers/CustomersPage.tsx`
@@ -95,8 +95,9 @@ Status legend: `[ ]` missing, `[~]` partial, `[x]` done, `[!]` blocked by missin
 - `app/server/app/api/v1/routes/customer_preferences.py`
 - `app/CUSTOMER_MANAGEMENT_PARITY_GAPS.md`
 
-## 11. Remaining (intentionally UI-ready / backend-blocked)
-1. Invoice/Payment domain for true balance/eligibility/unpaid invoice parity.
-2. AppointmentHistory/rating/feedback domain for true history parity.
-3. Cross-model customer deletion cascade parity.
-4. Rich staff display names in pickers when staff-user join/API available.
+## 11. Remaining
+1. Broader invoice/payment workflows (issue/send/payment recording/refunds) if legacy admin parity requires them beyond customer balance/history surfaces.
+2. Rating/feedback capture/edit UI and endpoints if legacy customer management exposes them.
+3. Rich staff display names in pickers when staff-user join/API available.
+4. Legacy-only deletion domains remain N/A until corresponding app models exist.
+5. Live deployment verification against `https://api.kenikoolsalon.com/api/v1` with `.env.test` creds after deploy/migration.

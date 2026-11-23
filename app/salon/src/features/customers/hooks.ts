@@ -114,10 +114,10 @@ export function useCustomerBookingEligibility(id?: string) {
   });
 }
 
-export function useCustomerHistory(id?: string, params: Record<string, unknown> = {}) {
+export function useCustomerHistory(id?: string, params: Record<string, unknown> = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: customerKeys.history(id || "", params),
     queryFn: async () => (await customersApi.getHistory(id!, params)).data,
-    enabled: !!id,
+    enabled: !!id && (options.enabled ?? true),
   });
 }

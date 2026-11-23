@@ -40,4 +40,6 @@ export const customersApi = {
     apiClient.get<BookingEligibility>(`/customers/${id}/booking-eligibility`),
   getHistory: (id: string, params: Record<string, unknown> = {}) =>
     apiClient.get<CustomerHistoryResponse>(`/customers/${id}/history`, { params: asParams(params) }),
+  getHistoryItem: (id: string, historyId: string) =>
+    apiClient.get(`/customers/${id}/history/${historyId}`),
 };

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.appointment import AppointmentCreate, AppointmentRead, AppointmentUpdate
 from app.schemas.notification import NotificationCreate
+from app.services.appointment_history_service import AppointmentHistoryService
 from app.services.appointment_service import AppointmentService
 from app.services.notification_service import NotificationService
 from app.services.service_commission_service import ServiceCommissionService
@@ -20,6 +21,7 @@ class AppointmentController:
         self.service = AppointmentService(session)
         self.notifications = NotificationService(session)
         self.commissions = ServiceCommissionService(session)
+        self.history = AppointmentHistoryService(session)
 
     async def list(
         self, tenant_id: uuid.UUID, status: str | None = None, staff_id: str | None = None
@@ -30,6 +32,7 @@ class AppointmentController:
     async def create(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, data: AppointmentCreate) -> AppointmentRead:
         item = await self.service.create(tenant_id, data)
         await self.session.flush()
+        await self.history.create_from_appointment(tenant_id, item.id)
         await self.notifications.create(
             tenant_id,
             NotificationCreate(
@@ -61,6 +64,8 @@ class AppointmentController:
 
         if item.status == "completed" and prev_status != "completed":
             await self.commissions.calculate_for_appointment(tenant_id, item.id)
+        if item.status in {"confirmed", "completed", "cancelled", "no_show"}:
+            await self.history.create_from_appointment(tenant_id, item.id)
         await self.session.flush()
         await self.notifications.create(
             tenant_id,

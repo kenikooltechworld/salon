@@ -1,8 +1,11 @@
 ﻿from .appointment import Appointment
+from .appointment_history import AppointmentHistory
 from .base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from .customer import Customer
 from .customer_preference import CustomerPreference
+from .invoice import Invoice
 from .notification import Notification
+from .payment import Payment
 from .service import Service
 from .service_addon import ServiceAddon
 from .service_category import ServiceCategory
@@ -15,10 +18,13 @@ from .user import User
 
 __all__ = [
     "Appointment",
+    "AppointmentHistory",
     "Base",
     "Customer",
     "CustomerPreference",
+    "Invoice",
     "Notification",
+    "Payment",
     "Service",
     "ServiceAddon",
     "ServiceCategory",

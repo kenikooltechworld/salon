@@ -1,16 +1,22 @@
 ﻿import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Box, Button, Card, Grid, Heading, HStack, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { LuArrowLeft } from "react-icons/lu";
-import { useCustomer, useCustomerHistory } from "@/features/customers";
+import { useQuery } from "@tanstack/react-query";
+import { customersApi, useCustomer, useCustomerHistory } from "@/features/customers";
 
 export default function AppointmentDetailPage() {
   const { id, appointmentId } = useParams<{ id: string; appointmentId: string }>();
   const navigate = useNavigate();
   const { data: customer, isLoading: cLoading } = useCustomer(id);
-  const { data: historyResp, isLoading: hLoading } = useCustomerHistory(id, { page: 1, page_size: 100 });
-  const appt = (historyResp?.history || []).find((h) => h.id === appointmentId || h.appointment_id === appointmentId);
+  const historyItemQ = useQuery({
+    queryKey: ["customers", "history-item", id, appointmentId],
+    queryFn: async () => (await customersApi.getHistoryItem(id!, appointmentId!)).data,
+    enabled: !!id && !!appointmentId,
+  });
+  const { data: historyResp, isLoading: hLoading } = useCustomerHistory(id, { page: 1, page_size: 100 }, { enabled: !historyItemQ.data && !historyItemQ.isLoading });
+  const appt = (historyItemQ.data as any) || (historyResp?.history || []).find((h) => h.id === appointmentId || h.appointment_id === appointmentId);
 
-  if (cLoading || hLoading) return <Stack gap="4"><Skeleton h="10" /><Skeleton h="48" /></Stack>;
+  if (cLoading || historyItemQ.isLoading || (!appt && hLoading)) return <Stack gap="4"><Skeleton h="10" /><Skeleton h="48" /></Stack>;
   if (!customer || !appt) return <Card.Root><Card.Body><Text>Appointment not found</Text><Button mt="3" onClick={() => navigate(`/customers/${id}/appointments`)}>Back</Button></Card.Body></Card.Root>;
 
   return (
