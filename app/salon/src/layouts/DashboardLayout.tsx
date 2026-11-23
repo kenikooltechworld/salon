@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Avatar, Box, Flex, HStack, IconButton, Menu, Portal, Splitter, Text, useBreakpointValue } from "@chakra-ui/react";
-import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuLogOut } from "react-icons/lu";
+import { LuLayoutDashboard, LuUsers, LuScissors, LuUser, LuMenu as LuMenuIcon, LuSettings, LuLogOut, LuCalendarDays } from "react-icons/lu";
 import { authService, useAuthStore } from "@/features/auth";
 import { useTenantSettings } from "@/features/settings";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -13,6 +13,7 @@ import { useNotificationStore } from "@/features/notifications";
 
 const baseItems: (SidebarItem & { roles?: string[] })[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", to: "/dashboard" },
+  { icon: LuCalendarDays, label: "Bookings", to: "/bookings", roles: ["owner", "admin", "manager", "staff"] },
   { icon: LuScissors, label: "Services", to: "/services", roles: ["owner", "admin", "manager", "staff"] },
   { icon: LuUsers, label: "Customers", to: "/customers", roles: ["owner", "admin", "manager", "staff"] },
   { icon: LuUser, label: "Profile", to: "/profile" },
