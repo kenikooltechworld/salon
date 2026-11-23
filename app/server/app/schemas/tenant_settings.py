@@ -54,6 +54,21 @@ class FinancialConfigSchema(BaseModel):
     invoice_numbering_start: int = Field(default=1000, ge=1)
 
 
+class OperationalConfigSchema(BaseModel):
+    inventory_tracking_enabled: bool = True
+    low_stock_threshold: int = Field(default=10, ge=0)
+    waiting_room_enabled: bool = True
+    waiting_room_max_capacity: int = Field(default=50, ge=1)
+    resource_management_enabled: bool = True
+    notification_preferences_enabled: bool = True
+    sms_provider: Literal["termii", "twilio", "none"] = "termii"
+    email_provider: Literal["smtp", "sendgrid", "none"] = "smtp"
+    backup_enabled: bool = True
+    backup_frequency: Literal["daily", "weekly", "monthly"] = "daily"
+    cache_optimization_enabled: bool = True
+    cache_ttl_minutes: int = Field(default=60, ge=1)
+
+
 def default_business_hours() -> Dict[str, BusinessHoursDay]:
     return {
         "monday": BusinessHoursDay(open_time="09:00", close_time="18:00"),
@@ -72,6 +87,10 @@ def default_commission_settings() -> dict[str, Any]:
 
 def default_financial_config() -> dict[str, Any]:
     return FinancialConfigSchema().model_dump()
+
+
+def default_operational_config() -> dict[str, Any]:
+    return OperationalConfigSchema().model_dump()
 
 
 class TenantSettingsSchema(BaseModel):

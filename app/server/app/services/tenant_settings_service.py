@@ -8,9 +8,11 @@ from app.models.tenant import Tenant
 from app.schemas.tenant_settings import (
     CommissionSettingsSchema,
     FinancialConfigSchema,
+    OperationalConfigSchema,
     TenantSettingsSchema,
     default_commission_settings,
     default_financial_config,
+    default_operational_config,
 )
 
 
@@ -97,6 +99,23 @@ async def update_financial_settings(session: AsyncSession, tenant: Tenant, updat
     config = FinancialConfigSchema(**updates).model_dump()
     current = dict(tenant.settings or {})
     current["financial_config"] = config
+    tenant.settings = current
+    await session.commit()
+    await session.refresh(tenant)
+    return {"data": config}
+
+
+def operational_settings_payload(tenant: Tenant) -> dict[str, Any]:
+    stored = dict(tenant.settings or {})
+    raw = stored.get("operational_config") or {}
+    config = OperationalConfigSchema(**raw).model_dump() if isinstance(raw, dict) else default_operational_config()
+    return {"data": config}
+
+
+async def update_operational_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:
+    config = OperationalConfigSchema(**updates).model_dump()
+    current = dict(tenant.settings or {})
+    current["operational_config"] = config
     tenant.settings = current
     await session.commit()
     await session.refresh(tenant)
