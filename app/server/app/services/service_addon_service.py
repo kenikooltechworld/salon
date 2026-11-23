@@ -56,7 +56,7 @@ class ServiceAddonService:
         return result.scalar_one_or_none()
 
     async def create(self, tenant_id: uuid.UUID, data: ServiceAddonCreate) -> ServiceAddon:
-        payload = data.model_dump()
+        payload = data.model_dump(exclude={"applicable_services"})
         await self._validate_services(tenant_id, payload.get("applicable_service_ids", []))
         addon = ServiceAddon(tenant_id=tenant_id, **payload)
         self.session.add(addon)
@@ -70,7 +70,7 @@ class ServiceAddonService:
         addon = await self.get(tenant_id, addon_id)
         if addon is None:
             return None
-        payload = data.model_dump(exclude_unset=True)
+        payload = data.model_dump(exclude_unset=True, exclude={"applicable_services"})
         if "applicable_service_ids" in payload:
             await self._validate_services(tenant_id, payload.get("applicable_service_ids") or [])
         for field, value in payload.items():
