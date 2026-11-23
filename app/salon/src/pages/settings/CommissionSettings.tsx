@@ -1,12 +1,16 @@
 ﻿import { useEffect, useState } from "react";
-import { Box, Button, Card, Container, Flex, Grid, Heading, Input, NativeSelect, Skeleton, Stack, Switch, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Card, Container, Flex, Grid, Heading, HStack, Icon, Input, NativeSelect, Skeleton, Stack, Switch, Tabs, Text } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { LuArrowLeft, LuCheck, LuPlus, LuTrash2 } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuInfo, LuPlus, LuTrash2 } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_COMMISSION_SETTINGS, getErrorMessage, normalizeCommissionSettings, useCommissionSettings, useUpdateCommissionSettings, type CommissionRule, type CommissionSettingsData } from "@/features/settings";
 
 const newRule = (): CommissionRule => ({ id: crypto.randomUUID(), name: "New Rule", percentage: 0, minAmount: 0, maxAmount: 0, applicableTo: "staff" });
 const num = (v: string, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+const LabelTip = ({ label, tip }: { label: string; tip: string }) => (
+  <HStack gap="1" mb="1"><Text fontSize="sm">{label}</Text><Tooltip content={tip} showArrow openDelay={150}><Box as="span" color="fg.muted" aria-label={tip}><Icon as={LuInfo} boxSize="3.5" /></Box></Tooltip></HStack>
+);
 
 export default function CommissionSettings() {
   const navigate = useNavigate();
@@ -36,7 +40,7 @@ export default function CommissionSettings() {
 
   return (
     <Container maxW="6xl" py="6"><Stack gap="6">
-      <Flex gap="4" align="center"><Button variant="ghost" onClick={() => navigate("/settings")}><LuArrowLeft /> Back</Button><Box><Heading size="xl">Commission Settings</Heading><Text color="fg.muted">Configure commission rules and financial controls</Text></Box></Flex>
+      <Flex gap="4" align="center"><Button variant="ghost" onClick={() => navigate("/settings")}><LuArrowLeft /> Back</Button><Box><Heading size="xl">Commission Settings</Heading><Text color="fg.muted">Configure how commissions are calculated and paid out.</Text></Box></Flex>
 
       <Tabs.Root defaultValue="rules" variant="enclosed">
         <Tabs.List>
@@ -51,10 +55,10 @@ export default function CommissionSettings() {
               <Card.Root key={rule.id} variant="outline"><Card.Body><Stack gap="3">
                 <Flex justify="space-between" gap="3" align="end"><Box flex="1"><Text fontSize="sm" mb="1">Rule Name</Text><Input value={rule.name} onChange={(e) => updateRule(rule.id, { name: e.target.value })} placeholder="e.g. Senior Stylist Commission" /></Box><Button variant="ghost" colorPalette="red" onClick={() => removeRule(rule.id)} aria-label="Remove rule"><LuTrash2 /></Button></Flex>
                 <Grid templateColumns={{ base: "1fr", md: "repeat(4,1fr)" }} gap="3">
-                  <Box><Text fontSize="sm" mb="1">Percentage (%)</Text><Input type="number" min={0} max={100} step={0.1} value={rule.percentage} onChange={(e) => updateRule(rule.id, { percentage: num(e.target.value) })} /></Box>
-                  <Box><Text fontSize="sm" mb="1">Min Amount</Text><Input type="number" min={0} value={rule.minAmount} onChange={(e) => updateRule(rule.id, { minAmount: num(e.target.value) })} /></Box>
-                  <Box><Text fontSize="sm" mb="1">Max Amount</Text><Input type="number" min={0} value={rule.maxAmount} onChange={(e) => updateRule(rule.id, { maxAmount: num(e.target.value) })} /></Box>
-                  <Box><Text fontSize="sm" mb="1">Applicable To</Text><NativeSelect.Root><NativeSelect.Field value={rule.applicableTo} onChange={(e) => updateRule(rule.id, { applicableTo: e.target.value as "staff" | "service" })}><option value="staff">Staff</option><option value="service">Service</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Box>
+                  <Box><LabelTip label="Percentage (%)" tip="Commission percent applied to matching transactions." /><Input type="number" min={0} max={100} step={0.1} value={rule.percentage} onChange={(e) => updateRule(rule.id, { percentage: num(e.target.value) })} /></Box>
+                  <Box><LabelTip label="Min Amount" tip="Lower amount bound where this rule applies. Use 0 for no minimum." /><Input type="number" min={0} value={rule.minAmount} onChange={(e) => updateRule(rule.id, { minAmount: num(e.target.value) })} /></Box>
+                  <Box><LabelTip label="Max Amount" tip="Upper amount bound. Use 0 for no maximum." /><Input type="number" min={0} value={rule.maxAmount} onChange={(e) => updateRule(rule.id, { maxAmount: num(e.target.value) })} /></Box>
+                  <Box><LabelTip label="Applicable To" tip="Apply this rule to staff earnings or service-based commission." /><NativeSelect.Root><NativeSelect.Field value={rule.applicableTo} onChange={(e) => updateRule(rule.id, { applicableTo: e.target.value as "staff" | "service" })}><option value="staff">Staff</option><option value="service">Service</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Box>
                 </Grid>
               </Stack></Card.Body></Card.Root>
             ))}
@@ -63,11 +67,11 @@ export default function CommissionSettings() {
 
         <Tabs.Content value="financial" pt="4">
           <Card.Root><Card.Body><Stack gap="5">
-            <Box><Heading size="md">Financial Controls</Heading><Text fontSize="sm" color="fg.muted">Manage balance enforcement and payment settings.</Text></Box>
-            <Flex justify="space-between" align="center" gap="4"><Box><Text fontWeight="medium">Enable Balance Enforcement</Text><Text fontSize="sm" color="fg.muted">Require minimum balance before payouts/actions where enforced.</Text></Box><Switch.Root checked={settings.balanceEnforcement.enabled} onCheckedChange={(e) => setSettings((s) => ({ ...s, balanceEnforcement: { ...s.balanceEnforcement, enabled: e.checked } }))}><Switch.HiddenInput /><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Root></Flex>
-            <Box maxW="sm"><Text fontSize="sm" mb="1">Minimum Balance Required</Text><Input type="number" min={0} value={settings.balanceEnforcement.minimumBalance} onChange={(e) => setSettings((s) => ({ ...s, balanceEnforcement: { ...s.balanceEnforcement, minimumBalance: num(e.target.value) } }))} disabled={!settings.balanceEnforcement.enabled} /></Box>
-            <Flex justify="space-between" align="center" gap="4"><Box><Text fontWeight="medium">Enable Auto Settlement</Text><Text fontSize="sm" color="fg.muted">Automatically settle eligible balances.</Text></Box><Switch.Root checked={settings.paymentSettings.autoSettlement} onCheckedChange={(e) => setSettings((s) => ({ ...s, paymentSettings: { ...s.paymentSettings, autoSettlement: e.checked } }))}><Switch.HiddenInput /><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Root></Flex>
-            <Box maxW="sm"><Text fontSize="sm" mb="1">Settlement Day (1-31)</Text><Input type="number" min={1} max={31} value={settings.paymentSettings.settlementDay} onChange={(e) => setSettings((s) => ({ ...s, paymentSettings: { ...s.paymentSettings, settlementDay: num(e.target.value, 1) } }))} disabled={!settings.paymentSettings.autoSettlement} /></Box>
+            <Box><Heading size="md">Financial Controls</Heading><Text fontSize="sm" color="fg.muted">Commission payout controls. For customer balance/refund/invoice policies, use Financial Settings.</Text></Box>
+            <Flex justify="space-between" align="center" gap="4"><Box><HStack gap="1"><Text fontWeight="medium">Enable Balance Enforcement</Text><Tooltip content="Requires minimum commission/balance before commission-related payouts/actions where enforced." showArrow openDelay={150}><Box as="span" color="fg.muted" aria-label="Balance enforcement info"><Icon as={LuInfo} boxSize="3.5" /></Box></Tooltip></HStack><Text fontSize="sm" color="fg.muted">Commission-scope balance requirement.</Text></Box><Switch.Root checked={settings.balanceEnforcement.enabled} onCheckedChange={(e) => setSettings((s) => ({ ...s, balanceEnforcement: { ...s.balanceEnforcement, enabled: e.checked } }))}><Switch.HiddenInput /><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Root></Flex>
+            <Box maxW="sm"><LabelTip label="Minimum Balance Required" tip="Minimum balance required before commission payout/action is allowed." /><Input type="number" min={0} value={settings.balanceEnforcement.minimumBalance} onChange={(e) => setSettings((s) => ({ ...s, balanceEnforcement: { ...s.balanceEnforcement, minimumBalance: num(e.target.value) } }))} disabled={!settings.balanceEnforcement.enabled} /></Box>
+            <Flex justify="space-between" align="center" gap="4"><Box><HStack gap="1"><Text fontWeight="medium">Enable Auto Settlement</Text><Tooltip content="Automatically settle eligible commission balances on the configured day." showArrow openDelay={150}><Box as="span" color="fg.muted" aria-label="Auto settlement info"><Icon as={LuInfo} boxSize="3.5" /></Box></Tooltip></HStack><Text fontSize="sm" color="fg.muted">Automatically settle eligible balances.</Text></Box><Switch.Root checked={settings.paymentSettings.autoSettlement} onCheckedChange={(e) => setSettings((s) => ({ ...s, paymentSettings: { ...s.paymentSettings, autoSettlement: e.checked } }))}><Switch.HiddenInput /><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Root></Flex>
+            <Box maxW="sm"><LabelTip label="Settlement Day (1-31)" tip="Day of month used for automatic commission settlement." /><Input type="number" min={1} max={31} value={settings.paymentSettings.settlementDay} onChange={(e) => setSettings((s) => ({ ...s, paymentSettings: { ...s.paymentSettings, settlementDay: num(e.target.value, 1) } }))} disabled={!settings.paymentSettings.autoSettlement} /></Box>
           </Stack></Card.Body></Card.Root>
         </Tabs.Content>
       </Tabs.Root>
