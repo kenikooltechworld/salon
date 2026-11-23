@@ -47,6 +47,7 @@ class ServiceController:
 
     async def create(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, data: ServiceCreate) -> ServiceRead:
         item = await self.service.create(tenant_id, data)
+        await self.session.flush()
         await self.notifications.create(
             tenant_id,
             NotificationCreate(
@@ -57,7 +58,6 @@ class ServiceController:
                 data={"service_id": str(item.id)},
             ),
         )
-        await self.session.commit()
         return ServiceRead.model_validate(item)
 
     async def get(self, tenant_id: uuid.UUID, service_id: uuid.UUID) -> ServiceRead:
@@ -72,6 +72,7 @@ class ServiceController:
         item = await self.service.update(tenant_id, service_id, data)
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+        await self.session.flush()
         await self.notifications.create(
             tenant_id,
             NotificationCreate(
@@ -82,7 +83,6 @@ class ServiceController:
                 data={"service_id": str(item.id)},
             ),
         )
-        await self.session.commit()
         return ServiceRead.model_validate(item)
 
     async def delete(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, service_id: uuid.UUID) -> ServiceRead:
@@ -90,6 +90,7 @@ class ServiceController:
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
         await self.service.delete(tenant_id, service_id)
+        await self.session.flush()
         await self.notifications.create(
             tenant_id,
             NotificationCreate(
@@ -100,6 +101,5 @@ class ServiceController:
                 data={"service_id": str(item.id)},
             ),
         )
-        await self.session.commit()
         await self.session.refresh(item)
         return ServiceRead.model_validate(item)

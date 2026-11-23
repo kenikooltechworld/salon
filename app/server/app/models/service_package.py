@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, Integer, Numeric, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
@@ -34,5 +34,5 @@ class ServicePackage(UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin, Base):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
-    created_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
-    updated_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

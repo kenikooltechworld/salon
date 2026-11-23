@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.staff_controller import StaffController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.staff import StaffCreate, StaffRead, StaffUpdate
 
@@ -27,7 +27,7 @@ async def list_staff(
 @router.post("", response_model=StaffRead, status_code=status.HTTP_201_CREATED)
 async def create_staff(
     data: StaffCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = StaffController(session)
@@ -48,7 +48,7 @@ async def get_staff(
 async def update_staff(
     staff_id: uuid.UUID,
     data: StaffUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = StaffController(session)
@@ -58,7 +58,7 @@ async def update_staff(
 @router.delete("/{staff_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_staff(
     staff_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = StaffController(session)

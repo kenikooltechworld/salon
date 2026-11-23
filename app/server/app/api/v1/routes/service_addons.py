@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.service_addon_controller import ServiceAddonController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.service_addon import ServiceAddonCreate, ServiceAddonListResponse, ServiceAddonRead, ServiceAddonUpdate
 
@@ -30,7 +30,7 @@ async def list_addons(
 @router.post("", response_model=ServiceAddonRead, status_code=status.HTTP_201_CREATED)
 async def create_addon(
     data: ServiceAddonCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceAddonController(session).create(current_user.tenant_id, data)
@@ -49,7 +49,7 @@ async def get_addon(
 async def update_addon(
     addon_id: uuid.UUID,
     data: ServiceAddonUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceAddonController(session).update(current_user.tenant_id, addon_id, data)
@@ -58,7 +58,7 @@ async def update_addon(
 @router.delete("/{addon_id}", response_model=ServiceAddonRead)
 async def delete_addon(
     addon_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceAddonController(session).delete(current_user.tenant_id, addon_id)

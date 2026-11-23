@@ -33,6 +33,8 @@ class AppointmentUpdate(BaseModel):
     no_show_reason: Optional[str] = Field(default=None, max_length=500)
     price: Optional[Decimal] = Field(default=None, ge=0)
     payment_status: Optional[str] = Field(default=None, max_length=16)
+    cancelled_at: Optional[datetime] = None
+    cancelled_by: Optional[str] = Field(default=None, max_length=64)
 
 
 class AppointmentRead(BaseModel):

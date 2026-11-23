@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.service_commission_controller import ServiceCommissionController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.service_commission import CommissionListResponse, CommissionSummaryResponse, ServiceCommissionRead
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/service-commissions", tags=["service-commissions"])
 @router.post("/calculate/{appointment_id}", response_model=ServiceCommissionRead)
 async def calculate_commission(
     appointment_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceCommissionController(session).calculate(current_user.tenant_id, appointment_id)
@@ -62,19 +62,19 @@ async def commission_summary(
 @router.post("/{commission_id}/mark-paid", response_model=ServiceCommissionRead)
 async def mark_paid(
     commission_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    return await ServiceCommissionController(session).mark_paid(current_user.tenant_id, commission_id)
+    return await ServiceCommissionController(session).mark_paid(current_user.tenant_id, commission_id, current_user.id)
 
 
 @router.post("/staff/{staff_id}/mark-paid-batch")
 async def mark_paid_batch(
     staff_id: uuid.UUID,
     commission_ids: list[uuid.UUID],
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceCommissionController(session).mark_paid_batch(
-        current_user.tenant_id, staff_id, commission_ids
+        current_user.tenant_id, staff_id, commission_ids, current_user.id
     )

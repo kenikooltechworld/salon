@@ -33,7 +33,13 @@ class NotificationService:
         self.session.add(row)
         await self.session.flush()
         await self.session.refresh(row)
+        await self.session.flush()
         if emit and data.channel == "in_app":
+            try:
+                await self.session.commit()
+            except Exception:
+                await self.session.rollback()
+                raise
             await self._emit(row)
         return row
 

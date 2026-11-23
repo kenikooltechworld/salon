@@ -1,15 +1,15 @@
-"""Add notifications table.
+﻿"""Add notifications table.
 
-Revision ID: c3d4e5f6a7b8
-Revises: b2c3d4e5f6a7
+Revision ID: d6e7f8a9b0c1
+Revises: c2d3e4f5a6b7
 Create Date: 2026-11-23
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "c3d4e5f6a7b8"
-down_revision = "b2c3d4e5f6a7"
+revision = "d6e7f8a9b0c1"
+down_revision = "c2d3e4f5a6b7"
 branch_labels = None
 depends_on = None
 
@@ -51,3 +51,4 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_notifications_recipient_id"), table_name="notifications")
     op.drop_index(op.f("ix_notifications_tenant_id"), table_name="notifications")
     op.drop_table("notifications")
+

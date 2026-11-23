@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.service_category_controller import ServiceCategoryController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.service import (
     ServiceCategoryCreate,
@@ -31,7 +31,7 @@ async def list_categories(
 @router.post("", response_model=ServiceCategoryRead, status_code=status.HTTP_201_CREATED)
 async def create_category(
     data: ServiceCategoryCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)
@@ -52,7 +52,7 @@ async def get_category(
 async def update_category(
     category_id: uuid.UUID,
     data: ServiceCategoryUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)
@@ -62,7 +62,7 @@ async def update_category(
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(
     category_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceCategoryController(session)

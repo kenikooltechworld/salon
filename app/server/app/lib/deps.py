@@ -84,3 +84,14 @@ async def get_current_user(
         clear_auth_cookies(response, request)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+def require_roles(*roles: str):
+    allowed = {r.strip().lower() for r in roles if r and r.strip()}
+
+    async def _dep(current_user: User = Depends(get_current_user)) -> User:
+        if allowed and str(current_user.role).lower() not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        return current_user
+
+    return _dep

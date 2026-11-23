@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.service_package_controller import ServicePackageController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.service_package import (
     ServicePackageCreate,
@@ -42,7 +42,7 @@ async def list_packages(
 @router.post("", response_model=ServicePackageRead, status_code=status.HTTP_201_CREATED)
 async def create_package(
     data: ServicePackageCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServicePackageController(session).create(current_user.tenant_id, data, current_user.id)
@@ -61,7 +61,7 @@ async def get_package(
 async def update_package(
     package_id: uuid.UUID,
     data: ServicePackageUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServicePackageController(session).update(current_user.tenant_id, package_id, data, current_user.id)
@@ -70,7 +70,7 @@ async def update_package(
 @router.delete("/{package_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_package(
     package_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     await ServicePackageController(session).delete(current_user.tenant_id, package_id)

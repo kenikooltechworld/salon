@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.service_controller import ServiceController
-from app.lib.deps import db_session, get_current_user
+from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
 from app.schemas.service import ServiceCreate, ServiceListResponse, ServiceRead, ServiceUpdate
 
@@ -40,7 +40,7 @@ async def list_services(
 @router.post("", response_model=ServiceRead, status_code=status.HTTP_201_CREATED)
 async def create_service(
     data: ServiceCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceController(session)
@@ -61,7 +61,7 @@ async def get_service(
 async def update_service(
     service_id: uuid.UUID,
     data: ServiceUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     controller = ServiceController(session)
@@ -71,7 +71,7 @@ async def update_service(
 @router.delete("/{service_id}", response_model=ServiceRead)
 async def delete_service(
     service_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
     """Soft-delete a service (marks inactive, preserves history)."""
