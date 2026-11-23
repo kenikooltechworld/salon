@@ -45,3 +45,28 @@ export interface MediaUploadResponse {
 export interface SettingsResponse {
   data: TenantSettingsData;
 }
+
+export interface CommissionRule {
+  id: string;
+  name: string;
+  percentage: number;
+  minAmount: number;
+  maxAmount: number;
+  applicableTo: "staff" | "service";
+}
+
+export interface CommissionSettingsData {
+  commissionRules: CommissionRule[];
+  balanceEnforcement: {
+    enabled: boolean;
+    minimumBalance: number;
+  };
+  paymentSettings: {
+    autoSettlement: boolean;
+    settlementDay: number;
+  };
+}
+
+export interface CommissionSettingsResponse {
+  data: CommissionSettingsData;
+}

@@ -1,4 +1,4 @@
-﻿import type { TenantSettingsData } from "./types";
+﻿import type { CommissionSettingsData, TenantSettingsData } from "./types";
 
 export const SETTINGS_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -32,11 +32,39 @@ export const DEFAULT_TENANT_SETTINGS: TenantSettingsData = {
   auto_confirm_bookings: true,
 };
 
+export const DEFAULT_COMMISSION_SETTINGS: CommissionSettingsData = {
+  commissionRules: [],
+  balanceEnforcement: { enabled: true, minimumBalance: 0 },
+  paymentSettings: { autoSettlement: false, settlementDay: 1 },
+};
+
 export function normalizeTenantSettings(data?: Partial<TenantSettingsData> | null): TenantSettingsData {
   return {
     ...DEFAULT_TENANT_SETTINGS,
     ...(data || {}),
     business_hours: { ...DEFAULT_TENANT_SETTINGS.business_hours, ...(data?.business_hours || {}) },
+  };
+}
+
+export function normalizeCommissionSettings(data?: Partial<CommissionSettingsData> | null): CommissionSettingsData {
+  const rules = Array.isArray(data?.commissionRules) ? data!.commissionRules : [];
+  return {
+    commissionRules: rules.map((r, i) => ({
+      id: String(r.id || `rule-${i + 1}`),
+      name: String(r.name || "Rule"),
+      percentage: Number(r.percentage ?? 0),
+      minAmount: Number(r.minAmount ?? 0),
+      maxAmount: Number(r.maxAmount ?? 0),
+      applicableTo: r.applicableTo === "service" ? "service" : "staff",
+    })),
+    balanceEnforcement: {
+      enabled: data?.balanceEnforcement?.enabled ?? true,
+      minimumBalance: Number(data?.balanceEnforcement?.minimumBalance ?? 0),
+    },
+    paymentSettings: {
+      autoSettlement: data?.paymentSettings?.autoSettlement ?? false,
+      settlementDay: Math.min(31, Math.max(1, Number(data?.paymentSettings?.settlementDay ?? 1))),
+    },
   };
 }
 

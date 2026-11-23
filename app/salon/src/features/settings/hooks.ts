@@ -1,11 +1,12 @@
 ﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/store";
 import { settingsApi } from "./api";
-import { normalizeTenantSettings } from "./service";
+import { getErrorMessage, normalizeCommissionSettings, normalizeTenantSettings } from "./service";
 import { useSettingsStore } from "./store";
-import type { TenantSettingsData } from "./types";
+import type { CommissionSettingsData, TenantSettingsData } from "./types";
 
 export const SETTINGS_KEY = ["tenant-settings"] as const;
+export const COMMISSION_SETTINGS_KEY = ["commission-settings"] as const;
 
 function syncAuthTenant(data: TenantSettingsData) {
   const { tenant, user, setSession } = useAuthStore.getState();
@@ -61,3 +62,23 @@ export function useResetTenantSettings() {
     },
   });
 }
+
+export function useCommissionSettings() {
+  return useQuery({
+    queryKey: COMMISSION_SETTINGS_KEY,
+    queryFn: async () => normalizeCommissionSettings((await settingsApi.getCommission()).data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateCommissionSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CommissionSettingsData) => normalizeCommissionSettings((await settingsApi.updateCommission(payload)).data.data),
+    onSuccess: (data) => {
+      qc.setQueryData(COMMISSION_SETTINGS_KEY, data);
+    },
+  });
+}
+
+export { getErrorMessage };

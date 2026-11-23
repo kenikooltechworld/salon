@@ -1,14 +1,45 @@
 ﻿from __future__ import annotations
 
-from typing import Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class BusinessHoursDay(BaseModel):
     open_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     close_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     is_closed: bool = False
+
+
+class CommissionRule(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    percentage: float = Field(default=0, ge=0, le=100)
+    minAmount: float = Field(default=0, ge=0)
+    maxAmount: float = Field(default=0, ge=0)
+    applicableTo: Literal["staff", "service"] = "staff"
+
+    @model_validator(mode="after")
+    def validate_amounts(self):
+        if self.maxAmount and self.maxAmount < self.minAmount:
+            raise ValueError("maxAmount must be greater than or equal to minAmount")
+        return self
+
+
+class CommissionBalanceEnforcement(BaseModel):
+    enabled: bool = True
+    minimumBalance: float = Field(default=0, ge=0)
+
+
+class CommissionPaymentSettings(BaseModel):
+    autoSettlement: bool = False
+    settlementDay: int = Field(default=1, ge=1, le=31)
+
+
+class CommissionSettingsSchema(BaseModel):
+    commissionRules: list[CommissionRule] = Field(default_factory=list)
+    balanceEnforcement: CommissionBalanceEnforcement = Field(default_factory=CommissionBalanceEnforcement)
+    paymentSettings: CommissionPaymentSettings = Field(default_factory=CommissionPaymentSettings)
 
 
 def default_business_hours() -> Dict[str, BusinessHoursDay]:
@@ -21,6 +52,10 @@ def default_business_hours() -> Dict[str, BusinessHoursDay]:
         "saturday": BusinessHoursDay(open_time="10:00", close_time="16:00"),
         "sunday": BusinessHoursDay(open_time="00:00", close_time="00:00", is_closed=True),
     }
+
+
+def default_commission_settings() -> dict[str, Any]:
+    return CommissionSettingsSchema().model_dump()
 
 
 class TenantSettingsSchema(BaseModel):

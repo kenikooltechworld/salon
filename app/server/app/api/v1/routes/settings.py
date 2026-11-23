@@ -13,9 +13,15 @@ from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.user import User
 from app.schemas.auth import TenantRead
-from app.schemas.tenant_settings import TenantSettingsSchema
+from app.schemas.tenant_settings import CommissionSettingsSchema, TenantSettingsSchema
 from app.services.tenant_service import TenantService
-from app.services.tenant_settings_service import reset_tenant_settings, tenant_settings_payload, update_tenant_settings
+from app.services.tenant_settings_service import (
+    commission_settings_payload,
+    reset_tenant_settings,
+    tenant_settings_payload,
+    update_commission_settings,
+    update_tenant_settings,
+)
 
 router = APIRouter(tags=["settings", "owner-dashboard"])
 
@@ -70,6 +76,27 @@ async def get_billing_subscription(current_user: User = Depends(get_current_user
             "subscription_tier": payload.get("subscription_tier"),
         }
     }
+
+
+@router.get("/settings/commission")
+async def get_commission_settings(current_user: User = Depends(get_current_user), session: AsyncSession = Depends(db_session)):
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return commission_settings_payload(tenant)
+
+
+@router.put("/settings/commission")
+async def put_commission_settings(
+    data: CommissionSettingsSchema,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    _require_owner(current_user)
+    tenant = await TenantService.get_tenant(session, current_user.tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return await update_commission_settings(session, tenant, data.model_dump())
 
 
 @router.get("/owner/dashboard/metrics")

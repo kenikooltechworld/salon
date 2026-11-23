@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tenant import Tenant
-from app.schemas.tenant_settings import TenantSettingsSchema
+from app.schemas.tenant_settings import CommissionSettingsSchema, TenantSettingsSchema, default_commission_settings
 
 
 DEFAULT_SETTINGS = TenantSettingsSchema(salon_name="My Salon", email="", phone="", address="").model_dump()
@@ -61,6 +61,23 @@ def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
         **sub,
     })
     return {"data": data}
+
+
+def commission_settings_payload(tenant: Tenant) -> dict[str, Any]:
+    stored = dict(tenant.settings or {})
+    raw = stored.get("commission_config") or {}
+    config = CommissionSettingsSchema(**raw).model_dump() if isinstance(raw, dict) else default_commission_settings()
+    return {"data": config}
+
+
+async def update_commission_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:
+    config = CommissionSettingsSchema(**updates).model_dump()
+    current = dict(tenant.settings or {})
+    current["commission_config"] = config
+    tenant.settings = current
+    await session.commit()
+    await session.refresh(tenant)
+    return {"data": config}
 
 
 async def update_tenant_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:

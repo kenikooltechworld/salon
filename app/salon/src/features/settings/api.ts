@@ -1,5 +1,5 @@
 ﻿import { apiClient, TIMEOUTS } from "@/lib/api";
-import type { MediaUploadResponse, SettingsResponse, TenantSettingsData } from "./types";
+import type { CommissionSettingsData, CommissionSettingsResponse, MediaUploadResponse, SettingsResponse, TenantSettingsData } from "./types";
 
 export const settingsApi = {
   get: () => apiClient.get<SettingsResponse>("/settings"),
@@ -7,4 +7,6 @@ export const settingsApi = {
   reset: () => apiClient.post<SettingsResponse>("/settings/reset"),
   uploadMedia: (payload: { base64_data: string; media_type?: string; folder?: string }) =>
     apiClient.post<MediaUploadResponse>("/media/upload", payload, { timeout: TIMEOUTS.UPLOAD }),
+  getCommission: () => apiClient.get<CommissionSettingsResponse>("/settings/commission"),
+  updateCommission: (payload: CommissionSettingsData) => apiClient.put<CommissionSettingsResponse>("/settings/commission", payload),
 };
