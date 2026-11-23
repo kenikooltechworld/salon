@@ -19,11 +19,14 @@ async def list_addons(
     is_active: bool | None = Query(default=None),
     category: str | None = Query(default=None),
     service_id: uuid.UUID | None = Query(default=None),
+    search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=200),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_session),
 ):
     return await ServiceAddonController(session).list(
-        current_user.tenant_id, is_active=is_active, category=category, service_id=service_id
+        current_user.tenant_id, is_active=is_active, category=category, service_id=service_id, search=search, page=page, page_size=page_size
     )
 
 

@@ -24,17 +24,30 @@ class ServiceAddonService:
         is_active: bool | None = None,
         category: str | None = None,
         service_id: uuid.UUID | None = None,
-    ) -> Sequence[ServiceAddon]:
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> tuple[Sequence[ServiceAddon], int]:
         stmt = select(ServiceAddon).where(ServiceAddon.tenant_id == tenant_id)
+        count_stmt = select(func.count()).select_from(ServiceAddon).where(ServiceAddon.tenant_id == tenant_id)
         if is_active is not None:
             stmt = stmt.where(ServiceAddon.is_active.is_(is_active))
+            count_stmt = count_stmt.where(ServiceAddon.is_active.is_(is_active))
         if category:
             stmt = stmt.where(ServiceAddon.category == category)
+            count_stmt = count_stmt.where(ServiceAddon.category == category)
         if service_id is not None:
             stmt = stmt.where(ServiceAddon.applicable_service_ids.any(service_id))
-        stmt = stmt.order_by(ServiceAddon.display_order.asc(), ServiceAddon.created_at.desc())
+            count_stmt = count_stmt.where(ServiceAddon.applicable_service_ids.any(service_id))
+        if search:
+            pattern = f"%{search.strip()}%"
+            f = ServiceAddon.name.ilike(pattern) | ServiceAddon.description.ilike(pattern)
+            stmt = stmt.where(f)
+            count_stmt = count_stmt.where(f)
+        total = (await self.session.execute(count_stmt)).scalar_one()
+        stmt = stmt.order_by(ServiceAddon.display_order.asc(), ServiceAddon.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     async def get(self, tenant_id: uuid.UUID, addon_id: uuid.UUID) -> ServiceAddon | None:
         result = await self.session.execute(
