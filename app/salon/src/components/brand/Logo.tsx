@@ -19,7 +19,7 @@ export function Logo({ to = "/", showText = true, size = "md" }: Props) {
   return (
     <HStack asChild gap="2" textDecoration="none" flexShrink="0">
       <RouterLink to={to}>
-        <Image src={src} alt="Kenikool" boxSize={box} objectFit="contain" />
+        <Image src={src} alt="Kenikool" boxSize={box} objectFit="cover" borderRadius="full" />
         {showText && (
           <Text fontWeight="bold" fontSize={size === "sm" ? "md" : "lg"} display={{ base: "none", sm: "block" }}>
             Kenikool
