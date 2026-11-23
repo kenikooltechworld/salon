@@ -11,6 +11,7 @@ from app.lib.deps import db_session, get_current_user
 from app.models.user import User
 from app.schemas.service import (
     ServiceCategoryCreate,
+    ServiceCategoryListResponse,
     ServiceCategoryRead,
     ServiceCategoryUpdate,
 )
@@ -18,7 +19,7 @@ from app.schemas.service import (
 router = APIRouter(prefix="/service-categories", tags=["service-categories"])
 
 
-@router.get("", response_model=list[ServiceCategoryRead])
+@router.get("", response_model=ServiceCategoryListResponse)
 async def list_categories(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_session),
