@@ -52,10 +52,13 @@ class ServiceService:
 
     async def create(self, tenant_id: uuid.UUID, data: ServiceCreate) -> Service:
         payload = data.model_dump()
-        await self._validate_staff_ids(tenant_id, payload.get("staff_ids", []))
+        staff_ids = [uuid.UUID(str(x)) for x in (payload.get("staff_ids") or [])]
+        payload["staff_ids"] = list(dict.fromkeys(staff_ids))
+        await self._validate_staff_ids(tenant_id, payload["staff_ids"])
         service = Service(tenant_id=tenant_id, **payload)
         self.session.add(service)
         await self.session.flush()
+        await self._sync_staff_service_links(tenant_id, service.id, payload["staff_ids"], previous_staff_ids=[])
         await self.session.refresh(service)
         return service
 
@@ -72,11 +75,16 @@ class ServiceService:
         if service is None:
             return None
         payload = data.model_dump(exclude_unset=True)
+        previous_staff_ids = list(service.staff_ids or [])
         if "staff_ids" in payload:
-            await self._validate_staff_ids(tenant_id, payload.get("staff_ids") or [])
+            staff_ids = [uuid.UUID(str(x)) for x in (payload.get("staff_ids") or [])]
+            payload["staff_ids"] = list(dict.fromkeys(staff_ids))
+            await self._validate_staff_ids(tenant_id, payload["staff_ids"])
         for field, value in payload.items():
             setattr(service, field, value)
         await self.session.flush()
+        if "staff_ids" in payload:
+            await self._sync_staff_service_links(tenant_id, service.id, list(service.staff_ids or []), previous_staff_ids=previous_staff_ids)
         await self.session.refresh(service)
         return service
 
@@ -85,9 +93,12 @@ class ServiceService:
         service = await self.get(tenant_id, service_id)
         if service is None:
             return False
+        previous_staff_ids = list(service.staff_ids or [])
         service.is_active = False
         service.allow_public_booking = False
+        service.staff_ids = []
         await self.session.flush()
+        await self._sync_staff_service_links(tenant_id, service.id, [], previous_staff_ids=previous_staff_ids)
         await self.session.refresh(service)
         return True
 
@@ -107,3 +118,27 @@ class ServiceService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid staff_ids for tenant: {', '.join(missing)}",
             )
+
+    async def _sync_staff_service_links(
+        self,
+        tenant_id: uuid.UUID,
+        service_id: uuid.UUID,
+        staff_ids: list[uuid.UUID],
+        *,
+        previous_staff_ids: list[uuid.UUID],
+    ) -> None:
+        new_set = {str(x) for x in staff_ids}
+        old_set = {str(x) for x in previous_staff_ids}
+        affected = {uuid.UUID(x) for x in (new_set | old_set)}
+        if not affected:
+            return
+        result = await self.session.execute(select(Staff).where(Staff.tenant_id == tenant_id, Staff.id.in_(affected)))
+        for staff in result.scalars().all():
+            current = [str(x) for x in (staff.service_ids or [])]
+            sid = str(service_id)
+            if str(staff.id) in new_set and sid not in current:
+                current.append(sid)
+            if str(staff.id) not in new_set and sid in current:
+                current = [x for x in current if x != sid]
+            staff.service_ids = list(dict.fromkeys(current))
+        await self.session.flush()
