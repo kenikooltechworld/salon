@@ -136,7 +136,8 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
                 <HStack borderWidth="1px" rounded="md" p="2" maxW="full" gap="2">
                   {isImage ? <Box as="button" {...({ type: "button" } as any)} onClick={() => setLightboxImage(url)} rounded="sm" overflow="hidden" borderWidth="1px" flexShrink={0}><img src={url} alt={`Certificate ${i + 1}`} style={{ width: 48, height: 48, objectFit: "cover", display: "block" }} /></Box> : <Box w="48px" h="48px" rounded="sm" borderWidth="1px" bg="bg.muted" display="flex" alignItems="center" justifyContent="center" flexShrink={0}><Text fontSize="10px" color="fg.muted" fontWeight="bold">{(fileName.split(".").pop() || "FILE").toUpperCase().slice(0, 4)}</Text></Box>}
                   <Stack gap="0" minW="0">
-                    <Text fontSize="xs" maxW="220px" truncate>{fileName}</Text>
+                    <Text fontSize="xs" fontWeight="medium">{isImage ? "Image certificate" : "Document certificate"}</Text>
+                    <Text fontSize="xs" color="fg.muted">{(fileName.split(".").pop() || "file").toUpperCase()}</Text>
                     {isImage && <Button size="2xs" variant="plain" colorPalette="blue" px="0" h="auto" justifyContent="start" onClick={() => setLightboxImage(url)}>Preview</Button>}
                   </Stack>
                   <IconButton aria-label="Remove file" size="2xs" variant="ghost" onClick={() => removeTag("certification_files", i)}><LuX /></IconButton>

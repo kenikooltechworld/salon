@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { LuX } from "react-icons/lu";
 
 interface ImageLightboxProps {
@@ -82,7 +83,7 @@ export function ImageLightbox({ isOpen, imageUrl, alt = "Image", onClose }: Imag
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -153,6 +154,7 @@ export function ImageLightbox({ isOpen, imageUrl, alt = "Image", onClose }: Imag
           Scroll to zoom • Pinch to zoom • Drag to pan
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
