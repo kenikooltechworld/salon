@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, CloseButton, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Input,
+  Avatar, Badge, Box, Button, Card, CloseButton, Dialog, Field, Flex, Grid, Heading, HStack, IconButton, Image, Input,
   NativeSelect, Portal, SimpleGrid, Skeleton, Stack, Table, Tabs, Text, Textarea,
 } from "@chakra-ui/react";
 import { LuCalendar, LuCreditCard, LuEye, LuLayoutGrid, LuList, LuPlus, LuSearch } from "react-icons/lu";
@@ -12,6 +12,7 @@ import { toaster } from "@/components/ui/toaster";
 import {
   bookingsApi, useBookings, useCancelBooking, useCompleteBooking, useConfirmBooking, useNoShowBooking, type Booking,
 } from "@/features/bookings";
+import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
 const STATUS_OPTIONS = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"] as const;
 const statusLabel = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -42,17 +43,46 @@ function useLookupMaps() {
   const staff = Array.isArray(staffQ.data) ? staffQ.data : Array.isArray(staffQ.data?.staff) ? staffQ.data.staff : [];
   const services = Array.isArray(servicesQ.data?.services) ? servicesQ.data.services : [];
   const customers = Array.isArray(customersQ.data?.customers) ? customersQ.data.customers : [];
-  const name = (arr: any[], id: string | null | undefined, fallback = "—") => { if (!id) return fallback; const item = arr.find((x) => String(x.id) === String(id)); if (!item) return id.slice(0, 8); return item.name || [item.first_name, item.last_name].filter(Boolean).join(" ") || item.email || id.slice(0, 8); };
-  return { staff, services, customers, staffName: (id?: string | null) => name(staff, id), serviceName: (id?: string | null) => name(services, id), customerName: (id?: string | null) => name(customers, id) };
+  const find = (arr: any[], id?: string | null) => id ? arr.find((item) => String(item.id) === String(id)) : undefined;
+  const customerName = (id?: string | null) => {
+    const customer = find(customers, id);
+    return customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.email || "Customer" : id ? id.slice(0, 8) : "—";
+  };
+  const serviceName = (id?: string | null) => find(services, id)?.name || (id ? id.slice(0, 8) : "—");
+  const staffName = (id?: string | null) => getStaffDisplayName(find(staff, id), id ? id.slice(0, 8) : "—");
+  return {
+    staff, services, customers, findStaff: (id?: string | null) => find(staff, id),
+    findService: (id?: string | null) => find(services, id), findCustomer: (id?: string | null) => find(customers, id),
+    staffName, serviceName, customerName,
+  };
 }
 
-function BookingCardItem({ booking: b, onView, onConfirm, onCancel, onComplete, onNoShow, onCollect, busy }: any) {
+function BookingCardItem({ booking: b, lookups, onView, onConfirm, onCancel, onComplete, onNoShow, onCollect, busy }: any) {
   const canAct = b.status === "scheduled" || b.status === "confirmed";
+  const staff = lookups.findStaff(b.staff_id);
+  const service = lookups.findService(b.service_id);
+  const customer = lookups.findCustomer(b.customer_id);
+  const staffName = getStaffDisplayName(staff, "Staff member");
+  const customerName = b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id);
   return <Card.Root _hover={{ shadow: "md" }} transition="shadow 0.2s"><Card.Body gap="3">
     <Flex justify="space-between" gap="2" align="flex-start">
       <Box minW="0"><Text fontWeight="semibold" fontSize="sm" lineClamp="1">Booking #{b.id.slice(0, 8)}</Text><Text fontSize="xs" color="fg.muted">{fmtDate(b.start_time)}</Text></Box>
       <StatusBadge status={b.status} />
     </Flex>
+    <Stack gap="2" borderTopWidth="1px" pt="3">
+      <HStack gap="3" minW="0">
+        <Box w="12" h="12" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">
+          {service?.public_image_url ? <Image src={service.public_image_url} alt={service.name} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted">{service?.name?.slice(0, 1) || "S"}</Flex>}
+        </Box>
+        <Box minW="0"><Text fontSize="xs" color="fg.muted">Service</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{lookups.serviceName(b.service_id)}</Text></Box>
+      </HStack>
+      <HStack gap="3" minW="0">
+        {b.is_guest ? <Avatar.Root size="sm"><Avatar.Fallback name={customerName} /></Avatar.Root> : <Avatar.Root size="sm"><Avatar.Image src={customer?.profile_image_url || undefined} /><Avatar.Fallback name={customerName} /></Avatar.Root>}
+        <Box minW="0"><Text fontSize="xs" color="fg.muted">{b.is_guest ? "Guest" : "Customer"}</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{customerName}</Text></Box>
+        <Avatar.Root size="sm" ml="auto"><Avatar.Image src={getStaffImageUrl(staff)} /><Avatar.Fallback name={staffName} /></Avatar.Root>
+        <Box minW="0"><Text fontSize="xs" color="fg.muted">Staff</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{staffName}</Text></Box>
+      </HStack>
+    </Stack>
     <Grid templateColumns="1fr 1fr" gap="2" fontSize="sm">
       <Box><Text fontSize="xs" color="fg.muted">Start Time</Text><Text fontWeight="medium">{fmtTime(b.start_time)}</Text></Box>
       <Box><Text fontSize="xs" color="fg.muted">End Time</Text><Text fontWeight="medium">{fmtTime(b.end_time)}</Text></Box>
@@ -71,21 +101,24 @@ function BookingCardItem({ booking: b, onView, onConfirm, onCancel, onComplete, 
   </Card.Body></Card.Root>;
 }
 
-function ListTable({ bookings, onView, onConfirm, onCancel, busy, isLoading }: any) {
+function ListTable({ bookings, lookups, onView, onConfirm, onCancel, busy, isLoading }: any) {
   return <>
     <Box display={{ base: "none", md: "block" }} borderWidth="1px" rounded="lg" overflowX="auto">
       <Table.Root size="sm">
-        <Table.Header><Table.Row bg="bg.subtle"><Table.ColumnHeader>ID</Table.ColumnHeader><Table.ColumnHeader>Date</Table.ColumnHeader><Table.ColumnHeader>Time</Table.ColumnHeader><Table.ColumnHeader>Status</Table.ColumnHeader><Table.ColumnHeader>Actions</Table.ColumnHeader></Table.Row></Table.Header>
+        <Table.Header><Table.Row bg="bg.subtle"><Table.ColumnHeader>ID</Table.ColumnHeader><Table.ColumnHeader>Customer</Table.ColumnHeader><Table.ColumnHeader>Service</Table.ColumnHeader><Table.ColumnHeader>Staff</Table.ColumnHeader><Table.ColumnHeader>Date</Table.ColumnHeader><Table.ColumnHeader>Time</Table.ColumnHeader><Table.ColumnHeader>Status</Table.ColumnHeader><Table.ColumnHeader>Actions</Table.ColumnHeader></Table.Row></Table.Header>
         <Table.Body>
-          {isLoading ? [...Array(5)].map((_, i) => <Table.Row key={i}>{[...Array(5)].map((__, j) => <Table.Cell key={j}><Skeleton h="4" /></Table.Cell>)}</Table.Row>)
+          {isLoading ? [...Array(5)].map((_, i) => <Table.Row key={i}>{[...Array(8)].map((__, j) => <Table.Cell key={j}><Skeleton h="4" /></Table.Cell>)}</Table.Row>)
           : bookings.map((b: Booking) => <Table.Row key={b.id} _hover={{ bg: "bg.subtle" }}>
             <Table.Cell fontFamily="mono" fontSize="xs">{b.id.slice(0, 8)}</Table.Cell>
+            <Table.Cell><HStack gap="2" minW="32"><Avatar.Root size="xs"><Avatar.Image src={lookups.findCustomer(b.customer_id)?.profile_image_url || undefined} /><Avatar.Fallback name={b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)} /></Avatar.Root><Text fontSize="sm" lineClamp="1">{b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}</Text></HStack></Table.Cell>
+            <Table.Cell><HStack gap="2" minW="32"><Box w="8" h="8" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">{lookups.findService(b.service_id)?.public_image_url ? <Image src={lookups.findService(b.service_id).public_image_url} alt={lookups.serviceName(b.service_id)} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" fontSize="xs" color="fg.muted">{lookups.serviceName(b.service_id).slice(0, 1)}</Flex>}</Box><Text fontSize="sm" lineClamp="1">{lookups.serviceName(b.service_id)}</Text></HStack></Table.Cell>
+            <Table.Cell><HStack gap="2" minW="32"><Avatar.Root size="xs"><Avatar.Image src={getStaffImageUrl(lookups.findStaff(b.staff_id))} /><Avatar.Fallback name={lookups.staffName(b.staff_id)} /></Avatar.Root><Text fontSize="sm" lineClamp="1">{lookups.staffName(b.staff_id)}</Text></HStack></Table.Cell>
             <Table.Cell fontSize="sm">{fmtDate(b.start_time)}</Table.Cell>
             <Table.Cell fontSize="sm" whiteSpace="nowrap">{fmtTime(b.start_time)} - {fmtTime(b.end_time)}</Table.Cell>
             <Table.Cell><StatusBadge status={b.status} /></Table.Cell>
             <Table.Cell><HStack gap="1"><IconButton aria-label="View" size="xs" variant="ghost" onClick={() => onView(b.id)}><LuEye /></IconButton>{b.status === "scheduled" && <Button size="xs" variant="ghost" colorPalette="green" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}{(b.status === "scheduled" || b.status === "confirmed") && <Button size="xs" variant="ghost" colorPalette="red" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}</HStack></Table.Cell>
           </Table.Row>)}
-          {!isLoading && bookings.length === 0 && <Table.Row><Table.Cell colSpan={5}><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Table.Cell></Table.Row>}
+          {!isLoading && bookings.length === 0 && <Table.Row><Table.Cell colSpan={8}><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Table.Cell></Table.Row>}
         </Table.Body>
       </Table.Root>
     </Box>
@@ -153,7 +186,7 @@ function CalendarPanel({ view, current, bookings, onBookingClick, onPrev, onNext
                     <Text fontSize="xs" fontWeight="medium" lineClamp="1">
                       {fmtTime(b.start_time)} - {fmtTime(b.end_time)} · {b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}
                     </Text>
-                    <Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text>
+                    <HStack gap="1" minW="0"><Image src={lookups.findService(b.service_id)?.public_image_url || undefined} alt="" boxSize="3" rounded="sm" objectFit="cover" /><Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text></HStack>
                   </Box>
                 </Button>
               ))}
@@ -177,7 +210,7 @@ function CalendarPanel({ view, current, bookings, onBookingClick, onPrev, onNext
               <Stack gap="1">
                 {items.slice(0, 3).map((b) => <Box key={b.id} px="2" py="1" rounded="md" bg={`${statusColor[b.status]||"gray"}.subtle`} cursor="pointer" onClick={() => onBookingClick(b.id)} _hover={{ opacity: 0.85 }}>
                   <Text fontSize="xs" fontWeight="medium" lineClamp="1">{fmtTime(b.start_time)} {b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}</Text>
-                  <Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text>
+                  <HStack gap="1" minW="0"><Image src={lookups.findService(b.service_id)?.public_image_url || undefined} alt="" boxSize="3" rounded="sm" objectFit="cover" /><Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text></HStack>
                 </Box>)}
                 {items.length > 3 && <Button size="xs" variant="ghost" justifyContent="flex-start" onClick={() => onBookingClick(items[0].id)}>+{items.length - 3} more</Button>}
               </Stack>
@@ -252,7 +285,7 @@ export default function BookingsPage() {
         {search && <CloseButton size="xs" position="absolute" right="2" top="50%" transform="translateY(-50%)" onClick={() => setSearch("")} />}
       </Box>
       <NativeSelect.Root w={{ base: "full", md: "180px" }}><NativeSelect.Field value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}><option value="">All Status</option>{STATUS_OPTIONS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
-      <NativeSelect.Root w={{ base: "full", md: "220px" }}><NativeSelect.Field value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPage(1); }}><option value="">All Staff</option>{lookups.staff.map((s: any) => <option key={s.id} value={s.id}>{[s.first_name, s.last_name].filter(Boolean).join(" ") || s.name || s.email || s.id}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
+      <NativeSelect.Root w={{ base: "full", md: "220px" }}><NativeSelect.Field value={staffFilter} onChange={(e) => { setStaffFilter(e.target.value); setPage(1); }}><option value="">All Staff</option>{lookups.staff.map((s: any) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root>
     </Flex>
 
     <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value)}>
@@ -260,7 +293,7 @@ export default function BookingsPage() {
 
       <Tabs.Content value="list" pt="4">
         {listQ.isError ? <Card.Root><Card.Body><Text color="fg.error">Failed to load bookings.</Text><Button mt="2" size="sm" onClick={() => listQ.refetch()}>Retry</Button></Card.Body></Card.Root>
-        : <ListTable bookings={bookings} isLoading={listQ.isLoading} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} />}
+        :         <ListTable bookings={bookings} lookups={lookups} isLoading={listQ.isLoading} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} />}
         {totalPages > 1 && <HStack justify="center" mt="4" gap="3"><Button variant="outline" size="sm" disabled={page<=1} onClick={() => setPage((p) => p-1)}>Previous</Button><Text fontSize="sm" color="fg.muted">Page {page} of {totalPages}</Text><Button variant="outline" size="sm" disabled={page>=totalPages} onClick={() => setPage((p) => p+1)}>Next</Button></HStack>}
       </Tabs.Content>
 
@@ -272,7 +305,7 @@ export default function BookingsPage() {
       <Tabs.Content value="cards" pt="4">
         {listQ.isError ? <Card.Root><Card.Body><Text color="fg.error">Failed to load bookings.</Text><Button mt="2" size="sm" onClick={() => listQ.refetch()}>Retry</Button></Card.Body></Card.Root>
         : listQ.isLoading ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{[...Array(6)].map((_, i) => <Skeleton key={i} h="56" rounded="lg" />)}</SimpleGrid>
-        : bookings.length > 0 ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{bookings.map((b) => <BookingCardItem key={b.id} booking={b} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} onComplete={onComplete} onNoShow={onNoShow} onCollect={onCollect} />)}</SimpleGrid>
+        : bookings.length > 0 ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{bookings.map((b) => <BookingCardItem key={b.id} booking={b} lookups={lookups} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} onComplete={onComplete} onNoShow={onNoShow} onCollect={onCollect} />)}</SimpleGrid>
         : <Card.Root><Card.Body><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Card.Body></Card.Root>}
         {totalPages > 1 && <HStack justify="center" mt="4" gap="3"><Button variant="outline" size="sm" disabled={page<=1} onClick={() => setPage((p) => p-1)}>Previous</Button><Text fontSize="sm" color="fg.muted">Page {page} of {totalPages}</Text><Button variant="outline" size="sm" disabled={page>=totalPages} onClick={() => setPage((p) => p+1)}>Next</Button></HStack>}
       </Tabs.Content>

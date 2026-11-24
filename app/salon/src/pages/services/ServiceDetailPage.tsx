@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
+import { Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
 import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuPencil, LuTrash2, LuUsers } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { useDeleteService, useService, useServiceCategories } from "@/features/s
 import { apiClient } from "@/lib/api";
 import { ServiceFormDialog } from "./ServiceFormDialog";
 import { ImageLightbox } from "@/components/services/ImageLightbox";
+import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
 
 export default function ServiceDetailPage() {
@@ -63,7 +64,7 @@ export default function ServiceDetailPage() {
           <Flex justify="space-between"><Text fontSize="sm" color="fg.muted">Commission</Text><Text fontWeight="medium">{service.commission_percentage ?? 0}%</Text></Flex>
           <Flex justify="space-between"><Text fontSize="sm" color="fg.muted">Category</Text><Text fontWeight="medium">{service.category}</Text></Flex>
         </Stack></Card.Body></Card.Root>
-        <Card.Root><Card.Body><HStack mb="3"><LuUsers /><Heading size="md">Assigned Staff ({assigned.length})</Heading></HStack><Stack gap="2">{assigned.map((s: any) => <Flex key={s.id} justify="space-between" fontSize="sm"><Text>{[s.first_name, s.last_name].filter(Boolean).join(" ") || s.email}</Text><Text color="fg.muted">{s.title || s.role}</Text></Flex>)}{assigned.length === 0 && <Text fontSize="sm" color="fg.muted">No staff assigned.</Text>}</Stack></Card.Body></Card.Root>
+        <Card.Root><Card.Body><HStack mb="3"><LuUsers /><Heading size="md">Assigned Staff ({assigned.length})</Heading></HStack><Stack gap="2">{assigned.map((s: any) => <Flex key={s.id} justify="space-between" align="center" gap="3" fontSize="sm"><HStack minW="0"><Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(s)} /><Avatar.Fallback name={getStaffDisplayName(s)} /></Avatar.Root><Text fontWeight="medium" lineClamp="1">{getStaffDisplayName(s)}</Text></HStack><Text color="fg.muted">{s.title || s.role || ""}</Text></Flex>)}{assigned.length === 0 && <Text fontSize="sm" color="fg.muted">No staff assigned.</Text>}</Stack></Card.Body></Card.Root>
         <Card.Root><Card.Body><Heading size="md" mb="3">Tags</Heading><HStack gap="2" flexWrap="wrap">{(service.tags || []).map((t) => <Badge key={t}>{t}</Badge>)}{(!service.tags || service.tags.length === 0) && <Text fontSize="sm" color="fg.muted">No tags.</Text>}</HStack></Card.Body></Card.Root>
         <Card.Root><Card.Body><Heading size="md" mb="3">Benefits</Heading><Stack gap="1">{(service.benefits || []).map((b) => <Text key={b} fontSize="sm" color="fg.muted">• {b}</Text>)}{(!service.benefits || service.benefits.length === 0) && <Text fontSize="sm" color="fg.muted">No benefits.</Text>}</Stack></Card.Body></Card.Root>
       </Stack>

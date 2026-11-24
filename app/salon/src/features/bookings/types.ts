@@ -27,9 +27,9 @@ export interface Booking {
 }
 
 export interface BookingDetail extends Booking {
-  customer?: { id: string; first_name?: string; last_name?: string; email?: string; phone?: string } | null;
-  service?: { id: string; name?: string; duration_minutes?: number; price?: string | null } | null;
-  staff?: { id: string; user_id?: string; first_name?: string; last_name?: string; email?: string; phone?: string } | null;
+  customer?: { id: string; first_name?: string; last_name?: string; email?: string; phone?: string; profile_image_url?: string | null } | null;
+  service?: { id: string; name?: string; duration_minutes?: number; price?: string | null; public_image_url?: string | null } | null;
+  staff?: { id: string; user_id?: string; first_name?: string; last_name?: string; email?: string; phone?: string; profile_image_url?: string | null } | null;
 }
 
 export interface BookingListResponse { appointments: Booking[]; total: number; page: number; page_size: number; }

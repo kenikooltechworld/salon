@@ -4,6 +4,7 @@ import { Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Input, NativeSel
 import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuCheck, LuDollarSign } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
+import { getStaffDisplayName } from "@/features/staff";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { useCommissionSummary, useMarkCommissionPaid, useMarkCommissionsPaidBatch, usePendingCommissions, useStaffCommissions } from "@/features/services";
@@ -45,7 +46,7 @@ export default function ServiceCommissionsPage() {
     </Flex>
 
     <Card.Root><Card.Body><Grid templateColumns={{ base:"1fr", md:"repeat(4,1fr)" }} gap="4">
-      <Box><Text fontSize="sm" mb="1">Staff member</Text><NativeSelect.Root><NativeSelect.Field value={staffId} onChange={(e)=>{setStaffId(e.target.value); setSelected([]);}}><option value="">Select staff</option>{staff.map((s:any)=>{ const name=[s.first_name,s.last_name].filter(Boolean).join(" ") || s.email || s.id; return <option key={s.id} value={s.id}>{name}</option>; })}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Box>
+      <Box><Text fontSize="sm" mb="1">Staff member</Text><NativeSelect.Root><NativeSelect.Field value={staffId} onChange={(e)=>{setStaffId(e.target.value); setSelected([]);}}><option value="">Select staff</option>{staff.map((s:any)=><option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Box>
       <Box><Text fontSize="sm" mb="1">Status</Text><NativeSelect.Root><NativeSelect.Field value={status} onChange={(e)=>setStatus(e.target.value)}><option value="">All</option><option value="pending">Pending</option><option value="paid">Paid</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Box>
       <Box><Text fontSize="sm" mb="1">Start date</Text><Input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} /></Box>
       <Box><Text fontSize="sm" mb="1">End date</Text><Input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} /></Box>

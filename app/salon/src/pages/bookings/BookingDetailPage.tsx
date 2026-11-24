@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Skeleton, Stack, Text,
+  Avatar, Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Image, Skeleton, Stack, Text,
 } from "@chakra-ui/react";
 import { LuArrowLeft } from "react-icons/lu";
 import { formatNaira } from "@/components/ui/naira";
@@ -10,6 +10,7 @@ import {
 } from "@/features/bookings";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookingStatusBadge } from "./BookingStatusBadge";
+import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
 function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return <Box><Text fontSize="xs" color="fg.muted" mb="0.5">{label}</Text><Text fontSize="sm" fontWeight="medium">{value || "—"}</Text></Box>;
@@ -31,8 +32,8 @@ export default function BookingDetailPage() {
   if (isLoading) return <Stack gap="4"><Skeleton h="10" w="48" /><Skeleton h="80" rounded="lg" /></Stack>;
   if (isError || !b) return <Card.Root><Card.Body><Text color="fg.error">Booking not found.</Text><Button mt="3" variant="outline" onClick={() => navigate("/bookings")}>Back to Bookings</Button></Card.Body></Card.Root>;
 
-  const customerName = b.is_guest ? b.guest_name || "Guest" : [b.customer?.first_name, b.customer?.last_name].filter(Boolean).join(" ") || b.customer_id || "—";
-  const staffName = [b.staff?.first_name, b.staff?.last_name].filter(Boolean).join(" ") || b.staff_id || "—";
+  const customerName = b.is_guest ? b.guest_name || "Guest" : [b.customer?.first_name, b.customer?.last_name].filter(Boolean).join(" ") || "Customer";
+  const staffName = getStaffDisplayName(b.staff, "Staff member");
   const canAct = b.status === "scheduled" || b.status === "confirmed";
 
   return <Stack gap="6">
@@ -54,9 +55,9 @@ export default function BookingDetailPage() {
           <Card.Header><Card.Title fontSize="md">Booking Information</Card.Title></Card.Header>
           <Card.Body>
             <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap="4">
-              <Info label="Customer" value={<HStack gap="2"><span>{customerName}</span>{b.is_guest && <Badge size="sm" variant="subtle">Guest</Badge>}</HStack>} />
-              <Info label="Service" value={b.service?.name || b.service_id} />
-              <Info label="Staff" value={staffName} />
+              <Info label="Customer" value={<HStack gap="2"><Avatar.Root size="xs"><Avatar.Image src={b.customer?.profile_image_url || undefined} /><Avatar.Fallback name={customerName} /></Avatar.Root><span>{customerName}</span>{b.is_guest && <Badge size="sm" variant="subtle">Guest</Badge>}</HStack>} />
+              <Info label="Service" value={<HStack gap="2"><Box w="10" h="10" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">{b.service?.public_image_url ? <Image src={b.service.public_image_url} alt={b.service.name || "Service"} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted">{b.service?.name?.slice(0, 1) || "S"}</Flex>}</Box><span>{b.service?.name || "Service"}</span></HStack>} />
+              <Info label="Staff" value={<HStack gap="2"><Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(b.staff)} /><Avatar.Fallback name={staffName} /></Avatar.Root><span>{staffName}</span></HStack>} />
               <Info label="Price" value={formatNaira(b.price)} />
               <Info label="Date" value={new Date(b.start_time).toLocaleDateString()} />
               <Info label="Time" value={`${new Date(b.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(b.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`} />

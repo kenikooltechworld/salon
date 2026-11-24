@@ -58,7 +58,7 @@ class AppointmentController:
                 cid = uuid.UUID(str(item.customer_id))
                 c = (await self.session.execute(select(Customer).where(Customer.id == cid, Customer.tenant_id == tenant_id))).scalar_one_or_none()
                 if c:
-                    customer = {"id": str(c.id), "first_name": c.first_name, "last_name": c.last_name, "email": c.email, "phone": c.phone}
+                    customer = {"id": str(c.id), "first_name": c.first_name, "last_name": c.last_name, "email": c.email, "phone": c.phone, "profile_image_url": c.profile_image_url}
             except Exception:
                 pass
 
@@ -67,7 +67,7 @@ class AppointmentController:
             sid = uuid.UUID(str(item.service_id))
             s = (await self.session.execute(select(Service).where(Service.id == sid, Service.tenant_id == tenant_id))).scalar_one_or_none()
             if s:
-                service = {"id": str(s.id), "name": s.name, "duration_minutes": s.duration_minutes, "price": str(s.price) if s.price is not None else None}
+                service = {"id": str(s.id), "name": s.name, "duration_minutes": s.duration_minutes, "price": str(s.price) if s.price is not None else None, "public_image_url": s.public_image_url}
         except Exception:
             pass
 
@@ -86,6 +86,7 @@ class AppointmentController:
                     "id": str(st.id), "user_id": str(st.user_id),
                     "first_name": user.first_name if user else "", "last_name": user.last_name if user else "",
                     "email": user.email if user else "", "phone": user.phone if user else "",
+                    "profile_image_url": st.profile_image_url,
                 }
         except Exception:
             pass

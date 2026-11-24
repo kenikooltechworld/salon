@@ -10,6 +10,7 @@ import { useCreateCustomer, useUpdateCustomer, type Customer } from "@/features/
 import { useServices } from "@/features/services";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { getStaffDisplayName } from "@/features/staff";
 
 type FormState = {
   first_name: string; last_name: string; email: string; phone: string; address: string; date_of_birth: string; profile_image_url: string;
@@ -103,7 +104,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
               <Field label="Email *" error={errors.email}><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={loading} /></Field>
               <Field label="Phone *" error={errors.phone}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={loading} /></Field>
               <Field label="Date of Birth"><Input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} disabled={loading} /></Field>
-              <Field label="Preferred Staff"><NativeSelect.Root disabled={loading || staffQ.isLoading}><NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}><option value="">No preference</option>{staff.map((s: any) => <option key={s.id} value={s.id}>{s.name || [s.first_name, s.last_name].filter(Boolean).join(" ") || s.email || (() => { throw new Error(`Missing staff display name for ${s.id}`); })()}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
+              <Field label="Preferred Staff"><NativeSelect.Root disabled={loading || staffQ.isLoading}><NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}><option value="">No preference</option>{staff.map((s: any) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Communication Preference"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.communication_preference} onChange={(e) => setForm({ ...form, communication_preference: e.target.value as FormState["communication_preference"] })}><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="none">None</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Status"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState["status"] })}><option value="active">Active</option><option value="inactive">Inactive</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
             </Grid>

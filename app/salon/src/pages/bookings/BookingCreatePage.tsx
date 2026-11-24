@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Avatar, Box, Button, Card, Field, Flex, Grid, Heading, HStack, Input, NativeSelect, SimpleGrid,
+  Avatar, Box, Button, Card, Field, Flex, Grid, Heading, HStack, Image, Input, NativeSelect, SimpleGrid,
   Skeleton, Stack, Steps, Text, Textarea,
 } from "@chakra-ui/react";
 import { LuArrowLeft, LuCalendar, LuCheck, LuCreditCard, LuSearch, LuUser } from "react-icons/lu";
@@ -11,6 +11,7 @@ import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import { useCreateBooking } from "@/features/bookings";
 import { useCreateCustomer } from "@/features/customers/hooks";
+import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
 const steps = [{ title: "Customer" }, { title: "Service" }, { title: "Staff" }, { title: "Availability" }, { title: "Confirm" }];
 const toIso = (d: string, t: string) => new Date(`${d}T${t}:00`).toISOString();
@@ -151,9 +152,9 @@ export default function BookingCreatePage() {
           {customersQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
           : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3" maxH="420px" overflowY="auto">{filteredCustomers.map((c: any) => {
               const selected = String(form.customer_id) === String(c.id);
-              const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || c.id;
+              const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "Customer";
               return <Card.Root key={c.id} variant="outline" cursor="pointer" borderColor={selected ? "brand.solid" : undefined} bg={selected ? "brand.subtle" : undefined} onClick={() => setForm({ ...form, customer_id: c.id })}>
-                <Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Fallback name={name} /></Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{c.email}</Text><Text fontSize="xs" color="fg.muted">{c.phone}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body>
+                <Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Image src={c.profile_image_url || undefined} /><Avatar.Fallback name={name} /></Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{c.email}</Text><Text fontSize="xs" color="fg.muted">{c.phone}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body>
               </Card.Root>;
             })}{filteredCustomers.length === 0 && <Text color="fg.muted">No customers found.</Text>}</SimpleGrid>}
         </> : customerMode === "new" ? <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap="4">
@@ -171,13 +172,13 @@ export default function BookingCreatePage() {
       {step === 1 && <Stack gap="4">
         <Box><Heading size="md">Select Service</Heading><Text fontSize="sm" color="fg.muted">Choose the service for this booking.</Text></Box>
         {servicesQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="28" />)}</SimpleGrid>
-        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{services.map((s: any) => { const selected = String(form.service_id) === String(s.id); return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, service_id: s.id, slot: "" })}><Card.Body gap="2"><Flex justify="space-between" gap="3"><Box><Text fontWeight="semibold">{s.name}</Text><Text fontSize="xs" color="fg.muted">{s.category}</Text></Box>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex><Text fontSize="sm" color="fg.muted" lineClamp="2">{s.description || "No description"}</Text><HStack justify="space-between" fontSize="sm"><Text>{s.duration_minutes} min</Text><Text fontWeight="semibold">{formatNaira(s.price)}</Text></HStack></Card.Body></Card.Root>; })}</SimpleGrid>}
+        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{services.map((s: any) => { const selected = String(form.service_id) === String(s.id); return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, service_id: s.id, slot: "" })}><Card.Body gap="2"><Flex align="start" gap="3"><Box w="16" h="16" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">{s.public_image_url ? <Image src={s.public_image_url} alt={s.name} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted"><LuUser /></Flex>}</Box><Box flex="1" minW="0"><Flex justify="space-between" gap="3"><Box minW="0"><Text fontWeight="semibold" lineClamp="1">{s.name}</Text><Text fontSize="xs" color="fg.muted">{s.category}</Text></Box>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex><Text fontSize="sm" color="fg.muted" lineClamp="2" mt="1">{s.description || "No description"}</Text></Box></Flex><HStack justify="space-between" fontSize="sm" borderTopWidth="1px" pt="2"><Text>{s.duration_minutes} min</Text><Text fontWeight="semibold">{formatNaira(s.price)}</Text></HStack></Card.Body></Card.Root>; })}</SimpleGrid>}
       </Stack>}
 
       {step === 2 && <Stack gap="4">
         <Box><Heading size="md">Select Staff</Heading><Text fontSize="sm" color="fg.muted">Choose who will provide the service.</Text></Box>
         {staffQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
-        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{staffForService.map((s: any) => { const selected = String(form.staff_id) === String(s.id); const name = [s.first_name, s.last_name].filter(Boolean).join(" ") || s.name || s.email || s.id; return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, staff_id: s.id, slot: "" })}><Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Fallback name={name} />{s.profile_image_url && <Avatar.Image src={s.profile_image_url} />}</Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{(s.specialties || []).join(", ") || s.email || "Staff member"}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body></Card.Root>; })}{staffForService.length === 0 && <Text color="fg.muted">No staff assigned to this service.</Text>}</SimpleGrid>}
+        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{staffForService.map((s: any) => { const selected = String(form.staff_id) === String(s.id); const name = getStaffDisplayName(s); return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, staff_id: s.id, slot: "" })}><Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(s)} /><Avatar.Fallback name={name} /></Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{(s.specialties || []).join(", ") || "Staff member"}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body></Card.Root>; })}{staffForService.length === 0 && <Text color="fg.muted">No staff assigned to this service.</Text>}</SimpleGrid>}
       </Stack>}
 
       {step === 3 && <Stack gap="4">
@@ -193,8 +194,8 @@ export default function BookingCreatePage() {
         <Box><Heading size="md">Confirm Booking</Heading><Text fontSize="sm" color="fg.muted">Review details before creating the booking.</Text></Box>
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
           <Card.Root variant="outline"><Card.Body gap="2"><HStack color="fg.muted" fontSize="sm"><LuUser /> Customer</HStack><Text fontWeight="medium">{customerMode === "existing" ? ([selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ") || selectedCustomer?.email || "—") : customerMode === "new" ? `${form.first_name} ${form.last_name}`.trim() || "—" : form.guest_name || "—"}</Text>{customerMode === "new" && <Text fontSize="sm" color="fg.muted">{form.email} {form.phone}</Text>}{customerMode === "guest" && <Text fontSize="sm" color="fg.muted">{form.guest_email} {form.guest_phone}</Text>}</Card.Body></Card.Root>
-          <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Service</Text><Text fontWeight="medium">{selectedService?.name || "—"}</Text><Text fontSize="sm" color="fg.muted">{selectedService?.duration_minutes} min • {formatNaira(selectedService?.price)}</Text></Card.Body></Card.Root>
-          <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Staff</Text><Text fontWeight="medium">{[selectedStaff?.first_name, selectedStaff?.last_name].filter(Boolean).join(" ") || selectedStaff?.name || "—"}</Text></Card.Body></Card.Root>
+          <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Service</Text><HStack><Box w="12" h="12" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">{selectedService?.public_image_url ? <Image src={selectedService.public_image_url} alt={selectedService.name} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted"><LuUser /></Flex>}</Box><Box><Text fontWeight="medium">{selectedService?.name || "—"}</Text><Text fontSize="sm" color="fg.muted">{selectedService?.duration_minutes} min · {formatNaira(selectedService?.price)}</Text></Box></HStack></Card.Body></Card.Root>
+          <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Staff</Text><HStack><Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(selectedStaff)} /><Avatar.Fallback name={getStaffDisplayName(selectedStaff)} /></Avatar.Root><Text fontWeight="medium">{getStaffDisplayName(selectedStaff, "—")}</Text></HStack></Card.Body></Card.Root>
           <Card.Root variant="outline"><Card.Body gap="2"><HStack color="fg.muted" fontSize="sm"><LuCalendar /> Date & Time</HStack><Text fontWeight="medium">{form.date} {form.slot} - {endTime}</Text></Card.Body></Card.Root>
         </SimpleGrid>
         <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap="4">
