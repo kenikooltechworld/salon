@@ -8,6 +8,7 @@ import { useImageUpload } from "@/hooks/useImageUpload";
 import { useServices } from "@/features/services";
 import { formatNaira } from "@/components/ui/naira";
 import { useCreateStaff, useUpdateStaff, type Staff, type StaffPayload } from "@/features/staff";
+import { ImageLightbox } from "@/components/services/ImageLightbox";
 
 function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return <Stack gap="1"><Text fontSize="sm" fontWeight="medium">{label}</Text>{children}{error && <Text fontSize="xs" color="red.500">{error}</Text>}</Stack>;
@@ -27,6 +28,7 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
   const [specialtyInput, setSpecialtyInput] = useState("");
   const [certInput, setCertInput] = useState("");
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [form, setForm] = useState<StaffPayload>({ firstName: "", lastName: "", email: "", phone: "", role_ids: [], service_ids: [], specialties: [], certifications: [], certification_files: [], payment_type: "hourly", payment_rate: 0, hire_date: "", bio: "", profile_image_url: "", status: "active", is_available_for_public_booking: false });
 
   useEffect(() => {
@@ -126,11 +128,25 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
               e.target.value = "";
             }} />
             <Text fontSize="xs" color="fg.muted">{certUpload.isUploading ? `Uploading ${certUpload.uploadProgress}%` : "Select one or more files (PDF, images, DOC). Each file is stored in certificate files."}</Text>
-            <Wrap>{(form.certification_files || []).map((url, i) => <WrapItem key={`${url}-${i}`}><HStack borderWidth="1px" rounded="md" p="2" maxW="full"><Text fontSize="xs" maxW="260px" truncate>{url.split("/").pop() || url}</Text><IconButton aria-label="Remove file" size="2xs" variant="ghost" onClick={() => removeTag("certification_files", i)}><LuX /></IconButton></HStack></WrapItem>)}</Wrap>
+            <Wrap>{(form.certification_files || []).map((url, i) => {
+              const fileName = url.split("/").pop() || "certificate";
+              const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName) || url.startsWith("data:image/");
+              return <WrapItem key={`${url}-${i}`}>
+                <HStack borderWidth="1px" rounded="md" p="2" maxW="full" gap="2">
+                  {isImage ? <Box as="button" {...({ type: "button" } as any)} onClick={() => setLightboxImage(url)} rounded="sm" overflow="hidden" borderWidth="1px" flexShrink={0}><img src={url} alt={`Certificate ${i + 1}`} style={{ width: 48, height: 48, objectFit: "cover", display: "block" }} /></Box> : <Box w="48px" h="48px" rounded="sm" borderWidth="1px" bg="bg.muted" display="flex" alignItems="center" justifyContent="center" flexShrink={0}><Text fontSize="10px" color="fg.muted" fontWeight="bold">{(fileName.split(".").pop() || "FILE").toUpperCase().slice(0, 4)}</Text></Box>}
+                  <Stack gap="0" minW="0">
+                    <Text fontSize="xs" maxW="220px" truncate>{fileName}</Text>
+                    {isImage && <Button size="2xs" variant="plain" colorPalette="blue" px="0" h="auto" justifyContent="start" onClick={() => setLightboxImage(url)}>Preview</Button>}
+                  </Stack>
+                  <IconButton aria-label="Remove file" size="2xs" variant="ghost" onClick={() => removeTag("certification_files", i)}><LuX /></IconButton>
+                </HStack>
+              </WrapItem>;
+            })}</Wrap>
           </Stack>
         </Field>
       </Stack></Dialog.Body>
       <Dialog.Footer><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button><Button colorPalette="brand" loading={busy} onClick={onSubmit}>{isEdit ? "Update Staff Member" : "Add Staff Member"}</Button></Dialog.Footer>
     </Dialog.Content></Dialog.Positioner></Portal>
+    <ImageLightbox isOpen={!!lightboxImage} imageUrl={lightboxImage || ""} alt="Certificate preview" onClose={() => setLightboxImage(null)} />
   </Dialog.Root>;
 }
