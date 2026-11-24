@@ -3,18 +3,17 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import date
 from typing import Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.availability import Availability
 from app.models.service import Service
 from app.models.staff import Staff
 from app.models.user import User
 from app.schemas.staff import StaffCreate, StaffUpdate
+from app.services.default_availability import build_default_staff_availability
 from app.services.tenant_service import TenantService
 
 
@@ -84,23 +83,7 @@ class StaffService:
         await self.session.flush()
 
     async def _create_default_availability(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> None:
-        for day_of_week in range(5):
-            self.session.add(Availability(
-                tenant_id=tenant_id,
-                staff_id=str(staff_id),
-                day_of_week=day_of_week,
-                start_time="09:00:00",
-                end_time="17:00:00",
-                is_recurring=True,
-                effective_from=date.today(),
-                effective_to=None,
-                breaks=[{"start_time": "12:00:00", "end_time": "13:00:00"}],
-                slot_interval_minutes=30,
-                buffer_time_minutes=15,
-                concurrent_bookings_allowed=1,
-                is_active=True,
-                notes="Default availability schedule",
-            ))
+        self.session.add_all(build_default_staff_availability(tenant_id, str(staff_id)))
         await self.session.flush()
 
     async def _send_welcome_email(self, tenant_id: uuid.UUID, user: User, temp_password: str) -> None:
