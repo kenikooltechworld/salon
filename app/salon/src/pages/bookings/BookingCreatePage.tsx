@@ -16,7 +16,7 @@ export default function BookingCreatePage() {
   const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data });
   const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services?page=1&page_size=100&active_only=true")).data });
   const customersQ = useQuery({ queryKey: ["customers", "all"], queryFn: async () => (await apiClient.get("/customers?page=1&page_size=100")).data });
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : staffQ.data?.staff || [];
+  const staff = Array.isArray(staffQ.data) ? staffQ.data : Array.isArray(staffQ.data?.staff) ? staffQ.data.staff : [];
   const services = Array.isArray(servicesQ.data?.services) ? servicesQ.data.services : [];
   const customers = Array.isArray(customersQ.data?.customers) ? customersQ.data.customers : [];
 
