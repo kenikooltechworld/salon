@@ -19,7 +19,7 @@ class StaffCreate(BaseModel):
     service_ids: list[str] = Field(default_factory=list)
     specialties: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
-    certification_files: list[str] = Field(default_factory=list)
+    certification_files: list[str] | None = Field(default_factory=list)
     payment_type: str = Field(default="hourly", max_length=16)
     payment_rate: Decimal = Field(default=Decimal("0"), ge=0)
     hire_date: Optional[date] = None
@@ -60,7 +60,7 @@ class StaffRead(BaseModel):
     service_ids: list[str] = Field(default_factory=list)
     specialties: list[str] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
-    certification_files: list[str] = Field(default_factory=list)
+    certification_files: list[str] | None = Field(default_factory=list)
     payment_type: str
     payment_rate: Decimal
     hire_date: Optional[date] = None
