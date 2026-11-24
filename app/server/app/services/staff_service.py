@@ -123,9 +123,19 @@ class StaffService:
             if existing:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"A user with email '{data.email}' already exists in your salon. Please use a different email address.")
             from app.lib.security import hash_password
+            from app.models.role import Role
 
             temp_password = secrets.token_urlsafe(12)
-            role = (data.role_ids[0] if data.role_ids else "staff") or "staff"
+            role = "staff"
+            if data.role_ids:
+                raw_role = str(data.role_ids[0]).strip()
+                try:
+                    role_uuid = uuid.UUID(raw_role)
+                    role_row = (await self.session.execute(select(Role).where(Role.id == role_uuid, Role.tenant_id == tenant_id))).scalar_one_or_none()
+                    role = (role_row.name if role_row and role_row.name else raw_role)
+                except Exception:
+                    role = raw_role
+            role = str(role).strip().lower().replace(" ", "_")[:32] or "staff"
             user = User(
                 tenant_id=tenant_id, email=data.email, password_hash=hash_password(temp_password),
                 first_name=data.firstName, last_name=data.lastName, phone=data.phone,
@@ -211,7 +221,15 @@ class StaffService:
                 if "role_ids" in user_fields and user_fields["role_ids"] is not None:
                     role_ids = user_fields["role_ids"]
                     if role_ids:
-                        user.role = str(role_ids[0])
+                        from app.models.role import Role
+                        raw_role = str(role_ids[0]).strip()
+                        try:
+                            role_uuid = uuid.UUID(raw_role)
+                            role_row = (await self.session.execute(select(Role).where(Role.id == role_uuid, Role.tenant_id == tenant_id))).scalar_one_or_none()
+                            resolved = (role_row.name if role_row and role_row.name else raw_role)
+                        except Exception:
+                            resolved = raw_role
+                        user.role = str(resolved).strip().lower().replace(" ", "_")[:32] or user.role
         await self.session.flush()
         if "service_ids" in data.model_dump(exclude_unset=True):
             await self._sync_service_staff_ids(tenant_id, staff.service_ids or [], staff.id)
