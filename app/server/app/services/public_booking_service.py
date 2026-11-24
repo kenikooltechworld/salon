@@ -69,7 +69,8 @@ class PublicBookingService:
 
     async def get_availability(self, tenant_id: uuid.UUID, service_id: uuid.UUID, staff_id: uuid.UUID, booking_date: date) -> list[dict]:
         await self._validate_service_staff(tenant_id, service_id, staff_id)
-        return await self.availability.get_available_slots(tenant_id, staff_id, service_id, booking_date)
+        slots = await self.availability.get_available_slots(tenant_id, staff_id, service_id, booking_date)
+        return [{"time": slot["start_time"], "available": slot["isAvailable"]} for slot in slots]
 
     async def create_booking(self, tenant_id: uuid.UUID, data: PublicBookingCreate, *, ip_address: str | None, user_agent: str | None, idempotency_key: str | None) -> Appointment:
         service, staff = await self._validate_service_staff(tenant_id, data.service_id, data.staff_id)
@@ -85,7 +86,7 @@ class PublicBookingService:
         if booking_dt <= datetime.now(timezone.utc):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot book appointments in the past")
 
-        slots = await self.availability.get_available_slots(tenant_id, data.staff_id, data.service_id, data.booking_date)
+        slots = await self.get_availability(tenant_id, data.service_id, data.staff_id, data.booking_date)
         if not any(s["time"] == data.booking_time and s["available"] for s in slots):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected time slot is not available")
 
@@ -148,7 +149,13 @@ class PublicBookingService:
         service = (await self.session.execute(select(Service).where(Service.id == service_id, Service.tenant_id == tenant_id, Service.is_published.is_(True), Service.is_active.is_(True)))).scalar_one_or_none()
         if service is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
-        staff = (await self.session.execute(select(Staff).where(Staff.id == staff_id, Staff.tenant_id == tenant_id, Staff.status == "active"))).scalar_one_or_none()
+        staff = (await self.session.execute(
+            select(Staff).where(
+                Staff.id == staff_id,
+                Staff.tenant_id == tenant_id,
+                Staff.status == "active",
+            ).with_for_update()
+        )).scalar_one_or_none()
         if staff is None or not staff.is_available_for_public_booking:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
         if str(service_id) not in {str(x) for x in (staff.service_ids or [])}:

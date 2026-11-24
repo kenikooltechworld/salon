@@ -1,16 +1,20 @@
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Avatar, Badge, Box, Button, Card, Flex, Grid, Heading, HStack, Image, Skeleton, Stack, Text,
+  Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text,
 } from "@chakra-ui/react";
-import { LuArrowLeft } from "react-icons/lu";
+import { useState } from "react";
+import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
+import { useQuery } from "@tanstack/react-query";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import {
-  bookingsApi, useBookingDetail, useCancelBooking, useCompleteBooking, useConfirmBooking, useNoShowBooking, useStartBooking,
+  useBookingDetail, useCancelBooking, useCollectBookingPayment, useCompleteBooking, useConfirmBooking, useDeleteBooking, useNoShowBooking, useStartBooking,
 } from "@/features/bookings";
-import { useQueryClient } from "@tanstack/react-query";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
+import { BookingFormDialog } from "./BookingFormDialog";
+import { useAuthStore } from "@/features/auth";
+import { apiClient } from "@/lib/api";
 
 function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return <Box><Text fontSize="xs" color="fg.muted" mb="0.5">{label}</Text><Text fontSize="sm" fontWeight="medium">{value || "—"}</Text></Box>;
@@ -19,11 +23,23 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const qc = useQueryClient();
+  const role = useAuthStore((state) => state.user?.role);
+  const canManage = ["owner", "admin", "manager"].includes((role || "").toLowerCase());
   const { data: b, isLoading, isError } = useBookingDetail(id);
   const confirm = useConfirmBooking(); const complete = useCompleteBooking(); const cancel = useCancelBooking();
   const noShow = useNoShowBooking(); const start = useStartBooking();
-
+  const collectPayment = useCollectBookingPayment();
+  const deleteBooking = useDeleteBooking();
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const staffQ = useQuery({
+    queryKey: ["staff", "booking-edit"],
+    queryFn: async () => (await apiClient.get("/staff?page=1&page_size=100")).data,
+  });
+  const servicesQ = useQuery({
+    queryKey: ["services", "booking-edit"],
+    queryFn: async () => (await apiClient.get("/services?page=1&page_size=100&active_only=true")).data,
+  });
   const act = async (fn: () => Promise<any>, msg: string) => {
     try { await fn(); toaster.create({ title: msg, type: "success" }); }
     catch (e: any) { toaster.create({ title: "Action failed", description: e?.response?.data?.detail || e?.message, type: "error" }); }
@@ -34,7 +50,23 @@ export default function BookingDetailPage() {
 
   const customerName = b.is_guest ? b.guest_name || "Guest" : [b.customer?.first_name, b.customer?.last_name].filter(Boolean).join(" ") || "Customer";
   const staffName = getStaffDisplayName(b.staff, "Staff member");
-  const canAct = b.status === "scheduled" || b.status === "confirmed";
+  const canCancel = ["scheduled", "confirmed", "in_progress"].includes(b.status);
+  const canNoShow = b.status === "scheduled" || b.status === "confirmed";
+  const canEdit = b.status === "scheduled" || b.status === "confirmed";
+  const staffOptions = [...(Array.isArray(staffQ.data?.staff) ? staffQ.data.staff : Array.isArray(staffQ.data) ? staffQ.data : [])];
+  const serviceOptions = [...(Array.isArray(servicesQ.data?.services) ? servicesQ.data.services : [])];
+  if (b.staff && !staffOptions.some((item: any) => item.id === b.staff?.id)) staffOptions.push(b.staff);
+  if (b.service && !serviceOptions.some((item: any) => item.id === b.service?.id)) serviceOptions.push(b.service);
+
+  const onDelete = async () => {
+    try {
+      await deleteBooking.mutateAsync(b.id);
+      toaster.create({ title: "Booking deleted", type: "success" });
+      navigate("/bookings");
+    } catch (e: any) {
+      toaster.create({ title: "Delete failed", description: e?.response?.data?.detail || e?.message, type: "error" });
+    }
+  };
 
   return <Stack gap="6">
     <Flex justify="space-between" gap="3" direction={{ base: "column", md: "row" }} align={{ md: "center" }}>
@@ -89,16 +121,36 @@ export default function BookingDetailPage() {
         <Card.Header><Card.Title fontSize="md">Actions</Card.Title></Card.Header>
         <Card.Body>
           <Stack gap="2">
+            {canEdit && <Button variant="outline" onClick={() => setEditOpen(true)}><LuPencil /> Edit booking</Button>}
             {b.status === "scheduled" && <Button colorPalette="green" loading={confirm.isPending} onClick={() => act(() => confirm.mutateAsync(b.id), "Booking confirmed")}>Confirm</Button>}
             {b.status === "confirmed" && <Button colorPalette="blue" loading={start.isPending} onClick={() => act(() => start.mutateAsync(b.id), "Booking started")}>Start</Button>}
             {(b.status === "confirmed" || b.status === "in_progress") && <Button colorPalette="purple" loading={complete.isPending} onClick={() => act(() => complete.mutateAsync(b.id), "Booking completed")}>Complete</Button>}
-            {canAct && <Button colorPalette="red" variant="outline" loading={cancel.isPending} onClick={() => act(() => cancel.mutateAsync({ id: b.id, reason: "Cancelled by staff" }), "Booking cancelled")}>Cancel</Button>}
-            {canAct && <Button variant="outline" loading={noShow.isPending} onClick={() => act(() => noShow.mutateAsync({ id: b.id, reason: "Marked as no-show" }), "Marked as no-show")}>No-Show</Button>}
-            {b.status === "completed" && b.payment_status !== "completed" && b.payment_option !== "now" && <Button colorPalette="green" variant="outline" onClick={async () => { try { await bookingsApi.collectPayment(b.id, { payment_method: "cash", amount: Number(b.price || 0) }); toaster.create({ title: "Payment collected", type: "success" }); qc.invalidateQueries({ queryKey: ["bookings"] }); } catch (e: any) { toaster.create({ title: "Failed to collect payment", description: e?.response?.data?.detail || e?.message, type: "error" }); } }}>Collect Payment</Button>}
+            {canCancel && <Button colorPalette="red" variant="outline" loading={cancel.isPending} onClick={() => act(() => cancel.mutateAsync({ id: b.id, reason: "Cancelled by staff" }), "Booking cancelled")}>Cancel</Button>}
+            {canNoShow && <Button variant="outline" loading={noShow.isPending} onClick={() => act(() => noShow.mutateAsync({ id: b.id, reason: "Marked as no-show" }), "Marked as no-show")}>No-Show</Button>}
+            {b.status === "completed" && b.payment_status !== "completed" && b.payment_option === "later" && Number(b.price ?? b.service?.price ?? 0) > 0 && <Button colorPalette="green" variant="outline" loading={collectPayment.isPending} onClick={() => act(() => collectPayment.mutateAsync({ id: b.id, payload: { payment_method: "cash", amount: Number(b.price ?? b.service?.price ?? 0) } }), "Payment collected")}>Collect Payment</Button>}
+            {canManage && <Button colorPalette="red" variant="outline" onClick={() => setDeleteOpen(true)}><LuTrash2 /> Delete booking</Button>}
             <Button variant="ghost" onClick={() => navigate("/bookings")}>Close</Button>
           </Stack>
         </Card.Body>
       </Card.Root>
     </Grid>
+    <BookingFormDialog
+      open={editOpen}
+      onOpenChange={setEditOpen}
+      booking={b}
+      staff={staffOptions}
+      services={serviceOptions}
+      customers={b.customer ? [b.customer] : []}
+    />
+    <Dialog.Root open={deleteOpen} onOpenChange={(event) => setDeleteOpen(event.open)}>
+      <Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
+        <Dialog.Header><Dialog.Title>Delete booking?</Dialog.Title></Dialog.Header>
+        <Dialog.Body><Text>This permanently deletes booking #{b.id.slice(0, 8)}.</Text></Dialog.Body>
+        <Dialog.Footer>
+          <Button variant="outline" onClick={() => setDeleteOpen(false)}>Keep booking</Button>
+          <Button colorPalette="red" loading={deleteBooking.isPending} onClick={onDelete}>Delete booking</Button>
+        </Dialog.Footer>
+      </Dialog.Content></Dialog.Positioner></Portal>
+    </Dialog.Root>
   </Stack>;
 }

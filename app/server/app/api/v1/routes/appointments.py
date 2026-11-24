@@ -10,14 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.controllers.appointment_controller import AppointmentController
 from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
-from app.schemas.appointment import AppointmentAction, AppointmentCollectPaymentRequest, AppointmentCreate, AppointmentDetailRead, AppointmentListResponse, AppointmentRead, AppointmentUpdate
+from app.schemas.appointment import AppointmentAction, AppointmentCollectPaymentRequest, AppointmentCreate, AppointmentDetailRead, AppointmentListResponse, AppointmentRead, AppointmentStatus, AppointmentUpdate
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
 
 @router.get("", response_model=AppointmentListResponse)
 async def list_appointments(
-    status: str | None = Query(default=None),
+    status: AppointmentStatus | None = Query(default=None),
     staff_id: str | None = Query(default=None),
     customer_id: str | None = Query(default=None),
     service_id: str | None = Query(default=None),
@@ -49,6 +49,7 @@ async def get_available_slots(
     staff_id: uuid.UUID = Query(...),
     service_id: uuid.UUID = Query(...),
     booking_date: str = Query(..., alias="date"),
+    time_zone: str = Query(default="UTC", min_length=1, max_length=64),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db_session),
 ):
@@ -59,7 +60,9 @@ async def get_available_slots(
     except Exception:
         from fastapi import HTTPException, status as st
         raise HTTPException(status_code=st.HTTP_400_BAD_REQUEST, detail="Invalid date format, expected YYYY-MM-DD")
-    slots = await AvailabilityService(session).get_available_slots(current_user.tenant_id, staff_id, service_id, d)
+    slots = await AvailabilityService(session).get_available_slots(
+        current_user.tenant_id, staff_id, service_id, d, time_zone=time_zone
+    )
     return {"date": booking_date, "slots": slots}
 
 

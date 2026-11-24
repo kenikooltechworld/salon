@@ -2,19 +2,31 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Sequence
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment
+from app.models.customer import Customer
 from app.models.service import Service
 from app.models.staff import Staff
+from app.models.user import User
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
+from app.services.availability_service import AvailabilityService
 
 _APPT_STATUSES = {"scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"}
+_ALLOWED_STATUS_TRANSITIONS = {
+    "scheduled": {"confirmed", "cancelled", "no_show"},
+    "confirmed": {"in_progress", "cancelled", "no_show"},
+    "in_progress": {"completed", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+    "no_show": set(),
+}
 
 
 class AppointmentService:
@@ -56,14 +68,44 @@ class AppointmentService:
         if end_date:
             stmt = stmt.where(Appointment.start_time <= end_date)
             count_stmt = count_stmt.where(Appointment.start_time <= end_date)
-        if search:
+        if search and search.strip():
             q = f"%{search.strip()}%"
+            service_match = select(1).where(
+                Service.tenant_id == tenant_id,
+                cast(Service.id, String) == Appointment.service_id,
+                Service.name.ilike(q),
+            ).exists()
+            customer_match = select(1).where(
+                Customer.tenant_id == tenant_id,
+                cast(Customer.id, String) == Appointment.customer_id,
+                or_(
+                    Customer.first_name.ilike(q),
+                    Customer.last_name.ilike(q),
+                    Customer.email.ilike(q),
+                    func.concat(Customer.first_name, " ", Customer.last_name).ilike(q),
+                ),
+            ).exists()
+            staff_match = select(1).select_from(Staff).join(
+                User, cast(User.id, String) == Staff.user_id
+            ).where(
+                Staff.tenant_id == tenant_id,
+                User.tenant_id == tenant_id,
+                cast(Staff.id, String) == Appointment.staff_id,
+                or_(User.first_name.ilike(q), User.last_name.ilike(q), User.email.ilike(q)),
+            ).exists()
             f = or_(
+                cast(Appointment.id, String).ilike(q),
+                Appointment.staff_id.ilike(q),
+                Appointment.service_id.ilike(q),
+                Appointment.customer_id.ilike(q),
                 Appointment.guest_name.ilike(q),
                 Appointment.guest_email.ilike(q),
                 Appointment.guest_phone.ilike(q),
                 Appointment.notes.ilike(q),
                 Appointment.status.ilike(q),
+                service_match,
+                customer_match,
+                staff_match,
             )
             stmt = stmt.where(f)
             count_stmt = count_stmt.where(f)
@@ -85,12 +127,14 @@ class AppointmentService:
             if found is not None:
                 return found
 
-        await self._validate_refs(tenant_id, data.service_id, data.staff_id)
-        if data.end_time <= data.start_time:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_time must be after start_time")
-        await self._ensure_no_conflict(tenant_id, data.staff_id, data.start_time, data.end_time)
+        service, _ = await self._validate_refs(tenant_id, data.service_id, data.staff_id)
+        await self._validate_customer(tenant_id, data.customer_id, data.is_guest)
+        await self._validate_slot(
+            tenant_id, data.staff_id, service, data.start_time, data.end_time, time_zone=data.time_zone
+        )
 
         payload = data.model_dump()
+        payload.pop("time_zone", None)
         payload.setdefault("status", "scheduled")
         if payload.get("status") not in _APPT_STATUSES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid appointment status")
@@ -111,9 +155,37 @@ class AppointmentService:
         if appt is None:
             return None
         payload = data.model_dump(exclude_unset=True)
+        time_zone = payload.pop("time_zone", None) or "UTC"
         new_status = payload.get("status")
         if new_status is not None and new_status not in _APPT_STATUSES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid appointment status")
+        if new_status is not None and new_status != appt.status and new_status not in _ALLOWED_STATUS_TRANSITIONS.get(appt.status, set()):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot change appointment status from {appt.status} to {new_status}",
+            )
+
+        if any(key in payload for key in ("staff_id", "service_id", "start_time", "end_time")):
+            if appt.status not in {"scheduled", "confirmed"}:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Cannot reschedule an appointment with status {appt.status}",
+                )
+            staff_id = payload.get("staff_id", appt.staff_id)
+            service_id = payload.get("service_id", appt.service_id)
+            start_time = payload.get("start_time", appt.start_time)
+            end_time = payload.get("end_time", appt.end_time)
+            service, _ = await self._validate_refs(tenant_id, service_id, staff_id)
+            await self._validate_slot(
+                tenant_id, staff_id, service, start_time, end_time,
+                exclude_id=appt.id, time_zone=time_zone,
+            )
+            payload.update(
+                staff_id=staff_id,
+                service_id=service_id,
+                start_time=start_time,
+                end_time=end_time,
+            )
 
         now = datetime.now(timezone.utc)
         if new_status == "confirmed" and appt.confirmed_at is None:
@@ -143,33 +215,93 @@ class AppointmentService:
         await self.session.flush()
         return True
 
-    async def _ensure_no_conflict(self, tenant_id: uuid.UUID, staff_id: str, start_time: datetime, end_time: datetime, exclude_id: uuid.UUID | None = None) -> None:
-        stmt = select(Appointment.id).where(
-            Appointment.tenant_id == tenant_id,
-            Appointment.staff_id == staff_id,
-            Appointment.status.in_(["scheduled", "confirmed", "in_progress"]),
-            Appointment.start_time < end_time,
-            Appointment.end_time > start_time,
-        )
-        if exclude_id is not None:
-            stmt = stmt.where(Appointment.id != exclude_id)
-        exists = (await self.session.execute(stmt)).scalar_one_or_none()
-        if exists is not None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Staff member has a conflicting appointment for this time slot")
-
-    async def _validate_refs(self, tenant_id: uuid.UUID, service_id: str, staff_id: str) -> None:
+    async def _validate_refs(self, tenant_id: uuid.UUID, service_id: str, staff_id: str) -> tuple[Service, Staff]:
         try:
             svc_uuid = uuid.UUID(str(service_id))
             staff_uuid = uuid.UUID(str(staff_id))
         except (ValueError, TypeError):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid service_id or staff_id")
-        svc = (await self.session.execute(select(Service.id).where(Service.id == svc_uuid, Service.tenant_id == tenant_id))).scalar_one_or_none()
+        svc = (await self.session.execute(
+            select(Service).where(
+                Service.id == svc_uuid,
+                Service.tenant_id == tenant_id,
+                Service.is_active.is_(True),
+            )
+        )).scalar_one_or_none()
         if svc is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Service not found for tenant")
-        st = (await self.session.execute(select(Staff.id).where(Staff.id == staff_uuid, Staff.tenant_id == tenant_id))).scalar_one_or_none()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active service not found for tenant")
+        if svc.duration_minutes <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Service duration must be greater than zero")
+        st = (await self.session.execute(
+            select(Staff).where(
+                Staff.id == staff_uuid,
+                Staff.tenant_id == tenant_id,
+                Staff.status == "active",
+            ).with_for_update()
+        )).scalar_one_or_none()
         if st is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff not found for tenant")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active staff member not found for tenant")
+        if svc.staff_ids and staff_uuid not in svc.staff_ids:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff member is not assigned to this service")
+        return svc, st
 
+    async def _validate_customer(self, tenant_id: uuid.UUID, customer_id: str | None, is_guest: bool) -> None:
+        if customer_id is None and is_guest:
+            return
+        if customer_id is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A valid customer_id is required")
+        try:
+            customer_uuid = uuid.UUID(str(customer_id))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A valid customer_id is required")
+        exists = (await self.session.execute(
+            select(Customer.id).where(
+                Customer.id == customer_uuid,
+                Customer.tenant_id == tenant_id,
+                Customer.status == "active",
+            )
+        )).scalar_one_or_none()
+        if exists is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active customer not found for tenant")
+
+    async def _validate_slot(
+        self,
+        tenant_id: uuid.UUID,
+        staff_id: str,
+        service: Service,
+        start_time: datetime,
+        end_time: datetime,
+        exclude_id: uuid.UUID | None = None,
+        time_zone: str = "UTC",
+    ) -> None:
+        if start_time.tzinfo is None or end_time.tzinfo is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Booking times must include a timezone")
+        try:
+            zone = ZoneInfo(time_zone)
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid time_zone") from exc
+        start_local = start_time.astimezone(zone)
+        end_utc = end_time.astimezone(timezone.utc)
+        start_utc = start_time.astimezone(timezone.utc)
+        expected_end = start_utc + timedelta(minutes=service.duration_minutes)
+        if end_utc != expected_end:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Booking duration must match the selected service")
+        try:
+            staff_uuid = uuid.UUID(str(staff_id))
+            service_uuid = uuid.UUID(str(service.id))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid service_id or staff_id") from exc
+
+        slots = await AvailabilityService(self.session).get_available_slots(
+            tenant_id, staff_uuid, service_uuid, start_local.date(),
+            exclude_id=exclude_id, time_zone=time_zone,
+        )
+        requested_time = start_local.strftime("%H:%M")
+        matching = next((slot for slot in slots if slot["start_time"] == requested_time), None)
+        if matching is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Requested time is outside staff availability")
+        if not matching["isAvailable"]:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Requested staff time slot is already booked")
     async def collect_payment(self, tenant_id: uuid.UUID, appointment_id: uuid.UUID, payment_method: str, amount, notes: str | None = None):
         from decimal import Decimal
         from app.models.invoice import Invoice
@@ -181,6 +313,8 @@ class AppointmentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
         if appt.payment_option != "later":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This appointment is not a pay-later booking")
+        if appt.status != "completed":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment can only be collected for completed appointments")
         if appt.payment_status == "completed":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment has already been collected for this appointment")
 
@@ -188,19 +322,34 @@ class AppointmentService:
         if amt <= 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be greater than zero")
 
-        svc = None
         try:
             svc_uuid = uuid.UUID(str(appt.service_id))
-            svc = (await self.session.execute(select(Service).where(Service.id == svc_uuid, Service.tenant_id == tenant_id))).scalar_one_or_none()
-        except Exception:
-            svc = None
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid appointment service_id") from exc
+        svc = (await self.session.execute(
+            select(Service).where(Service.id == svc_uuid, Service.tenant_id == tenant_id)
+        )).scalar_one_or_none()
+        if svc is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointment service not found")
+
+        due = Decimal(str(appt.price if appt.price is not None else svc.price))
+        if amt != due:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Payment amount must equal the outstanding balance of {due}",
+            )
 
         customer_uuid = None
         if appt.customer_id:
             try:
                 customer_uuid = uuid.UUID(str(appt.customer_id))
-            except Exception:
-                customer_uuid = None
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid appointment customer_id") from exc
+            customer_exists = (await self.session.execute(
+                select(Customer.id).where(Customer.id == customer_uuid, Customer.tenant_id == tenant_id)
+            )).scalar_one_or_none()
+            if customer_exists is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointment customer not found for tenant")
 
         ref = f"APT-{str(appt.id)[:8].upper()}-{uuid.uuid4().hex[:8].upper()}"
         payment = Payment(
@@ -219,7 +368,7 @@ class AppointmentService:
         invoice = (await self.session.execute(select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.appointment_id == appt.id))).scalar_one_or_none()
         if invoice is None and customer_uuid is not None:
             unit_price = Decimal(str(appt.price if appt.price is not None else (svc.price if svc and svc.price is not None else amt)))
-            line_items = [{"service_id": str(appt.service_id), "service_name": (svc.name if svc else "Service"), "quantity": 1, "unit_price": str(unit_price), "total": str(amt)}]
+            line_items = [{"service_id": str(appt.service_id), "service_name": svc.name, "quantity": 1, "unit_price": str(unit_price), "total": str(amt)}]
             invoice = Invoice(tenant_id=tenant_id, appointment_id=appt.id, customer_id=customer_uuid, line_items=line_items, subtotal=amt, discount=Decimal("0"), tax=Decimal("0"), total=amt, status="paid", paid_at=datetime.now(timezone.utc), notes=notes)
             self.session.add(invoice)
             await self.session.flush()

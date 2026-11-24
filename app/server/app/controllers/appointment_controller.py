@@ -102,6 +102,8 @@ class AppointmentController:
         item = await self.service.update(tenant_id, appointment_id, data)
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+        if item.status == "cancelled":
+            item.cancelled_by = str(actor_id)
 
         if item.status == "completed" and prev_status != "completed":
             await self.commissions.calculate_for_appointment(tenant_id, item.id)

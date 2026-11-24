@@ -15,6 +15,7 @@ import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
 const steps = [{ title: "Customer" }, { title: "Service" }, { title: "Staff" }, { title: "Availability" }, { title: "Confirm" }];
 const toIso = (d: string, t: string) => new Date(`${d}T${t}:00`).toISOString();
+const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const todayStr = () => { const d = new Date(); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
 
 function addMinutes(hhmm: string, mins: number) { const [h, m] = hhmm.split(":").map(Number); const total = h * 60 + m + mins; const hh = Math.floor(total / 60); const mm = total % 60; return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`; }
@@ -52,7 +53,7 @@ export default function BookingCreatePage() {
   const slotsQ = useQuery({
     queryKey: ["availability", form.staff_id, form.service_id, form.date],
     queryFn: async () => {
-      const res = await apiClient.get("/appointments/available-slots", { params: { service_id: form.service_id, staff_id: form.staff_id, date: form.date } });
+      const res = await apiClient.get("/appointments/available-slots", { params: { service_id: form.service_id, staff_id: form.staff_id, date: form.date, time_zone: browserTimeZone } });
       return res.data;
     },
     enabled: !!form.staff_id && !!form.service_id && !!form.date && step >= 3,
@@ -63,8 +64,9 @@ export default function BookingCreatePage() {
   useEffect(() => { if (selectedService?.staff_ids?.length && !selectedService.staff_ids.includes(form.staff_id)) setForm((p) => ({ ...p, staff_id: "" })); }, [selectedService, form.staff_id]);
 
   const staffForService = useMemo(() => {
-    if (!selectedService?.staff_ids?.length) return staff;
-    return staff.filter((s: any) => selectedService.staff_ids.includes(s.id));
+    const activeStaff = staff.filter((member: any) => !member.status || member.status === "active");
+    if (!selectedService?.staff_ids?.length) return activeStaff;
+    return activeStaff.filter((s: any) => selectedService.staff_ids.some((id: string) => String(id) === String(s.id)));
   }, [staff, selectedService]);
 
   const endTime = useMemo(() => { if (!form.slot || !selectedService) return ""; return addMinutes(form.slot, Number(selectedService.duration_minutes || 30)); }, [form.slot, selectedService]);
@@ -115,6 +117,7 @@ export default function BookingCreatePage() {
         customer_id: customerId,
         start_time: toIso(form.date, form.slot),
         end_time: toIso(form.date, endTime),
+        time_zone: browserTimeZone,
         notes: form.notes || null,
         price: selectedService.price,
         is_guest: customerMode === "guest",
@@ -185,9 +188,9 @@ export default function BookingCreatePage() {
         <Box><Heading size="md">Select Date & Time</Heading><Text fontSize="sm" color="fg.muted">Pick an available slot for the {selectedService?.duration_minutes || 0}-minute appointment.</Text></Box>
         <Field.Root maxW="320px"><Field.Label><LuCalendar /> Date</Field.Label><Input type="date" min={todayStr()} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, slot: "" })} /></Field.Root>
         {slotsQ.isLoading ? <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap="2">{[...Array(8)].map((_, i) => <Skeleton key={i} h="10" />)}</SimpleGrid>
-        : slots.length > 0 ? <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap="2">{slots.map((slot: any) => { const selected = form.slot === slot.time; return <Button key={slot.time} variant={selected?"solid":"outline"} colorPalette={selected?"brand":"gray"} disabled={!slot.available} onClick={() => setForm({ ...form, slot: slot.time })}>{slot.time}</Button>; })}</SimpleGrid>
-        : <Text color="fg.muted">No available slots for this date.</Text>}
-        {slotsQ.isError && <Text color="fg.error" fontSize="sm">Could not load availability for the selected staff/service/date.</Text>}
+        : slots.length > 0 ? <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap="2">{slots.map((slot: any) => { const selected = form.slot === slot.start_time; return <Button key={slot.start_time} variant={selected?"solid":"outline"} colorPalette={selected?"brand":"gray"} disabled={!slot.isAvailable} onClick={() => setForm({ ...form, slot: slot.start_time })}>{slot.start_time}</Button>; })}</SimpleGrid>
+        : <Stack align="start" gap="2"><Text color="fg.muted">No available slots for this date. Check this staff member’s availability or choose another date.</Text><Button size="sm" variant="outline" onClick={() => navigate(`/staff/${form.staff_id}`)}>Manage staff availability</Button></Stack>}
+        {slotsQ.isError && <Text color="fg.error" fontSize="sm">{(slotsQ.error as any)?.response?.data?.detail || "Could not load availability for the selected staff/service/date."}</Text>}
       </Stack>}
 
       {step === 4 && <Stack gap="5">

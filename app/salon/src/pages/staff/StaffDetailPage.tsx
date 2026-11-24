@@ -8,6 +8,7 @@ import { useAuthStore } from "@/features/auth";
 import { ImageLightbox } from "@/components/services/ImageLightbox";
 import { StaffFormDialog } from "@/components/staff/StaffFormDialog";
 import { useDeleteStaff, useStaffActivity, useStaffMember, useStaffMetrics, useStaffPerformance, useStaffReviews } from "@/features/staff";
+import { StaffAvailabilityManager } from "./StaffAvailabilityManager";
 
 const canManage = (role?: string) => ["owner", "admin", "manager"].includes((role || "").toLowerCase());
 const statusColor = (s: string) => s === "active" ? "green" : s === "inactive" ? "gray" : s === "on_leave" ? "orange" : "red";
@@ -16,7 +17,8 @@ const label = (s: string) => s.split("_").map((w) => w.charAt(0).toUpperCase() +
 export default function StaffDetailPage() {
   const { staffId } = useParams<{ staffId: string }>();
   const navigate = useNavigate();
-  const role = useAuthStore((s) => s.user?.role);
+  const currentUser = useAuthStore((s) => s.user);
+  const role = currentUser?.role;
   const manage = canManage(role);
   const { data: staff, isLoading } = useStaffMember(staffId);
   const metricsQ = useStaffMetrics(staffId);
@@ -79,6 +81,10 @@ export default function StaffDetailPage() {
       </Stack>
     </Grid>
 
+    <StaffAvailabilityManager
+      staffId={staff.id}
+      canManage={manage || (role?.toLowerCase() === "staff" && staff.user_id === currentUser?.id)}
+    />
     <StaffFormDialog open={editOpen} onOpenChange={setEditOpen} initial={staff} />
     <Dialog.Root open={delOpen} onOpenChange={(e) => setDelOpen(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
       <Dialog.Header><Dialog.Title>Delete Staff Member</Dialog.Title></Dialog.Header><Dialog.Body><Text>Delete <b>{staff.firstName} {staff.lastName}</b>? This cannot be undone.</Text></Dialog.Body>

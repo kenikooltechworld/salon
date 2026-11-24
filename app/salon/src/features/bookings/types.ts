@@ -33,5 +33,5 @@ export interface BookingDetail extends Booking {
 }
 
 export interface BookingListResponse { appointments: Booking[]; total: number; page: number; page_size: number; }
-export interface BookingCreate { staff_id: string; service_id: string; customer_id?: string | null; start_time: string; end_time: string; notes?: string | null; price?: string | number | null; is_guest?: boolean; guest_name?: string | null; guest_email?: string | null; guest_phone?: string | null; payment_option?: string | null; payment_status?: string | null; }
-export interface BookingUpdate { status?: AppointmentStatus; notes?: string | null; cancellation_reason?: string | null; no_show_reason?: string | null; payment_status?: string | null; price?: string | number | null; }
+export interface BookingCreate { staff_id: string; service_id: string; customer_id?: string | null; start_time: string; end_time: string; time_zone?: string; notes?: string | null; price?: string | number | null; is_guest?: boolean; guest_name?: string | null; guest_email?: string | null; guest_phone?: string | null; payment_option?: string | null; payment_status?: string | null; }
+export interface BookingUpdate { staff_id?: string; service_id?: string; start_time?: string; end_time?: string; time_zone?: string; notes?: string | null; cancellation_reason?: string | null; no_show_reason?: string | null; price?: string | number | null; }

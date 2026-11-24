@@ -58,7 +58,8 @@ function useLookupMaps() {
 }
 
 function BookingCardItem({ booking: b, lookups, onView, onConfirm, onCancel, onComplete, onNoShow, onCollect, busy }: any) {
-  const canAct = b.status === "scheduled" || b.status === "confirmed";
+  const canCancel = ["scheduled", "confirmed", "in_progress"].includes(b.status);
+  const canNoShow = b.status === "scheduled" || b.status === "confirmed";
   const staff = lookups.findStaff(b.staff_id);
   const service = lookups.findService(b.service_id);
   const customer = lookups.findCustomer(b.customer_id);
@@ -93,10 +94,10 @@ function BookingCardItem({ booking: b, lookups, onView, onConfirm, onCancel, onC
     <Flex gap="2" pt="2" borderTopWidth="1px" overflowX="auto" flexWrap="nowrap">
       <Button size="sm" variant="outline" flexShrink="0" onClick={() => onView(b.id)}><LuEye /> View</Button>
       {b.status === "scheduled" && <Button size="sm" flexShrink="0" colorPalette="green" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}
-      {b.status === "confirmed" && <Button size="sm" flexShrink="0" colorPalette="green" loading={busy} onClick={() => onComplete(b.id)}>Complete</Button>}
-      {canAct && <Button size="sm" flexShrink="0" colorPalette="red" variant="outline" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}
-      {canAct && <Button size="sm" flexShrink="0" variant="outline" loading={busy} onClick={() => onNoShow(b.id)}>No-Show</Button>}
-      {b.status === "completed" && b.payment_status !== "completed" && <Button size="sm" flexShrink="0" colorPalette="green" variant="outline" onClick={() => onCollect(b)}><LuCreditCard /> Collect Payment</Button>}
+      {(b.status === "confirmed" || b.status === "in_progress") && <Button size="sm" flexShrink="0" colorPalette="green" loading={busy} onClick={() => onComplete(b.id)}>Complete</Button>}
+      {canCancel && <Button size="sm" flexShrink="0" colorPalette="red" variant="outline" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}
+      {canNoShow && <Button size="sm" flexShrink="0" variant="outline" loading={busy} onClick={() => onNoShow(b.id)}>No-Show</Button>}
+      {b.status === "completed" && b.payment_option === "later" && b.payment_status !== "completed" && Number(b.price ?? service?.price ?? 0) > 0 && <Button size="sm" flexShrink="0" colorPalette="green" variant="outline" onClick={() => onCollect(b)}><LuCreditCard /> Collect Payment</Button>}
     </Flex>
   </Card.Body></Card.Root>;
 }
@@ -278,7 +279,13 @@ export default function BookingsPage() {
   const onComplete = (id: string) => act(() => complete.mutateAsync(id), "Booking completed");
   const onCancel = (id: string) => act(() => cancel.mutateAsync({ id, reason: "Cancelled by staff" }), "Booking cancelled");
   const onNoShow = (id: string) => act(() => noShow.mutateAsync({ id, reason: "Marked as no-show" }), "Marked as no-show");
-  const onCollect = (b: Booking) => { setCollectTarget(b); setCollectAmount(String(b.price || "")); setCollectMethod("cash"); setCollectNotes(""); };
+  const onCollect = (b: Booking) => {
+    const service = lookups.findService(b.service_id);
+    setCollectTarget(b);
+    setCollectAmount(String(b.price ?? service?.price ?? ""));
+    setCollectMethod("cash");
+    setCollectNotes("");
+  };
   const submitCollect = async () => {
     if (!collectTarget) return;
     try {
@@ -338,12 +345,12 @@ export default function BookingsPage() {
       <Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
         <Dialog.Header><Dialog.Title>Collect Payment</Dialog.Title></Dialog.Header>
         <Dialog.Body><Stack gap="4">
-          <Text fontSize="sm" color="fg.muted">Record payment for booking #{collectTarget?.id.slice(0, 8)}</Text>
+          <Text fontSize="sm" color="fg.muted">Record the full outstanding balance for booking #{collectTarget?.id.slice(0, 8)}.</Text>
           <Field.Root><Field.Label>Payment Method</Field.Label><NativeSelect.Root><NativeSelect.Field value={collectMethod} onChange={(e) => setCollectMethod(e.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option><option value="bank_transfer">Bank Transfer</option><option value="check">Check</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
-          <Field.Root><Field.Label>Amount (₦)</Field.Label><Input type="number" value={collectAmount} onChange={(e) => setCollectAmount(e.target.value)} /></Field.Root>
+          <Field.Root><Field.Label>Amount (₦)</Field.Label><Input type="number" value={collectAmount} readOnly /></Field.Root>
           <Field.Root><Field.Label>Notes (Optional)</Field.Label><Textarea value={collectNotes} onChange={(e) => setCollectNotes(e.target.value)} /></Field.Root>
         </Stack></Dialog.Body>
-        <Dialog.Footer><Button variant="outline" onClick={() => setCollectTarget(null)}>Cancel</Button><Button colorPalette="green" onClick={submitCollect} disabled={!collectAmount}>Collect Payment</Button></Dialog.Footer>
+        <Dialog.Footer><Button variant="outline" onClick={() => setCollectTarget(null)}>Cancel</Button><Button colorPalette="green" onClick={submitCollect} disabled={!collectAmount || Number(collectAmount) <= 0}>Collect Payment</Button></Dialog.Footer>
         <Dialog.CloseTrigger asChild><CloseButton size="sm" /></Dialog.CloseTrigger>
       </Dialog.Content></Dialog.Positioner></Portal>
     </Dialog.Root>

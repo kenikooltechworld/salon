@@ -5,14 +5,18 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 AppointmentStatus = Literal["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]
 PaymentStatus = Literal["pending", "paid", "failed", "refunded", "completed"]
+AppointmentPaymentMethod = Literal["paystack", "cash", "card", "mobile_money", "check", "bank_transfer"]
 
 
 class AppointmentCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+
     staff_id: str = Field(min_length=1, max_length=64)
     service_id: str = Field(min_length=1, max_length=64)
     customer_id: Optional[str] = Field(default=None, max_length=64)
@@ -23,30 +27,80 @@ class AppointmentCreate(BaseModel):
     price: Optional[Decimal] = Field(default=None, ge=0)
     is_guest: bool = False
     guest_name: Optional[str] = Field(default=None, max_length=255)
-    guest_email: Optional[str] = Field(default=None, max_length=255)
+    guest_email: Optional[EmailStr] = None
     guest_phone: Optional[str] = Field(default=None, max_length=20)
-    payment_option: Optional[str] = Field(default=None, max_length=16)
+    payment_option: Optional[Literal["now", "later"]] = None
     payment_status: Optional[PaymentStatus] = None
+    time_zone: str = Field(default="UTC", min_length=1, max_length=64)
     idempotency_key: Optional[str] = Field(default=None, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_booking(self):
+        if self.start_time.tzinfo is None or self.end_time.tzinfo is None:
+            raise ValueError("Booking times must include a timezone")
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        try:
+            ZoneInfo(self.time_zone)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("time_zone must be a valid IANA timezone") from exc
+        if self.is_guest:
+            if not (self.guest_name and self.guest_name.strip()):
+                raise ValueError("guest_name is required for guest bookings")
+        elif not self.customer_id:
+            raise ValueError("customer_id is required unless this is a guest booking")
+        if self.payment_status not in (None, "pending"):
+            raise ValueError("Payment status must remain pending until payment is collected")
+        return self
 
 
 class AppointmentUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
     status: Optional[AppointmentStatus] = None
+    staff_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    service_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    time_zone: Optional[str] = Field(default=None, min_length=1, max_length=64)
     notes: Optional[str] = Field(default=None, max_length=1000)
     cancellation_reason: Optional[str] = Field(default=None, max_length=500)
     no_show_reason: Optional[str] = Field(default=None, max_length=500)
     price: Optional[Decimal] = Field(default=None, ge=0)
-    payment_status: Optional[PaymentStatus] = None
-    cancelled_at: Optional[datetime] = None
-    cancelled_by: Optional[str] = Field(default=None, max_length=64)
+
+    @model_validator(mode="after")
+    def validate_times(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one field must be provided")
+        for field in ("status", "staff_id", "service_id", "start_time", "end_time"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
+        if self.start_time is not None and self.start_time.tzinfo is None:
+            raise ValueError("start_time must include a timezone")
+        if self.end_time is not None and self.end_time.tzinfo is None:
+            raise ValueError("end_time must include a timezone")
+        if (self.start_time is None) != (self.end_time is None):
+            raise ValueError("start_time and end_time must be updated together")
+        if self.time_zone is not None:
+            try:
+                ZoneInfo(self.time_zone)
+            except ZoneInfoNotFoundError as exc:
+                raise ValueError("time_zone must be a valid IANA timezone") from exc
+        if self.start_time is not None and self.end_time is not None and self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
 
 
 class AppointmentAction(BaseModel):
+    model_config = {"extra": "forbid"}
+
     reason: Optional[str] = Field(default=None, max_length=500)
 
 
 class AppointmentCollectPaymentRequest(BaseModel):
-    payment_method: str = Field(min_length=1, max_length=32)
+    model_config = {"extra": "forbid"}
+
+    payment_method: AppointmentPaymentMethod
     amount: Decimal = Field(gt=0)
     notes: Optional[str] = Field(default=None, max_length=1000)
 
