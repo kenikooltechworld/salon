@@ -8,9 +8,7 @@ import { toaster } from "@/components/ui/toaster";
 import { Naira } from "@/components/ui/naira";
 import { useCreateCustomer, useUpdateCustomer, type Customer } from "@/features/customers";
 import { useServices } from "@/features/services";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
-import { getStaffDisplayName } from "@/features/staff";
+import { getStaffDisplayName, useStaff } from "@/features/staff";
 
 type FormState = {
   first_name: string; last_name: string; email: string; phone: string; address: string; date_of_birth: string; profile_image_url: string;
@@ -28,11 +26,11 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
   const isEdit = !!customer?.id;
   const [form, setForm] = useState<FormState>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const servicesQ = useServices({ page: 1, page_size: 200, active_only: true });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data, staleTime: 60000 });
-  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
+  const servicesQ = useServices({ page: 1, page_size: 100, active_only: true });
+  const staffQ = useStaff({ status: "active", page: 1, page_size: 100 });
   const upload = useImageUpload({ folder: "salon-customers" });
   const services = servicesQ.data?.services || [];
+  const staff = staffQ.data?.staff || [];
 
   useEffect(() => {
     if (!open) return;
@@ -104,14 +102,21 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
               <Field label="Email *" error={errors.email}><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={loading} /></Field>
               <Field label="Phone *" error={errors.phone}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={loading} /></Field>
               <Field label="Date of Birth"><Input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} disabled={loading} /></Field>
-              <Field label="Preferred Staff"><NativeSelect.Root disabled={loading || staffQ.isLoading}><NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}><option value="">No preference</option>{staff.map((s: any) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
+              <Field label="Preferred Staff" error={staffQ.isError ? "Unable to load staff. Please retry." : undefined}>
+                <NativeSelect.Root disabled={loading || staffQ.isLoading || staffQ.isError}>
+                  <NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}>
+                    <option value="">No preference</option>{staff.map((s) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}
+                  </NativeSelect.Field><NativeSelect.Indicator />
+                </NativeSelect.Root>
+                {staffQ.isError && <Button size="xs" variant="outline" alignSelf="start" onClick={() => staffQ.refetch()}>Retry loading staff</Button>}
+              </Field>
               <Field label="Communication Preference"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.communication_preference} onChange={(e) => setForm({ ...form, communication_preference: e.target.value as FormState["communication_preference"] })}><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="none">None</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Status"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState["status"] })}><option value="active">Active</option><option value="inactive">Inactive</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
             </Grid>
             <Field label="Address"><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} disabled={loading} /></Field>
             <Field label="Preferred Services">
               <Box borderWidth="1px" rounded="md" p="3" maxH="220px" overflowY="auto">
-                {servicesQ.isLoading ? <Stack gap="2">{[...Array(4)].map((_, i) => <Skeleton key={i} h="5" />)}</Stack> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No active services available.</Text> : <Stack gap="2">
+                {servicesQ.isLoading ? <Stack gap="2">{[...Array(4)].map((_, i) => <Skeleton key={i} h="5" />)}</Stack> : servicesQ.isError ? <Stack align="start" gap="2"><Text fontSize="sm" color="red.500">Unable to load active services.</Text><Button size="xs" variant="outline" onClick={() => servicesQ.refetch()}>Retry loading services</Button></Stack> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No active services available.</Text> : <Stack gap="2">
                   {services.map((s: any) => (
                     <HStack key={s.id} as="label" align="start" cursor="pointer">
                       <input type="checkbox" checked={form.preferred_services.includes(s.id)} onChange={() => toggleService(s.id)} disabled={loading} style={{ marginTop: 3 }} />
