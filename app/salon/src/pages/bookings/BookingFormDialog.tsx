@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Dialog, Field, Grid, Input, NativeSelect, Portal, Stack, Textarea } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster";
 import { useCreateBooking, useDeleteBooking, useUpdateBooking, type Booking } from "@/features/bookings";
+import { getStaffDisplayName } from "@/features/staff";
 
 const toLocal = (iso?: string) => { if (!iso) return ""; const d = new Date(iso); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const toIso = (local: string) => local ? new Date(local).toISOString() : "";
@@ -55,7 +56,7 @@ export function BookingFormDialog({ open, onOpenChange, booking, staff, services
     <Dialog.Body><Stack gap="4">
       <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap="4">
         <Field.Root><Field.Label>Service *</Field.Label><NativeSelect.Root disabled={isEdit}><NativeSelect.Field value={form.service_id || ""} onChange={(e) => setForm({ ...form, service_id: e.target.value })}><option value="">Select service</option>{services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
-        <Field.Root><Field.Label>Staff *</Field.Label><NativeSelect.Root disabled={isEdit}><NativeSelect.Field value={form.staff_id || ""} onChange={(e) => setForm({ ...form, staff_id: e.target.value })}><option value="">Select staff</option>{staff.map((s) => <option key={s.id} value={s.id}>{[s.first_name, s.last_name].filter(Boolean).join(" ") || s.name || s.email || s.id}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
+        <Field.Root><Field.Label>Staff *</Field.Label><NativeSelect.Root disabled={isEdit}><NativeSelect.Field value={form.staff_id || ""} onChange={(e) => setForm({ ...form, staff_id: e.target.value })}><option value="">Select staff</option>{staff.map((s) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
       </Grid>
       {!isEdit && <Button size="sm" variant={form.is_guest ? "solid" : "outline"} w="fit-content" onClick={() => setForm({ ...form, is_guest: !form.is_guest, customer_id: "" })}>{form.is_guest ? "Guest booking" : "Customer booking"}</Button>}
       {!form.is_guest ? <Field.Root><Field.Label>Customer</Field.Label><NativeSelect.Root disabled={isEdit}><NativeSelect.Field value={form.customer_id || ""} onChange={(e) => setForm({ ...form, customer_id: e.target.value })}><option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{[c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || c.id}</option>)}</NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field.Root>
