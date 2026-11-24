@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState, type ReactNode } from "react";
 import { Avatar, Badge, Box, Button, Dialog, Flex, Grid, HStack, IconButton, Input, NativeSelect, Portal, Skeleton, Stack, Text, Textarea, Wrap, WrapItem } from "@chakra-ui/react";
-import { LuX } from "react-icons/lu";
+import { LuChevronDown, LuX } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
 import { toaster } from "@/components/ui/toaster";
 import { apiClient } from "@/lib/api";
@@ -26,11 +26,12 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [specialtyInput, setSpecialtyInput] = useState("");
   const [certInput, setCertInput] = useState("");
+  const [servicesOpen, setServicesOpen] = useState(false);
   const [form, setForm] = useState<StaffPayload>({ firstName: "", lastName: "", email: "", phone: "", role_ids: [], service_ids: [], specialties: [], certifications: [], certification_files: [], payment_type: "hourly", payment_rate: 0, hire_date: "", bio: "", profile_image_url: "", status: "active", is_available_for_public_booking: false });
 
   useEffect(() => {
     if (!open) return;
-    setErrors({}); setSpecialtyInput(""); setCertInput(""); upload.clearPreview();
+    setErrors({}); setSpecialtyInput(""); setCertInput(""); setServicesOpen(false); upload.clearPreview();
     setForm(initial ? {
       firstName: initial.firstName || "", lastName: initial.lastName || "", email: initial.email || "", phone: initial.phone || "",
       role_ids: initial.role_ids || [], service_ids: initial.service_ids || [], specialties: initial.specialties || [],
@@ -81,21 +82,29 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
         <Field label="Bio"><Textarea rows={3} value={form.bio || ""} onChange={(e) => set("bio", e.target.value)} /></Field>
         <Field label="Roles"><Box borderWidth="1px" rounded="md" p="3" maxH="180px" overflowY="auto">{roles.length === 0 ? <Text fontSize="sm" color="fg.muted">No roles available (user role will be used).</Text> : <Stack gap="2">{roles.map((r: any) => <HStack key={r.id || r.name} as="label"><input type="checkbox" checked={(form.role_ids || []).includes(r.id || r.name)} onChange={() => toggle("role_ids", r.id || r.name)} /><Text fontSize="sm">{r.name || r.id}</Text></HStack>)}</Stack>}</Box></Field>
         <Field label="Services">
-          <Box borderWidth="1px" rounded="md" p="3" maxH="220px" overflowY="auto">
-            {servicesQ.isLoading ? <Stack gap="2">{[...Array(4)].map((_, i) => <Skeleton key={i} h="5" />)}</Stack> : servicesQ.isError ? <Stack align="start" gap="2"><Text fontSize="sm" color="red.500">Unable to load active services.</Text><Button size="xs" variant="outline" onClick={() => servicesQ.refetch()}>Retry loading services</Button></Stack> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No active services available.</Text> : <Stack gap="2">
-              {services.map((s: any) => (
-                <HStack key={s.id} as="label" align="start" cursor="pointer">
-                  <input type="checkbox" checked={(form.service_ids || []).includes(s.id)} onChange={() => toggle("service_ids", s.id)} style={{ marginTop: 3 }} />
-                  <Avatar.Root size="sm"><Avatar.Image src={s.public_image_url || undefined} /><Avatar.Fallback name={s.name} /></Avatar.Root>
-                  <Box>
-                    <Text fontSize="sm" fontWeight="medium">{s.name}</Text>
-                    <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · {formatNaira(s.price)}</Text>
-                  </Box>
-                </HStack>
-              ))}
-            </Stack>}
+          <Box position="relative">
+            <Button w="full" variant="outline" justifyContent="space-between" onClick={() => setServicesOpen((v) => !v)} disabled={servicesQ.isLoading}>
+              <Text fontSize="sm" fontWeight="normal" truncate>{(form.service_ids || []).length > 0 ? `${(form.service_ids || []).length} service${(form.service_ids || []).length === 1 ? "" : "s"} selected` : "Select services"}</Text>
+              <LuChevronDown />
+            </Button>
+            {servicesOpen && (
+              <Box position="absolute" top="calc(100% + 4px)" left="0" right="0" zIndex="20" borderWidth="1px" rounded="md" bg="bg.panel" shadow="md" p="3" maxH="240px" overflowY="auto">
+                {servicesQ.isLoading ? <Stack gap="2">{[...Array(4)].map((_, i) => <Skeleton key={i} h="5" />)}</Stack> : servicesQ.isError ? <Stack align="start" gap="2"><Text fontSize="sm" color="red.500">Unable to load active services.</Text><Button size="xs" variant="outline" onClick={() => servicesQ.refetch()}>Retry loading services</Button></Stack> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No active services available.</Text> : <Stack gap="2">
+                  {services.map((s: any) => (
+                    <HStack key={s.id} as="label" align="start" cursor="pointer">
+                      <input type="checkbox" checked={(form.service_ids || []).includes(s.id)} onChange={() => toggle("service_ids", s.id)} style={{ marginTop: 3 }} />
+                      <Avatar.Root size="sm"><Avatar.Image src={s.public_image_url || undefined} /><Avatar.Fallback name={s.name} /></Avatar.Root>
+                      <Box>
+                        <Text fontSize="sm" fontWeight="medium">{s.name}</Text>
+                        <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · {formatNaira(s.price)}</Text>
+                      </Box>
+                    </HStack>
+                  ))}
+                </Stack>}
+              </Box>
+            )}
           </Box>
-          {(form.service_ids || []).length > 0 && <Wrap mt="2">{(form.service_ids || []).map((sid) => { const s = services.find((x: any) => x.id === sid); return <WrapItem key={sid}><Badge colorPalette="blue">{s?.name || sid}</Badge></WrapItem>; })}</Wrap>}
+          {(form.service_ids || []).length > 0 && <Wrap mt="2">{(form.service_ids || []).map((sid) => { const s = services.find((x: any) => x.id === sid); return <WrapItem key={sid}><Badge colorPalette="blue" display="inline-flex" gap="1" alignItems="center">{s?.name || sid}<IconButton aria-label="Remove service" size="2xs" variant="ghost" onClick={() => toggle("service_ids", sid)}><LuX /></IconButton></Badge></WrapItem>; })}</Wrap>}
         </Field>
         <Field label="Specialties"><Stack gap="2"><HStack><Input value={specialtyInput} onChange={(e) => setSpecialtyInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag("specialties", specialtyInput, () => setSpecialtyInput("")); } }} placeholder="Type specialty and press Enter" /><Button onClick={() => addTag("specialties", specialtyInput, () => setSpecialtyInput(""))}>Add</Button></HStack><Wrap>{(form.specialties || []).map((s, i) => <WrapItem key={`${s}-${i}`}><Badge colorPalette="blue" display="inline-flex" gap="1" alignItems="center">{s}<IconButton aria-label="Remove" size="2xs" variant="ghost" onClick={() => removeTag("specialties", i)}><LuX /></IconButton></Badge></WrapItem>)}</Wrap></Stack></Field>
         <Field label="Certifications"><Stack gap="2"><HStack><Input value={certInput} onChange={(e) => setCertInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag("certifications", certInput, () => setCertInput("")); } }} placeholder="Type certification and press Enter" /><Button onClick={() => addTag("certifications", certInput, () => setCertInput(""))}>Add</Button></HStack><Wrap>{(form.certifications || []).map((s, i) => <WrapItem key={`${s}-${i}`}><Badge colorPalette="purple" display="inline-flex" gap="1" alignItems="center">{s}<IconButton aria-label="Remove" size="2xs" variant="ghost" onClick={() => removeTag("certifications", i)}><LuX /></IconButton></Badge></WrapItem>)}</Wrap></Stack></Field>
