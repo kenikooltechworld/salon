@@ -103,12 +103,24 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
               <Field label="Phone *" error={errors.phone}><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={loading} /></Field>
               <Field label="Date of Birth"><Input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} disabled={loading} /></Field>
               <Field label="Preferred Staff" error={staffQ.isError ? "Unable to load staff. Please retry." : undefined}>
-                <NativeSelect.Root disabled={loading || staffQ.isLoading || staffQ.isError}>
-                  <NativeSelect.Field value={form.preferred_staff_id} onChange={(e) => setForm({ ...form, preferred_staff_id: e.target.value })}>
-                    <option value="">No preference</option>{staff.map((s) => <option key={s.id} value={s.id}>{getStaffDisplayName(s)}</option>)}
-                  </NativeSelect.Field><NativeSelect.Indicator />
-                </NativeSelect.Root>
-                {staffQ.isError && <Button size="xs" variant="outline" alignSelf="start" onClick={() => staffQ.refetch()}>Retry loading staff</Button>}
+                <Box borderWidth="1px" rounded="md" p="2" maxH="180px" overflowY="auto">
+                  {staffQ.isLoading ? <Skeleton h="8" /> : staffQ.isError ? <Button size="xs" variant="outline" onClick={() => staffQ.refetch()}>Retry loading staff</Button> : (
+                    <Stack gap="1">
+                      <HStack as="label" p="2" rounded="md" cursor="pointer" _hover={{ bg: "bg.muted" }}>
+                        <input type="radio" name="preferred-staff" checked={!form.preferred_staff_id} onChange={() => setForm({ ...form, preferred_staff_id: "" })} disabled={loading} />
+                        <Text fontSize="sm">No preference</Text>
+                      </HStack>
+                      {staff.map((s) => {
+                        const name = getStaffDisplayName(s);
+                        return <HStack key={s.id} as="label" p="2" rounded="md" cursor="pointer" _hover={{ bg: "bg.muted" }}>
+                          <input type="radio" name="preferred-staff" checked={form.preferred_staff_id === s.id} onChange={() => setForm({ ...form, preferred_staff_id: s.id })} disabled={loading} />
+                          <Avatar.Root size="sm"><Avatar.Image src={s.profile_image_url || undefined} /><Avatar.Fallback name={name} /></Avatar.Root>
+                          <Text fontSize="sm">{name}</Text>
+                        </HStack>;
+                      })}
+                    </Stack>
+                  )}
+                </Box>
               </Field>
               <Field label="Communication Preference"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.communication_preference} onChange={(e) => setForm({ ...form, communication_preference: e.target.value as FormState["communication_preference"] })}><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="none">None</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
               <Field label="Status"><NativeSelect.Root disabled={loading}><NativeSelect.Field value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState["status"] })}><option value="active">Active</option><option value="inactive">Inactive</option></NativeSelect.Field><NativeSelect.Indicator /></NativeSelect.Root></Field>
@@ -120,6 +132,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
                   {services.map((s: any) => (
                     <HStack key={s.id} as="label" align="start" cursor="pointer">
                       <input type="checkbox" checked={form.preferred_services.includes(s.id)} onChange={() => toggleService(s.id)} disabled={loading} style={{ marginTop: 3 }} />
+                      <Avatar.Root size="sm"><Avatar.Image src={s.public_image_url || undefined} /><Avatar.Fallback name={s.name} /></Avatar.Root>
                       <Box>
                         <Text fontSize="sm" fontWeight="medium">{s.name}</Text>
                         <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · <Naira value={s.price} /></Text>
