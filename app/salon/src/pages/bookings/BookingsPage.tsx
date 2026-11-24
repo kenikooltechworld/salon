@@ -124,11 +124,34 @@ function ListTable({ bookings, lookups, onView, onConfirm, onCancel, busy, isLoa
     </Box>
     <Stack display={{ base: "flex", md: "none" }} gap="3">
       {isLoading ? [...Array(3)].map((_, i) => <Skeleton key={i} h="32" rounded="lg" />)
-      : bookings.length > 0 ? bookings.map((b: Booking) => <Card.Root key={b.id}><Card.Body gap="2">
+      : bookings.length > 0 ? bookings.map((b: Booking) => {
+        const customer = lookups.findCustomer(b.customer_id);
+        const service = lookups.findService(b.service_id);
+        const staff = lookups.findStaff(b.staff_id);
+        const customerName = b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id);
+        const staffName = getStaffDisplayName(staff, "Staff member");
+        return <Card.Root key={b.id}><Card.Body gap="3">
           <Flex justify="space-between"><Box><Text fontSize="xs" color="fg.muted">ID</Text><Text fontWeight="semibold" fontSize="sm">{b.id.slice(0, 8)}</Text></Box><StatusBadge status={b.status} /></Flex>
+          <HStack gap="3" minW="0">
+            <Box w="12" h="12" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">
+              {service?.public_image_url ? <Image src={service.public_image_url} alt={service.name} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted">{service?.name?.slice(0, 1) || "S"}</Flex>}
+            </Box>
+            <Box minW="0"><Text fontSize="xs" color="fg.muted">Service</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{lookups.serviceName(b.service_id)}</Text></Box>
+          </HStack>
+          <Flex justify="space-between" gap="3" wrap="wrap">
+            <HStack gap="2" minW="0" flex="1">
+              <Avatar.Root size="sm"><Avatar.Image src={customer?.profile_image_url || undefined} /><Avatar.Fallback name={customerName} /></Avatar.Root>
+              <Box minW="0"><Text fontSize="xs" color="fg.muted">{b.is_guest ? "Guest" : "Customer"}</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{customerName}</Text></Box>
+            </HStack>
+            <HStack gap="2" minW="0" flex="1">
+              <Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(staff)} /><Avatar.Fallback name={staffName} /></Avatar.Root>
+              <Box minW="0"><Text fontSize="xs" color="fg.muted">Staff</Text><Text fontWeight="medium" fontSize="sm" lineClamp="1">{staffName}</Text></Box>
+            </HStack>
+          </Flex>
           <Text fontSize="xs" color="fg.muted">{fmtDate(b.start_time)} {fmtTime(b.start_time)} - {fmtTime(b.end_time)}</Text>
           <Flex gap="2" pt="2" borderTopWidth="1px"><Button size="xs" variant="outline" flex="1" onClick={() => onView(b.id)}>View</Button>{b.status === "scheduled" && <Button size="xs" colorPalette="green" flex="1" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}{(b.status === "scheduled" || b.status === "confirmed") && <Button size="xs" colorPalette="red" variant="outline" flex="1" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}</Flex>
-        </Card.Body></Card.Root>)
+        </Card.Body></Card.Root>;
+      })
       : <Text textAlign="center" color="fg.muted" py="8">No bookings found</Text>}
     </Stack>
   </>;
