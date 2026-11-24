@@ -15,8 +15,8 @@ export default function ServiceCommissionsPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
   const manage = canManage(role);
-  const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff")).data });
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
+  const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data });
+  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const [staffId, setStaffId] = useState("");
   const [status, setStatus] = useState("");
   const [startDate, setStartDate] = useState("");

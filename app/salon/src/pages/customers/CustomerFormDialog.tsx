@@ -28,10 +28,10 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
   const [form, setForm] = useState<FormState>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const servicesQ = useServices({ page: 1, page_size: 200, active_only: true });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data, staleTime: 60000 });
+  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data, staleTime: 60000 });
+  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const upload = useImageUpload({ folder: "salon-customers" });
   const services = servicesQ.data?.services || [];
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
 
   useEffect(() => {
     if (!open) return;

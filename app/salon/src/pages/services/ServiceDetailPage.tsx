@@ -19,12 +19,12 @@ export default function ServiceDetailPage() {
   const manage = ["owner", "admin", "manager"].includes((role || "").toLowerCase());
   const { data: service, isLoading } = useService(id);
   const catsQ = useServiceCategories();
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data });
+  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data });
+  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const del = useDeleteService();
   const [showEdit, setShowEdit] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lightbox, setLightbox] = useState(false);
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
   const categories = catsQ.data?.categories || [];
   const assigned = useMemo(() => staff.filter((s: any) => (service?.staff_ids || []).includes(s.id)), [staff, service?.staff_ids]);
 

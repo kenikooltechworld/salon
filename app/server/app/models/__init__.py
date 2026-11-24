@@ -1,38 +1,46 @@
 ﻿from .appointment import Appointment
 from .appointment_history import AppointmentHistory
+from .attendance import AttendanceRecord
 from .base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from .customer import Customer
 from .customer_preference import CustomerPreference
+from .goal import Goal, GoalAchievement
 from .invoice import Invoice
 from .notification import Notification
 from .payment import Payment
+from .role import Role
 from .service import Service
 from .service_addon import ServiceAddon
 from .service_category import ServiceCategory
 from .service_commission import ServiceCommission
 from .service_package import ServicePackage
+from .shift import Shift
 from .staff import Staff
+from .staff_settings import StaffSettings
 from .temp_registration import TempRegistration
 from .tenant import Tenant
+from .time_off_request import TimeOffRequest
 from .user import User
 
 __all__ = [
+    "AttendanceRecord",
+
     "Appointment",
     "AppointmentHistory",
     "Base",
     "Customer",
     "CustomerPreference",
-    "Invoice",
+    "Goal","GoalAchievement","Invoice",
     "Notification",
-    "Payment",
+    "Payment","Role",
     "Service",
     "ServiceAddon",
     "ServiceCategory",
     "ServiceCommission",
-    "ServicePackage",
-    "Staff",
+    "ServicePackage","Shift",
+    "Staff","StaffSettings",
     "TempRegistration",
-    "Tenant",
+    "Tenant","TimeOffRequest",
     "TenantMixin",
     "TimestampMixin",
     "User",

@@ -34,9 +34,9 @@ export default function CustomerDetailPage() {
   const { data: historyResp, isLoading: historyLoading } = useCustomerHistory(id, { page: 1, page_size: 20 });
   const { data: preferences, isLoading: prefLoading } = useCustomerPreferences(id);
   const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services", { params: { page: 1, page_size: 200 } })).data, staleTime: 60000 });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data, staleTime: 60000 });
+  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data, staleTime: 60000 });
+  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const services = Array.isArray((servicesQ.data as any)?.services) ? (servicesQ.data as any).services : Array.isArray(servicesQ.data) ? servicesQ.data : [];
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : [];
 
   const del = useDeleteCustomer();
   const resendInvite = useResendCustomerPortalInvitation();
@@ -192,4 +192,3 @@ export default function CustomerDetailPage() {
     </Stack>
   );
 }
-
