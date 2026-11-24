@@ -123,6 +123,12 @@ class AppointmentController:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid appointment action")
         return await self.update(tenant_id, actor_id, appointment_id, mapping[action])
 
+    async def collect_payment(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, appointment_id: uuid.UUID, payment_method: str, amount, notes: str | None = None) -> AppointmentRead:
+        item = await self.service.collect_payment(tenant_id, appointment_id, payment_method, amount, notes)
+        await self.session.flush()
+        await self.notifications.create(tenant_id, NotificationCreate(recipient_id=actor_id, notification_type="appointment.payment_collected", title="Payment collected", content=f"Payment collected for appointment {str(item.id)[:8]}.", data={"appointment_id": str(item.id), "payment_status": item.payment_status, "amount": str(amount)}))
+        return AppointmentRead.model_validate(item)
+
     async def delete(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, appointment_id: uuid.UUID) -> None:
         item = await self.service.get(tenant_id, appointment_id)
         if item is None:

@@ -169,3 +169,82 @@ class AppointmentService:
         st = (await self.session.execute(select(Staff.id).where(Staff.id == staff_uuid, Staff.tenant_id == tenant_id))).scalar_one_or_none()
         if st is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff not found for tenant")
+
+    async def collect_payment(self, tenant_id: uuid.UUID, appointment_id: uuid.UUID, payment_method: str, amount, notes: str | None = None):
+        from decimal import Decimal
+        from app.models.invoice import Invoice
+        from app.models.payment import Payment
+        from app.models.customer import Customer
+
+        appt = await self.get(tenant_id, appointment_id)
+        if appt is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+        if appt.payment_option != "later":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This appointment is not a pay-later booking")
+        if appt.payment_status == "completed":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment has already been collected for this appointment")
+
+        amt = Decimal(str(amount))
+        if amt <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be greater than zero")
+
+        svc = None
+        try:
+            svc_uuid = uuid.UUID(str(appt.service_id))
+            svc = (await self.session.execute(select(Service).where(Service.id == svc_uuid, Service.tenant_id == tenant_id))).scalar_one_or_none()
+        except Exception:
+            svc = None
+
+        customer_uuid = None
+        if appt.customer_id:
+            try:
+                customer_uuid = uuid.UUID(str(appt.customer_id))
+            except Exception:
+                customer_uuid = None
+
+        ref = f"APT-{str(appt.id)[:8].upper()}-{uuid.uuid4().hex[:8].upper()}"
+        payment = Payment(
+            tenant_id=tenant_id,
+            customer_id=customer_uuid,
+            amount=amt,
+            status="success",
+            reference=ref,
+            gateway="manual",
+            payment_method=payment_method,
+            metadata_={"appointment_id": str(appt.id), "notes": notes or "", "source": "collect-payment"},
+        )
+        self.session.add(payment)
+        await self.session.flush()
+
+        invoice = (await self.session.execute(select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.appointment_id == appt.id))).scalar_one_or_none()
+        if invoice is None and customer_uuid is not None:
+            unit_price = Decimal(str(appt.price if appt.price is not None else (svc.price if svc and svc.price is not None else amt)))
+            line_items = [{"service_id": str(appt.service_id), "service_name": (svc.name if svc else "Service"), "quantity": 1, "unit_price": str(unit_price), "total": str(amt)}]
+            invoice = Invoice(tenant_id=tenant_id, appointment_id=appt.id, customer_id=customer_uuid, line_items=line_items, subtotal=amt, discount=Decimal("0"), tax=Decimal("0"), total=amt, status="paid", paid_at=datetime.now(timezone.utc), notes=notes)
+            self.session.add(invoice)
+            await self.session.flush()
+        elif invoice is not None:
+            invoice.status = "paid"
+            invoice.paid_at = invoice.paid_at or datetime.now(timezone.utc)
+            if notes:
+                invoice.notes = notes
+            await self.session.flush()
+
+        if invoice is not None:
+            payment.invoice_id = invoice.id
+
+        appt.payment_status = "completed"
+        appt.payment_id = str(payment.id)
+        await self.session.flush()
+
+        if customer_uuid is not None:
+            cust = (await self.session.execute(select(Customer).where(Customer.id == customer_uuid, Customer.tenant_id == tenant_id))).scalar_one_or_none()
+            if cust:
+                from sqlalchemy import func
+                from app.models.invoice import Invoice as Inv
+                outstanding_stmt = select(func.coalesce(func.sum(Inv.total), 0)).where(Inv.tenant_id == tenant_id, Inv.customer_id == customer_uuid, Inv.status.in_(["issued", "overdue"]))
+                cust.outstanding_balance = (await self.session.execute(outstanding_stmt)).scalar_one()
+
+        await self.session.flush()
+        await self.session.refresh(appt)
+        return appt

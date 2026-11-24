@@ -45,6 +45,12 @@ class AppointmentAction(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=500)
 
 
+class AppointmentCollectPaymentRequest(BaseModel):
+    payment_method: str = Field(min_length=1, max_length=32)
+    amount: Decimal = Field(gt=0)
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+
 class AppointmentRead(BaseModel):
     id: uuid.UUID
     tenant_id: uuid.UUID

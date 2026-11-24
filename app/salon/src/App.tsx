@@ -15,6 +15,7 @@ import AppointmentDetailPage from "@/pages/customers/AppointmentDetailPage";
 import BookingsPage from "@/pages/bookings/BookingsPage";
 import BookingCreatePage from "@/pages/bookings/BookingCreatePage";
 import BookingDetailPage from "@/pages/bookings/BookingDetailPage";
+import BookingConfirmationPage from "@/pages/bookings/BookingConfirmationPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import HomePage from "@/pages/Home";
@@ -136,6 +137,7 @@ export default function App() {
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/bookings" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingsPage /></RoleRoute>} />
             <Route path="/bookings/new" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingCreatePage /></RoleRoute>} />
+            <Route path="/bookings/confirmation" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingConfirmationPage /></RoleRoute>} />
             <Route path="/bookings/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />

@@ -23,4 +23,8 @@ export const bookingsApi = {
   start: (id: string) => apiClient.post<Booking>(`/appointments/${id}/start`),
   cancel: (id: string, reason?: string) => apiClient.post<Booking>(`/appointments/${id}/cancel`, { reason }),
   noShow: (id: string, reason?: string) => apiClient.post<Booking>(`/appointments/${id}/no-show`, { reason }),
+  collectPayment: (id: string, payload: { payment_method: string; amount: number; notes?: string }) =>
+    apiClient.post<Booking>(`/appointments/${id}/collect-payment`, payload),
+  availableSlots: (params: { staff_id: string; service_id: string; date: string }) =>
+    apiClient.get<{ date: string; slots: { time: string; available: boolean }[] }>("/appointments/available-slots", { params }),
 };

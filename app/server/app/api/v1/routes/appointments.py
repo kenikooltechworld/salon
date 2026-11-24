@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.controllers.appointment_controller import AppointmentController
 from app.lib.deps import db_session, get_current_user, require_roles
 from app.models.user import User
-from app.schemas.appointment import AppointmentAction, AppointmentCreate, AppointmentDetailRead, AppointmentListResponse, AppointmentRead, AppointmentUpdate
+from app.schemas.appointment import AppointmentAction, AppointmentCollectPaymentRequest, AppointmentCreate, AppointmentDetailRead, AppointmentListResponse, AppointmentRead, AppointmentUpdate
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -42,6 +42,25 @@ async def list_appointments(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/available-slots", response_model=dict)
+async def get_available_slots(
+    staff_id: uuid.UUID = Query(...),
+    service_id: uuid.UUID = Query(...),
+    booking_date: str = Query(..., alias="date"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    from datetime import date as date_type
+    from app.services.availability_service import AvailabilityService
+    try:
+        d = date_type.fromisoformat(booking_date)
+    except Exception:
+        from fastapi import HTTPException, status as st
+        raise HTTPException(status_code=st.HTTP_400_BAD_REQUEST, detail="Invalid date format, expected YYYY-MM-DD")
+    slots = await AvailabilityService(session).get_available_slots(current_user.tenant_id, staff_id, service_id, d)
+    return {"date": booking_date, "slots": slots}
 
 
 @router.post("", response_model=AppointmentRead, status_code=status.HTTP_201_CREATED)
@@ -133,6 +152,16 @@ async def start_appointment(
     session: AsyncSession = Depends(db_session),
 ):
     return await AppointmentController(session).action(current_user.tenant_id, current_user.id, appointment_id, "start", body)
+
+
+@router.post("/{appointment_id}/collect-payment", response_model=AppointmentRead)
+async def collect_payment(
+    appointment_id: uuid.UUID,
+    data: AppointmentCollectPaymentRequest,
+    current_user: User = Depends(require_roles("owner", "admin", "manager", "staff")),
+    session: AsyncSession = Depends(db_session),
+):
+    return await AppointmentController(session).collect_payment(current_user.tenant_id, current_user.id, appointment_id, data.payment_method, data.amount, data.notes)
 
 
 @router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
