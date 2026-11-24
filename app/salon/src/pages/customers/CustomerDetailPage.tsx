@@ -10,10 +10,9 @@ import {
   useCustomer, useCustomerBalance, useCustomerBookingEligibility, useCustomerHistory, useCustomerPreferences,
   useDeleteCustomer, useResendCustomerPortalInvitation, useUpdateCustomerBalance, useUpdateCustomerPreferences,
 } from "@/features/customers";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { useServices } from "@/features/services";
 import { CustomerFormDialog } from "./CustomerFormDialog";
-import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
+import { getStaffDisplayName, getStaffImageUrl, useStaff } from "@/features/staff";
 
 function canManage(role?: string) { return ["owner", "admin", "manager", "staff"].includes((role || "").toLowerCase()); }
 function canDelete(role?: string) { return ["owner", "admin", "manager"].includes((role || "").toLowerCase()); }
@@ -34,10 +33,10 @@ export default function CustomerDetailPage() {
   const { data: eligibility, refetch: refetchEligibility } = useCustomerBookingEligibility(id);
   const { data: historyResp, isLoading: historyLoading } = useCustomerHistory(id, { page: 1, page_size: 20 });
   const { data: preferences, isLoading: prefLoading } = useCustomerPreferences(id);
-  const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services", { params: { page: 1, page_size: 200 } })).data, staleTime: 60000 });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data, staleTime: 60000 });
-  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
-  const services = Array.isArray((servicesQ.data as any)?.services) ? (servicesQ.data as any).services : Array.isArray(servicesQ.data) ? servicesQ.data : [];
+  const servicesQ = useServices({ page: 1, page_size: 100, active_only: true });
+  const staffQ = useStaff({ status: "active", page: 1, page_size: 100 });
+  const staff = staffQ.data?.staff || [];
+  const services = servicesQ.data?.services || [];
 
   const del = useDeleteCustomer();
   const resendInvite = useResendCustomerPortalInvitation();
@@ -147,6 +146,11 @@ export default function CustomerDetailPage() {
               <Card.Root><Card.Body>
                 <Flex justify="space-between" align="center" mb="4"><Heading size="md">Preferences</Heading>{manage && (editingPrefs ? <HStack><Button size="sm" variant="outline" onClick={() => setEditingPrefs(false)}>Cancel</Button><Button size="sm" colorPalette="brand" loading={updatePrefs.isPending} onClick={savePrefs}>Save</Button></HStack> : <Button size="sm" variant="outline" onClick={() => setEditingPrefs(true)}>Edit</Button>)}</Flex>
                 {prefLoading ? <Skeleton h="40" /> : <Stack gap="5">
+                  {(staffQ.isLoading || servicesQ.isLoading) && <Text fontSize="sm" color="fg.muted">Loading available staff and services...</Text>}
+                  {(staffQ.isError || servicesQ.isError) && <Stack gap="2" role="alert">
+                    {staffQ.isError && <HStack><Text fontSize="sm" color="red.500">Unable to load staff.</Text><Button size="xs" variant="outline" onClick={() => staffQ.refetch()}>Retry</Button></HStack>}
+                    {servicesQ.isError && <HStack><Text fontSize="sm" color="red.500">Unable to load services.</Text><Button size="xs" variant="outline" onClick={() => servicesQ.refetch()}>Retry</Button></HStack>}
+                  </Stack>}
                   <Box><Text fontSize="sm" fontWeight="medium" mb="2">Preferred Staff</Text>{editingPrefs ? <Stack gap="2">{staff.map((m: any) => <HStack key={m.id} as="label"><input type="checkbox" checked={prefForm.preferred_staff_ids.includes(String(m.id))} onChange={() => toggle("preferred_staff_ids", String(m.id))} /><Avatar.Root size="xs"><Avatar.Image src={getStaffImageUrl(m)} /><Avatar.Fallback name={staffLabel(m)} /></Avatar.Root><Text fontSize="sm">{staffLabel(m)}</Text></HStack>)}</Stack> : <HStack wrap="wrap">{prefForm.preferred_staff_ids.length ? prefForm.preferred_staff_ids.map((sid) => { const m = staff.find((s: any) => String(s.id) === sid); return <HStack key={sid} borderWidth="1px" rounded="full" px="2" py="1"><Avatar.Root size="xs"><Avatar.Image src={getStaffImageUrl(m)} /><Avatar.Fallback name={staffLabel(m, sid)} /></Avatar.Root><Text fontSize="sm">{staffLabel(m, sid)}</Text></HStack>; }) : <Text fontSize="sm" color="fg.muted">No preferences set</Text>}</HStack>}</Box>
                   <Box><Text fontSize="sm" fontWeight="medium" mb="2">Preferred Services</Text>{editingPrefs ? <Stack gap="2">{services.map((s: any) => <HStack key={s.id} as="label" align="start"><input type="checkbox" checked={prefForm.preferred_service_ids.includes(String(s.id))} onChange={() => toggle("preferred_service_ids", String(s.id))} /><Box><Text fontSize="sm">{s.name}</Text>{s.description && <Text fontSize="xs" color="fg.muted">{s.description}</Text>}</Box></HStack>)}</Stack> : <HStack wrap="wrap">{prefForm.preferred_service_ids.length ? prefForm.preferred_service_ids.map((sid) => { return <Badge key={sid}>{serviceLabel(sid)}</Badge>; }) : <Text fontSize="sm" color="fg.muted">No preferences set</Text>}</HStack>}</Box>
                   <Box><Text fontSize="sm" fontWeight="medium" mb="2">Preferred Time Slots</Text>{editingPrefs ? <Grid templateColumns={{ base: "1fr", md: "repeat(3,1fr)" }} gap="2">{TIME_SLOTS.map((t) => <HStack key={t.value} as="label"><input type="checkbox" checked={prefForm.preferred_time_slots.includes(t.value)} onChange={() => toggle("preferred_time_slots", t.value)} /><Text fontSize="sm">{t.label}</Text></HStack>)}</Grid> : <HStack wrap="wrap">{prefForm.preferred_time_slots.length ? prefForm.preferred_time_slots.map((t) => <Badge key={t}>{TIME_SLOTS.find((x) => x.value === t)?.label || t}</Badge>) : <Text fontSize="sm" color="fg.muted">No preferences set</Text>}</HStack>}</Box>
