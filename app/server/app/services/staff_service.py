@@ -15,7 +15,6 @@ from app.models.service import Service
 from app.models.staff import Staff
 from app.models.user import User
 from app.schemas.staff import StaffCreate, StaffUpdate
-from app.services.tenant_settings_service import tenant_settings_payload
 from app.services.tenant_service import TenantService
 
 
@@ -85,28 +84,22 @@ class StaffService:
         await self.session.flush()
 
     async def _create_default_availability(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> None:
-        tenant = await TenantService.get_tenant(self.session, tenant_id)
-        settings_data = tenant_settings_payload(tenant)["data"] if tenant else {}
-        business_hours = settings_data.get("business_hours") or {}
-        day_map = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
-        for day_name, hours in business_hours.items():
-            if not isinstance(hours, dict) or hours.get("is_closed"):
-                continue
-            dow = day_map.get(day_name)
-            if dow is None:
-                continue
-            open_time = str(hours.get("open_time", "09:00"))
-            close_time = str(hours.get("close_time", "18:00"))
-            if len(open_time) == 5:
-                open_time = f"{open_time}:00"
-            if len(close_time) == 5:
-                close_time = f"{close_time}:00"
+        for day_of_week in range(5):
             self.session.add(Availability(
-                tenant_id=tenant_id, staff_id=str(staff_id), day_of_week=dow,
-                start_time=open_time, end_time=close_time, is_recurring=True,
-                effective_from=date.today(), effective_to=None, breaks=[], slot_interval_minutes=30,
-                buffer_time_minutes=15, concurrent_bookings_allowed=1, is_active=True,
-                notes=f"Default availability from business hours ({day_name})",
+                tenant_id=tenant_id,
+                staff_id=str(staff_id),
+                day_of_week=day_of_week,
+                start_time="09:00:00",
+                end_time="17:00:00",
+                is_recurring=True,
+                effective_from=date.today(),
+                effective_to=None,
+                breaks=[{"start_time": "12:00:00", "end_time": "13:00:00"}],
+                slot_interval_minutes=30,
+                buffer_time_minutes=15,
+                concurrent_bookings_allowed=1,
+                is_active=True,
+                notes="Default availability schedule",
             ))
         await self.session.flush()
 
