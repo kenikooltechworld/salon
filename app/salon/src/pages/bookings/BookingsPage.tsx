@@ -46,8 +46,7 @@ function useLookupMaps() {
   return { staff, services, customers, staffName: (id?: string | null) => name(staff, id), serviceName: (id?: string | null) => name(services, id), customerName: (id?: string | null) => name(customers, id) };
 }
 
-function BookingCardItem({ booking: b, lookups, onView, onConfirm, onCancel, onComplete, onNoShow, onCollect, busy }: any) {
-  const customer = b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id);
+function BookingCardItem({ booking: b, onView, onConfirm, onCancel, onComplete, onNoShow, onCollect, busy }: any) {
   const canAct = b.status === "scheduled" || b.status === "confirmed";
   return <Card.Root _hover={{ shadow: "md" }} transition="shadow 0.2s"><Card.Body gap="3">
     <Flex justify="space-between" gap="2" align="flex-start">
@@ -55,41 +54,38 @@ function BookingCardItem({ booking: b, lookups, onView, onConfirm, onCancel, onC
       <StatusBadge status={b.status} />
     </Flex>
     <Grid templateColumns="1fr 1fr" gap="2" fontSize="sm">
-      <Box><Text fontSize="xs" color="fg.muted">Customer</Text><Text lineClamp="1">{customer}{b.is_guest ? " (Guest)" : ""}</Text></Box>
-      <Box><Text fontSize="xs" color="fg.muted">Service</Text><Text lineClamp="1">{lookups.serviceName(b.service_id)}</Text></Box>
-      <Box><Text fontSize="xs" color="fg.muted">Time</Text><Text>{fmtTime(b.start_time)} - {fmtTime(b.end_time)}</Text></Box>
-      <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="medium">{formatNaira(b.price)}</Text></Box>
+      <Box><Text fontSize="xs" color="fg.muted">Start Time</Text><Text fontWeight="medium">{fmtTime(b.start_time)}</Text></Box>
+      <Box><Text fontSize="xs" color="fg.muted">End Time</Text><Text fontWeight="medium">{fmtTime(b.end_time)}</Text></Box>
+      <Box><Text fontSize="xs" color="fg.muted">Price</Text><Text fontWeight="medium">{b.price ? formatNaira(b.price) : "N/A"}</Text></Box>
+      {b.location_id && <Box minW="0"><Text fontSize="xs" color="fg.muted">Location</Text><Text fontWeight="medium" lineClamp="1">{b.location_id}</Text></Box>}
     </Grid>
-    {b.notes && <Box><Text fontSize="xs" color="fg.muted">Notes</Text><Text fontSize="sm" lineClamp="2">{b.notes}</Text></Box>}
-    <Flex gap="2" pt="2" borderTopWidth="1px" wrap="wrap">
-      <Button size="xs" variant="outline" onClick={() => onView(b.id)}><LuEye /> View</Button>
-      {b.status === "scheduled" && <Button size="xs" colorPalette="green" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}
-      {b.status === "confirmed" && <Button size="xs" colorPalette="green" loading={busy} onClick={() => onComplete(b.id)}>Complete</Button>}
-      {canAct && <Button size="xs" colorPalette="red" variant="outline" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}
-      {canAct && <Button size="xs" variant="outline" loading={busy} onClick={() => onNoShow(b.id)}>No-Show</Button>}
-      {b.status === "completed" && b.payment_status !== "completed" && <Button size="xs" colorPalette="green" variant="outline" onClick={() => onCollect(b)}><LuCreditCard /> Collect</Button>}
+    {b.notes && <Box fontSize="sm"><Text fontSize="xs" color="fg.muted">Notes</Text><Text lineClamp="2">{b.notes}</Text></Box>}
+    <Flex gap="2" pt="2" borderTopWidth="1px" overflowX="auto" flexWrap="nowrap">
+      <Button size="sm" variant="outline" flexShrink="0" onClick={() => onView(b.id)}><LuEye /> View</Button>
+      {b.status === "scheduled" && <Button size="sm" flexShrink="0" colorPalette="green" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}
+      {b.status === "confirmed" && <Button size="sm" flexShrink="0" colorPalette="green" loading={busy} onClick={() => onComplete(b.id)}>Complete</Button>}
+      {canAct && <Button size="sm" flexShrink="0" colorPalette="red" variant="outline" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}
+      {canAct && <Button size="sm" flexShrink="0" variant="outline" loading={busy} onClick={() => onNoShow(b.id)}>No-Show</Button>}
+      {b.status === "completed" && b.payment_status !== "completed" && <Button size="sm" flexShrink="0" colorPalette="green" variant="outline" onClick={() => onCollect(b)}><LuCreditCard /> Collect Payment</Button>}
     </Flex>
   </Card.Body></Card.Root>;
 }
 
-function ListTable({ bookings, lookups, onView, onConfirm, onCancel, busy, isLoading }: any) {
+function ListTable({ bookings, onView, onConfirm, onCancel, busy, isLoading }: any) {
   return <>
     <Box display={{ base: "none", md: "block" }} borderWidth="1px" rounded="lg" overflowX="auto">
       <Table.Root size="sm">
-        <Table.Header><Table.Row bg="bg.subtle"><Table.ColumnHeader>ID</Table.ColumnHeader><Table.ColumnHeader>Customer</Table.ColumnHeader><Table.ColumnHeader>Service</Table.ColumnHeader><Table.ColumnHeader>Date</Table.ColumnHeader><Table.ColumnHeader>Time</Table.ColumnHeader><Table.ColumnHeader>Status</Table.ColumnHeader><Table.ColumnHeader>Price</Table.ColumnHeader><Table.ColumnHeader>Actions</Table.ColumnHeader></Table.Row></Table.Header>
+        <Table.Header><Table.Row bg="bg.subtle"><Table.ColumnHeader>ID</Table.ColumnHeader><Table.ColumnHeader>Date</Table.ColumnHeader><Table.ColumnHeader>Time</Table.ColumnHeader><Table.ColumnHeader>Status</Table.ColumnHeader><Table.ColumnHeader>Actions</Table.ColumnHeader></Table.Row></Table.Header>
         <Table.Body>
-          {isLoading ? [...Array(5)].map((_, i) => <Table.Row key={i}>{[...Array(8)].map((__, j) => <Table.Cell key={j}><Skeleton h="4" /></Table.Cell>)}</Table.Row>)
+          {isLoading ? [...Array(5)].map((_, i) => <Table.Row key={i}>{[...Array(5)].map((__, j) => <Table.Cell key={j}><Skeleton h="4" /></Table.Cell>)}</Table.Row>)
           : bookings.map((b: Booking) => <Table.Row key={b.id} _hover={{ bg: "bg.subtle" }}>
             <Table.Cell fontFamily="mono" fontSize="xs">{b.id.slice(0, 8)}</Table.Cell>
-            <Table.Cell><Text fontSize="sm" lineClamp="1">{b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}</Text>{b.is_guest && <Badge size="xs" ml="1">Guest</Badge>}</Table.Cell>
-            <Table.Cell fontSize="sm">{lookups.serviceName(b.service_id)}</Table.Cell>
             <Table.Cell fontSize="sm">{fmtDate(b.start_time)}</Table.Cell>
             <Table.Cell fontSize="sm" whiteSpace="nowrap">{fmtTime(b.start_time)} - {fmtTime(b.end_time)}</Table.Cell>
             <Table.Cell><StatusBadge status={b.status} /></Table.Cell>
-            <Table.Cell fontSize="sm">{formatNaira(b.price)}</Table.Cell>
             <Table.Cell><HStack gap="1"><IconButton aria-label="View" size="xs" variant="ghost" onClick={() => onView(b.id)}><LuEye /></IconButton>{b.status === "scheduled" && <Button size="xs" variant="ghost" colorPalette="green" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}{(b.status === "scheduled" || b.status === "confirmed") && <Button size="xs" variant="ghost" colorPalette="red" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}</HStack></Table.Cell>
           </Table.Row>)}
-          {!isLoading && bookings.length === 0 && <Table.Row><Table.Cell colSpan={8}><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Table.Cell></Table.Row>}
+          {!isLoading && bookings.length === 0 && <Table.Row><Table.Cell colSpan={5}><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Table.Cell></Table.Row>}
         </Table.Body>
       </Table.Root>
     </Box>
@@ -97,7 +93,6 @@ function ListTable({ bookings, lookups, onView, onConfirm, onCancel, busy, isLoa
       {isLoading ? [...Array(3)].map((_, i) => <Skeleton key={i} h="32" rounded="lg" />)
       : bookings.length > 0 ? bookings.map((b: Booking) => <Card.Root key={b.id}><Card.Body gap="2">
           <Flex justify="space-between"><Box><Text fontSize="xs" color="fg.muted">ID</Text><Text fontWeight="semibold" fontSize="sm">{b.id.slice(0, 8)}</Text></Box><StatusBadge status={b.status} /></Flex>
-          <Text fontSize="sm">{b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)} • {lookups.serviceName(b.service_id)}</Text>
           <Text fontSize="xs" color="fg.muted">{fmtDate(b.start_time)} {fmtTime(b.start_time)} - {fmtTime(b.end_time)}</Text>
           <Flex gap="2" pt="2" borderTopWidth="1px"><Button size="xs" variant="outline" flex="1" onClick={() => onView(b.id)}>View</Button>{b.status === "scheduled" && <Button size="xs" colorPalette="green" flex="1" loading={busy} onClick={() => onConfirm(b.id)}>Confirm</Button>}{(b.status === "scheduled" || b.status === "confirmed") && <Button size="xs" colorPalette="red" variant="outline" flex="1" loading={busy} onClick={() => onCancel(b.id)}>Cancel</Button>}</Flex>
         </Card.Body></Card.Root>)
@@ -114,6 +109,14 @@ function CalendarPanel({ view, current, bookings, onBookingClick, onPrev, onNext
     return Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate()+i); return d; });
   }, [view, current]);
   const byDay = useMemo(() => { const m = new Map<string, Booking[]>(); for (const b of bookings) { const k = dayKey(new Date(b.start_time)); m.set(k, [...(m.get(k)||[]), b]); } return m; }, [bookings]);
+  const byHour = useMemo(() => {
+    const m = new Map<number, Booking[]>();
+    for (const b of byDay.get(dayKey(current)) || []) {
+      const hour = new Date(b.start_time).getHours();
+      m.set(hour, [...(m.get(hour) || []), b]);
+    }
+    return m;
+  }, [byDay, current]);
   const label = view === "day" ? current.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : view === "week" ? `${days[0].toLocaleDateString()} - ${days[6].toLocaleDateString()}`
     : current.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -121,19 +124,68 @@ function CalendarPanel({ view, current, bookings, onBookingClick, onPrev, onNext
   return <Stack gap="4">
     <Flex justify="space-between" gap="3" direction={{ base: "column", sm: "row" }} align={{ sm: "center" }}>
       <HStack gap="2">{(["day","week","month"] as const).map((v) => <Button key={v} size="sm" variant={view===v?"solid":"outline"} colorPalette={view===v?"brand":"gray"} onClick={() => onViewChange(v)} textTransform="capitalize">{v}</Button>)}</HStack>
-      <HStack gap="2"><Button size="sm" variant="outline" onClick={onPrev}>← Prev</Button><Text fontSize="sm" fontWeight="medium" minW={{ sm: "220px" }} textAlign="center">{label}</Text><Button size="sm" variant="outline" onClick={onNext}>Next →</Button></HStack>
+      <HStack gap="2" justify={{ base: "space-between", sm: "flex-end" }} w={{ base: "full", sm: "auto" }}>
+        <Button size="sm" variant="outline" onClick={onPrev}>← Prev</Button>
+        <Text fontSize="sm" fontWeight="medium" minW={{ sm: "220px" }} textAlign="center">{label}</Text>
+        <Button size="sm" variant="outline" onClick={onNext}>Next →</Button>
+      </HStack>
     </Flex>
-    <Box overflowX="auto"><Grid templateColumns={view === "day" ? "1fr" : "repeat(7, minmax(110px, 1fr))"} gap="2">
-      {view !== "day" && ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => <Box key={d} px="2" py="1" fontSize="xs" fontWeight="semibold" color="fg.muted" textAlign="center">{d}</Box>)}
-      {days.map((d) => { const k = dayKey(d); const items = byDay.get(k) || []; const inMonth = d.getMonth() === current.getMonth();
-        return <Card.Root key={k} variant="outline" minH={view === "day" ? "280px" : "120px"} opacity={view === "month" && !inMonth ? 0.45 : 1}>
-          <Card.Body p="2" gap="1"><Flex justify="space-between" align="center"><Text fontSize="xs" fontWeight="semibold">{d.getDate()}</Text>{items.length > 0 && <Badge size="xs" colorPalette="brand">{items.length}</Badge>}</Flex>
-            <Stack gap="1">{items.slice(0, view === "day" ? 30 : 3).map((b) => <Box key={b.id} px="2" py="1" rounded="md" bg={`${statusColor[b.status]||"gray"}.subtle`} cursor="pointer" onClick={() => onBookingClick(b.id)} _hover={{ opacity: 0.85 }}>
-              <Text fontSize="xs" fontWeight="medium" lineClamp="1">{fmtTime(b.start_time)} {b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}</Text>
-              <Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text>
-            </Box>)}{items.length > (view === "day" ? 30 : 3) && <Text fontSize="xs" color="fg.muted">+{items.length - (view === "day" ? 30 : 3)} more</Text>}</Stack>
-          </Card.Body></Card.Root>; })}
-    </Grid></Box>
+    {view === "day" ? <Box maxH="560px" overflowY="auto" pr="1">
+      <Stack gap="1">
+        {Array.from({ length: 24 }, (_, hour) => (
+          <Grid key={hour} templateColumns={{ base: "42px minmax(0, 1fr)", sm: "56px minmax(0, 1fr)" }} gap="2">
+            <Text textAlign="right" pt="2" fontSize="xs" color="fg.muted">{String(hour).padStart(2, "0")}:00</Text>
+            <Stack minH="48px" borderLeftWidth="1px" borderColor="border" pl="2" gap="1">
+              {(byHour.get(hour) || []).map((b) => (
+                <Button
+                  key={b.id}
+                  variant="outline"
+                  size="sm"
+                  h="auto"
+                  minH="40px"
+                  whiteSpace="normal"
+                  justifyContent="flex-start"
+                  textAlign="left"
+                  colorPalette={statusColor[b.status] || "gray"}
+                  onClick={() => onBookingClick(b.id)}
+                >
+                  <Box minW="0">
+                    <Text fontSize="xs" fontWeight="medium" lineClamp="1">
+                      {fmtTime(b.start_time)} - {fmtTime(b.end_time)} · {b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}
+                    </Text>
+                    <Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text>
+                  </Box>
+                </Button>
+              ))}
+            </Stack>
+          </Grid>
+        ))}
+      </Stack>
+    </Box> : <Box overflowX="auto">
+      <Grid minW={{ base: "720px", md: "0" }} templateColumns="repeat(7, minmax(0, 1fr))" gap="2">
+        {view === "month" && ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => <Box key={d} px="2" py="1" fontSize="xs" fontWeight="semibold" color="fg.muted" textAlign="center">{d}</Box>)}
+        {days.map((d) => {
+          const k = dayKey(d);
+          const items = byDay.get(k) || [];
+          const inMonth = d.getMonth() === current.getMonth();
+          return <Card.Root key={k} variant="outline" minH={{ base: "100px", sm: "120px" }} opacity={view === "month" && !inMonth ? 0.45 : 1} minW="0">
+            <Card.Body p={{ base: "1.5", sm: "2" }} gap="1">
+              <Flex justify="space-between" align="center">
+                <Text fontSize="xs" fontWeight="semibold">{view === "week" ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : d.getDate()}</Text>
+                {items.length > 0 && <Badge size="xs" colorPalette="brand">{items.length}</Badge>}
+              </Flex>
+              <Stack gap="1">
+                {items.slice(0, 3).map((b) => <Box key={b.id} px="2" py="1" rounded="md" bg={`${statusColor[b.status]||"gray"}.subtle`} cursor="pointer" onClick={() => onBookingClick(b.id)} _hover={{ opacity: 0.85 }}>
+                  <Text fontSize="xs" fontWeight="medium" lineClamp="1">{fmtTime(b.start_time)} {b.is_guest ? b.guest_name || "Guest" : lookups.customerName(b.customer_id)}</Text>
+                  <Text fontSize="10px" color="fg.muted" lineClamp="1">{lookups.serviceName(b.service_id)}</Text>
+                </Box>)}
+                {items.length > 3 && <Button size="xs" variant="ghost" justifyContent="flex-start" onClick={() => onBookingClick(items[0].id)}>+{items.length - 3} more</Button>}
+              </Stack>
+            </Card.Body>
+          </Card.Root>;
+        })}
+      </Grid>
+    </Box>}
   </Stack>;
 }
 
@@ -160,6 +212,10 @@ export default function BookingsPage() {
   const bookings = listQ.data?.appointments || []; const total = listQ.data?.total || 0;
   const calBookings = calQ.data?.appointments || []; const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const busy = confirm.isPending || complete.isPending || cancel.isPending || noShow.isPending;
+  const totalQ = useBookings({ page: 1, page_size: 1 });
+  const scheduledQ = useBookings({ status: "scheduled", page: 1, page_size: 1 });
+  const confirmedQ = useBookings({ status: "confirmed", page: 1, page_size: 1 });
+  const completedQ = useBookings({ status: "completed", page: 1, page_size: 1 });
 
   const act = async (fn: () => Promise<any>, msg: string) => { try { await fn(); toaster.create({ title: msg, type: "success" }); } catch (e: any) { toaster.create({ title: "Action failed", description: e?.response?.data?.detail || e?.message, type: "error" }); } };
   const onConfirm = (id: string) => act(() => confirm.mutateAsync(id), "Booking confirmed");
@@ -185,7 +241,7 @@ export default function BookingsPage() {
     </Flex>
 
     <SimpleGrid columns={{ base: 2, md: 4 }} gap="3">
-      {[["Total", total], ["Scheduled", bookings.filter((b) => b.status==="scheduled").length], ["Confirmed", bookings.filter((b) => b.status==="confirmed").length], ["Completed", bookings.filter((b) => b.status==="completed").length]].map(([label, val]) => (
+      {[["Total", totalQ.data?.total || 0], ["Scheduled", scheduledQ.data?.total || 0], ["Confirmed", confirmedQ.data?.total || 0], ["Completed", completedQ.data?.total || 0]].map(([label, val]) => (
         <Card.Root key={String(label)}><Card.Body py="4"><Text fontSize="sm" color="fg.muted">{label}</Text><Heading size="lg">{val}</Heading></Card.Body></Card.Root>
       ))}
     </SimpleGrid>
@@ -204,7 +260,7 @@ export default function BookingsPage() {
 
       <Tabs.Content value="list" pt="4">
         {listQ.isError ? <Card.Root><Card.Body><Text color="fg.error">Failed to load bookings.</Text><Button mt="2" size="sm" onClick={() => listQ.refetch()}>Retry</Button></Card.Body></Card.Root>
-        : <ListTable bookings={bookings} lookups={lookups} isLoading={listQ.isLoading} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} />}
+        : <ListTable bookings={bookings} isLoading={listQ.isLoading} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} />}
         {totalPages > 1 && <HStack justify="center" mt="4" gap="3"><Button variant="outline" size="sm" disabled={page<=1} onClick={() => setPage((p) => p-1)}>Previous</Button><Text fontSize="sm" color="fg.muted">Page {page} of {totalPages}</Text><Button variant="outline" size="sm" disabled={page>=totalPages} onClick={() => setPage((p) => p+1)}>Next</Button></HStack>}
       </Tabs.Content>
 
@@ -216,7 +272,7 @@ export default function BookingsPage() {
       <Tabs.Content value="cards" pt="4">
         {listQ.isError ? <Card.Root><Card.Body><Text color="fg.error">Failed to load bookings.</Text><Button mt="2" size="sm" onClick={() => listQ.refetch()}>Retry</Button></Card.Body></Card.Root>
         : listQ.isLoading ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{[...Array(6)].map((_, i) => <Skeleton key={i} h="56" rounded="lg" />)}</SimpleGrid>
-        : bookings.length > 0 ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{bookings.map((b) => <BookingCardItem key={b.id} booking={b} lookups={lookups} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} onComplete={onComplete} onNoShow={onNoShow} onCollect={onCollect} />)}</SimpleGrid>
+        : bookings.length > 0 ? <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">{bookings.map((b) => <BookingCardItem key={b.id} booking={b} busy={busy} onView={(id: string) => navigate(`/bookings/${id}`)} onConfirm={onConfirm} onCancel={onCancel} onComplete={onComplete} onNoShow={onNoShow} onCollect={onCollect} />)}</SimpleGrid>
         : <Card.Root><Card.Body><Text textAlign="center" color="fg.muted" py="8">No bookings found</Text></Card.Body></Card.Root>}
         {totalPages > 1 && <HStack justify="center" mt="4" gap="3"><Button variant="outline" size="sm" disabled={page<=1} onClick={() => setPage((p) => p-1)}>Previous</Button><Text fontSize="sm" color="fg.muted">Page {page} of {totalPages}</Text><Button variant="outline" size="sm" disabled={page>=totalPages} onClick={() => setPage((p) => p+1)}>Next</Button></HStack>}
       </Tabs.Content>

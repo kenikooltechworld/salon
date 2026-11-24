@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/api";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import { useCreateBooking } from "@/features/bookings";
+import { useCreateCustomer } from "@/features/customers/hooks";
 
 const steps = [{ title: "Customer" }, { title: "Service" }, { title: "Staff" }, { title: "Availability" }, { title: "Confirm" }];
 const toIso = (d: string, t: string) => new Date(`${d}T${t}:00`).toISOString();
@@ -20,11 +21,14 @@ function addMinutes(hhmm: string, mins: number) { const [h, m] = hhmm.split(":")
 export default function BookingCreatePage() {
   const navigate = useNavigate();
   const create = useCreateBooking();
+  const createCustomer = useCreateCustomer();
   const [step, setStep] = useState(0);
-  const [customerMode, setCustomerMode] = useState<"existing" | "new">("existing");
+  const [customerMode, setCustomerMode] = useState<"existing" | "new" | "guest">("existing");
   const [search, setSearch] = useState("");
+  const [createdCustomer, setCreatedCustomer] = useState<{ id: string; first_name: string; last_name: string; email: string; phone: string } | null>(null);
   const [form, setForm] = useState({
-    customer_id: "", guest_name: "", guest_email: "", guest_phone: "",
+    customer_id: "", first_name: "", last_name: "", email: "", phone: "",
+    guest_name: "", guest_email: "", guest_phone: "",
     service_id: "", staff_id: "", date: todayStr(), slot: "", notes: "",
     payment_option: "later" as "now" | "later", payment_status: "pending",
   });
@@ -65,7 +69,11 @@ export default function BookingCreatePage() {
   const endTime = useMemo(() => { if (!form.slot || !selectedService) return ""; return addMinutes(form.slot, Number(selectedService.duration_minutes || 30)); }, [form.slot, selectedService]);
 
   const canNext = () => {
-    if (step === 0) return customerMode === "existing" ? !!form.customer_id : !!form.guest_name.trim();
+    if (step === 0) {
+      if (customerMode === "existing") return !!form.customer_id;
+      if (customerMode === "new") return !!form.first_name.trim() && !!form.last_name.trim() && !!form.email.trim() && !!form.phone.trim();
+      return !!form.guest_name.trim();
+    }
     if (step === 1) return !!form.service_id;
     if (step === 2) return !!form.staff_id;
     if (step === 3) return !!form.date && !!form.slot;
@@ -75,18 +83,43 @@ export default function BookingCreatePage() {
   const submit = async () => {
     if (!selectedService || !form.staff_id || !form.date || !form.slot || !endTime) return;
     try {
+      let customerId: string | null = customerMode === "existing" ? form.customer_id : null;
+      if (customerMode === "new") {
+        const customer = {
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+        };
+        const isSameCustomer = createdCustomer &&
+          createdCustomer.first_name === customer.first_name &&
+          createdCustomer.last_name === customer.last_name &&
+          createdCustomer.email === customer.email &&
+          createdCustomer.phone === customer.phone;
+        if (isSameCustomer) {
+          customerId = createdCustomer.id;
+        } else {
+          const created = (await createCustomer.mutateAsync({
+            ...customer,
+            communication_preference: "email",
+            status: "active",
+          })).data;
+          customerId = created.id;
+          setCreatedCustomer({ ...customer, id: created.id });
+        }
+      }
       const res = await create.mutateAsync({
         service_id: form.service_id,
         staff_id: form.staff_id,
-        customer_id: customerMode === "existing" ? form.customer_id : null,
+        customer_id: customerId,
         start_time: toIso(form.date, form.slot),
         end_time: toIso(form.date, endTime),
         notes: form.notes || null,
         price: selectedService.price,
-        is_guest: customerMode === "new",
-        guest_name: customerMode === "new" ? form.guest_name : null,
-        guest_email: customerMode === "new" ? form.guest_email || null : null,
-        guest_phone: customerMode === "new" ? form.guest_phone || null : null,
+        is_guest: customerMode === "guest",
+        guest_name: customerMode === "guest" ? form.guest_name : null,
+        guest_email: customerMode === "guest" ? form.guest_email || null : null,
+        guest_phone: customerMode === "guest" ? form.guest_phone || null : null,
         payment_option: form.payment_option,
         payment_status: form.payment_status,
       });
@@ -108,7 +141,11 @@ export default function BookingCreatePage() {
     <Card.Root><Card.Body>
       {step === 0 && <Stack gap="4">
         <Box><Heading size="md">Select Customer</Heading><Text fontSize="sm" color="fg.muted">Choose an existing customer or create a guest booking.</Text></Box>
-        <HStack gap="2"><Button size="sm" variant={customerMode==="existing"?"solid":"outline"} colorPalette={customerMode==="existing"?"brand":"gray"} onClick={() => setCustomerMode("existing")}>Existing Customer</Button><Button size="sm" variant={customerMode==="new"?"solid":"outline"} colorPalette={customerMode==="new"?"brand":"gray"} onClick={() => setCustomerMode("new")}>Guest / New</Button></HStack>
+        <Flex gap="2" wrap="wrap">
+          <Button size="sm" variant={customerMode==="existing"?"solid":"outline"} colorPalette={customerMode==="existing"?"brand":"gray"} onClick={() => setCustomerMode("existing")}>Existing Customer</Button>
+          <Button size="sm" variant={customerMode==="new"?"solid":"outline"} colorPalette={customerMode==="new"?"brand":"gray"} onClick={() => setCustomerMode("new")}>New Customer</Button>
+          <Button size="sm" variant={customerMode==="guest"?"solid":"outline"} colorPalette={customerMode==="guest"?"brand":"gray"} onClick={() => setCustomerMode("guest")}>Guest Booking</Button>
+        </Flex>
         {customerMode === "existing" ? <>
           <Box position="relative"><Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="fg.muted"><LuSearch /></Box><Input pl="9" placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} /></Box>
           {customersQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
@@ -119,10 +156,15 @@ export default function BookingCreatePage() {
                 <Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Fallback name={name} /></Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{c.email}</Text><Text fontSize="xs" color="fg.muted">{c.phone}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body>
               </Card.Root>;
             })}{filteredCustomers.length === 0 && <Text color="fg.muted">No customers found.</Text>}</SimpleGrid>}
-        </> : <Grid templateColumns={{ base: "1fr", md: "repeat(3,1fr)" }} gap="4">
-          <Field.Root required><Field.Label>Guest name</Field.Label><Input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} /></Field.Root>
-          <Field.Root><Field.Label>Email</Field.Label><Input value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} /></Field.Root>
-          <Field.Root><Field.Label>Phone</Field.Label><Input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} /></Field.Root>
+        </> : customerMode === "new" ? <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap="4">
+          <Field.Root required><Field.Label>First name</Field.Label><Input autoComplete="given-name" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></Field.Root>
+          <Field.Root required><Field.Label>Last name</Field.Label><Input autoComplete="family-name" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></Field.Root>
+          <Field.Root required><Field.Label>Email</Field.Label><Input type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field.Root>
+          <Field.Root required><Field.Label>Phone</Field.Label><Input type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field.Root>
+        </Grid> : <Grid templateColumns={{ base: "1fr", md: "repeat(3,1fr)" }} gap="4">
+          <Field.Root required><Field.Label>Guest name</Field.Label><Input autoComplete="name" value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} /></Field.Root>
+          <Field.Root><Field.Label>Email</Field.Label><Input type="email" autoComplete="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} /></Field.Root>
+          <Field.Root><Field.Label>Phone</Field.Label><Input type="tel" autoComplete="tel" value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} /></Field.Root>
         </Grid>}
       </Stack>}
 
@@ -150,7 +192,7 @@ export default function BookingCreatePage() {
       {step === 4 && <Stack gap="5">
         <Box><Heading size="md">Confirm Booking</Heading><Text fontSize="sm" color="fg.muted">Review details before creating the booking.</Text></Box>
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
-          <Card.Root variant="outline"><Card.Body gap="2"><HStack color="fg.muted" fontSize="sm"><LuUser /> Customer</HStack><Text fontWeight="medium">{customerMode === "existing" ? ([selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ") || selectedCustomer?.email || "—") : form.guest_name || "—"}</Text>{customerMode === "new" && <Text fontSize="sm" color="fg.muted">{form.guest_email} {form.guest_phone}</Text>}</Card.Body></Card.Root>
+          <Card.Root variant="outline"><Card.Body gap="2"><HStack color="fg.muted" fontSize="sm"><LuUser /> Customer</HStack><Text fontWeight="medium">{customerMode === "existing" ? ([selectedCustomer?.first_name, selectedCustomer?.last_name].filter(Boolean).join(" ") || selectedCustomer?.email || "—") : customerMode === "new" ? `${form.first_name} ${form.last_name}`.trim() || "—" : form.guest_name || "—"}</Text>{customerMode === "new" && <Text fontSize="sm" color="fg.muted">{form.email} {form.phone}</Text>}{customerMode === "guest" && <Text fontSize="sm" color="fg.muted">{form.guest_email} {form.guest_phone}</Text>}</Card.Body></Card.Root>
           <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Service</Text><Text fontWeight="medium">{selectedService?.name || "—"}</Text><Text fontSize="sm" color="fg.muted">{selectedService?.duration_minutes} min • {formatNaira(selectedService?.price)}</Text></Card.Body></Card.Root>
           <Card.Root variant="outline"><Card.Body gap="2"><Text fontSize="sm" color="fg.muted">Staff</Text><Text fontWeight="medium">{[selectedStaff?.first_name, selectedStaff?.last_name].filter(Boolean).join(" ") || selectedStaff?.name || "—"}</Text></Card.Body></Card.Root>
           <Card.Root variant="outline"><Card.Body gap="2"><HStack color="fg.muted" fontSize="sm"><LuCalendar /> Date & Time</HStack><Text fontWeight="medium">{form.date} {form.slot} - {endTime}</Text></Card.Body></Card.Root>
@@ -166,7 +208,7 @@ export default function BookingCreatePage() {
     <Flex justify="space-between" gap="3">
       <Button variant="outline" onClick={() => step === 0 ? navigate("/bookings") : setStep((s) => s - 1)}>{step === 0 ? "Cancel" : "Back"}</Button>
       {step < steps.length - 1 ? <Button colorPalette="brand" onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>Continue</Button>
-      : <Button colorPalette="brand" loading={create.isPending} onClick={submit} disabled={!canNext()}><LuCheck /> Create Booking</Button>}
+      : <Button colorPalette="brand" loading={create.isPending || createCustomer.isPending} onClick={submit} disabled={!canNext()}><LuCheck /> Create Booking</Button>}
     </Flex>
   </Stack>;
 }
