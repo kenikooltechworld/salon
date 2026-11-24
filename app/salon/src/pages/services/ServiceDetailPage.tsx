@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text, VStack } from "@chakra-ui/react";
+import { Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { formatNaira } from "@/components/ui/naira";
 import { LuArrowLeft, LuPencil, LuTrash2, LuUsers } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
@@ -47,7 +47,7 @@ export default function ServiceDetailPage() {
 
     <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap="6">
       <Stack gap="6">
-        {service.public_image_url ? <Card.Root overflow="hidden"><Image src={service.public_image_url} alt={service.name} w="full" maxH="360px" objectFit="cover" cursor="zoom-in" onClick={() => setLightbox(true)} /></Card.Root> : <Card.Root><Card.Body><Flex h="220px" bg="bg.muted" rounded="md" align="center" justify="center" color="fg.muted"><VStack><Text fontSize="lg">No image</Text></VStack></Flex></Card.Body></Card.Root>}
+        {service.public_image_url ? <Card.Root overflow="hidden"><Image src={service.public_image_url} alt={service.name} w="full" maxH="360px" objectFit="cover" cursor="zoom-in" onClick={() => setLightbox(true)} /></Card.Root> : <Card.Root><Card.Body><Flex h="220px" bg="bg.muted" rounded="md" align="center" justify="center"><Avatar.Root size="2xl"><Avatar.Fallback name={service.name} /></Avatar.Root></Flex></Card.Body></Card.Root>}
         <Card.Root><Card.Body><Heading size="md" mb="3">Description</Heading><Text color="fg.muted" whiteSpace="pre-wrap">{service.description || "No description provided."}</Text></Card.Body></Card.Root>
         <Card.Root><Card.Body><Heading size="md" mb="4">Details</Heading><Grid templateColumns={{ base: "1fr 1fr", md: "repeat(4,1fr)" }} gap="4">
           <Box><Text fontSize="xs" color="fg.muted">Duration</Text><Text fontWeight="semibold">{service.duration_minutes} min</Text></Box>

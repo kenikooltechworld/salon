@@ -2,11 +2,11 @@ import { formatNaira } from "@/components/ui/naira";
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Badge, Box, Button, Card, Dialog, Flex, Heading, HStack, IconButton, Image, Input,
-  Portal, SimpleGrid, Skeleton, Stack, Text, VStack,
+  Avatar, Badge, Box, Button, Card, Dialog, Flex, Heading, HStack, IconButton, Image, Input,
+  Portal, SimpleGrid, Skeleton, Stack, Text,
 } from "@chakra-ui/react";
 import { motion } from "motion/react";
-import { LuImagePlus, LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers } from "react-icons/lu";
+import { LuPencil, LuPlus, LuSearch, LuTrash2, LuUsers } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { CategoryModal, ServiceFormDialog } from "./ServiceFormDialog";
@@ -82,7 +82,7 @@ export default function ServicesPage() {
       : filtered.map((service) => (
         <motion.div key={service.id} whileHover={{ y: -2 }}>
           <Card.Root overflow="hidden" cursor="pointer" onClick={()=>navigate(`/services/${service.id}`)} _hover={{ shadow:"md" }}>
-            {service.public_image_url ? <Image src={service.public_image_url} alt={service.name} h="160px" w="full" objectFit="cover" cursor="zoom-in" transition="opacity 0.2s" _hover={{ opacity: 0.9 }} onClick={(e) => { e.stopPropagation(); setLightbox({ url: service.public_image_url!, alt: service.name }); }} /> : <Flex h="160px" bg="bg.muted" align="center" justify="center" color="fg.muted"><VStack gap="2"><LuImagePlus size={28} /><Text fontSize="sm">No image</Text></VStack></Flex>}
+            {service.public_image_url ? <Image src={service.public_image_url} alt={service.name} h="160px" w="full" objectFit="cover" cursor="zoom-in" transition="opacity 0.2s" _hover={{ opacity: 0.9 }} onClick={(e) => { e.stopPropagation(); setLightbox({ url: service.public_image_url!, alt: service.name }); }} /> : <Flex h="160px" bg="bg.muted" align="center" justify="center"><Avatar.Root size="2xl"><Avatar.Fallback name={service.name} /></Avatar.Root></Flex>}
             <Card.Body><Stack gap="3">
               <Flex justify="space-between" gap="3" align="start">
                 <Box minW="0"><Heading size="sm" lineClamp="1">{service.name}</Heading><Text fontSize="xs" color="fg.muted">{service.category}</Text></Box>
