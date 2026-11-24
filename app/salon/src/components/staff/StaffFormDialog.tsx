@@ -118,7 +118,8 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
               const uploaded: string[] = [];
               for (const file of files) {
                 try {
-                  const url = await certUpload.uploadImage(file);
+                  const uploadType = file.type.startsWith("image/") ? "image" : "document";
+                  const url = await certUpload.uploadImage(file, uploadType);
                   uploaded.push(url);
                 } catch (err: any) {
                   toaster.create({ title: "Upload failed", description: err?.message || `Failed to upload ${file.name}`, type: "error" });
