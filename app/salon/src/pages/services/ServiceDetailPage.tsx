@@ -41,7 +41,7 @@ export default function ServiceDetailPage() {
 
   return <Stack gap="6">
     <Flex justify="space-between" gap="3" direction={{ base: "column", md: "row" }}>
-      <HStack><Button variant="ghost" onClick={() => navigate("/services")}><LuArrowLeft /> Back</Button><Box><HStack gap="2"><Box w="8" h="8" rounded="md" bg={service.color || "brand.500"} /><Heading size="xl">{service.name}</Heading></HStack><Text color="fg.muted">{service.category}</Text></Box></HStack>
+      <HStack><Button variant="ghost" onClick={() => navigate("/services")}><LuArrowLeft /> Back</Button><Box><HStack gap="2"><Avatar.Root size="md"><Avatar.Image src={service.public_image_url || undefined} /><Avatar.Fallback name={service.name} /></Avatar.Root><Heading size="xl">{service.name}</Heading></HStack><Text color="fg.muted">{service.category}</Text></Box></HStack>
       {manage && <HStack><Button variant="outline" onClick={() => setShowEdit(true)}><LuPencil /> Edit</Button><Button colorPalette="red" variant="outline" onClick={() => setConfirmOpen(true)}><LuTrash2 /> Delete</Button></HStack>}
     </Flex>
 

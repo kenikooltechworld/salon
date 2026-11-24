@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text } from "@chakra-ui/react";
+import { Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Portal, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { formatNaira } from "@/components/ui/naira";
@@ -41,7 +41,7 @@ export default function StaffDetailPage() {
   return <Stack gap="6">
     <Flex justify="space-between" gap="3" direction={{ base: "column", md: "row" }}>
       <HStack align="start"><Button variant="ghost" onClick={() => navigate("/staff")}><LuArrowLeft /> Back</Button>
-        <Box><HStack gap="3">{staff.profile_image_url && <Image src={staff.profile_image_url} alt="" boxSize="14" rounded="md" objectFit="cover" cursor="zoom-in" onClick={() => setLightbox(staff.profile_image_url!)} />}<Box><Heading size="xl">{staff.firstName} {staff.lastName}</Heading><Text color="fg.muted">{staff.email}</Text></Box></HStack><Badge mt="2" colorPalette={statusColor(staff.status)}>{label(staff.status)}</Badge></Box>
+        <Box><HStack gap="3"><Avatar.Root size="lg" cursor={staff.profile_image_url ? "zoom-in" : "default"} onClick={() => staff.profile_image_url && setLightbox(staff.profile_image_url)}><Avatar.Image src={staff.profile_image_url || undefined} /><Avatar.Fallback name={`${staff.firstName} ${staff.lastName}`} /></Avatar.Root><Box><Heading size="xl">{staff.firstName} {staff.lastName}</Heading><Text color="fg.muted">{staff.email}</Text></Box></HStack><Badge mt="2" colorPalette={statusColor(staff.status)}>{label(staff.status)}</Badge></Box>
       </HStack>
       {manage && <HStack><Button variant="outline" onClick={() => setEditOpen(true)}><LuPencil /> Edit</Button><Button colorPalette="red" variant="outline" onClick={() => setDelOpen(true)}><LuTrash2 /> Delete</Button></HStack>}
     </Flex>
