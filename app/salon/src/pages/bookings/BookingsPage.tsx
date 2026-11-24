@@ -17,10 +17,10 @@ export default function BookingsPage() {
   const [editing, setEditing] = useState<any>(null);
 
   const { data: bookings = [], isLoading } = useBookings({ status: status || undefined, staff_id: staffId || undefined });
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data });
-  const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services?page=1&page_size=200")).data });
-  const customersQ = useQuery({ queryKey: ["customers", "all"], queryFn: async () => (await apiClient.get("/customers?page=1&page_size=200")).data });
-  const staff = Array.isArray(staffQ.data) ? staffQ.data : staffQ.data?.staff || [];
+  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data });
+  const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
+  const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services?page=1&page_size=100")).data });
+  const customersQ = useQuery({ queryKey: ["customers", "all"], queryFn: async () => (await apiClient.get("/customers?page=1&page_size=100")).data });
   const services = Array.isArray(servicesQ.data?.services) ? servicesQ.data.services : [];
   const customers = Array.isArray(customersQ.data?.customers) ? customersQ.data.customers : [];
 
