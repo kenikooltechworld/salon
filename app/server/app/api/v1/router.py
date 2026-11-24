@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.routes import attendance as attendance_routes
+from app.api.v1.routes import availability as availability_routes
 from app.api.v1.routes import appointments as appointment_routes
 from app.api.v1.routes import auth as auth_routes
 from app.api.v1.routes import customers as customer_routes
@@ -56,5 +57,6 @@ api_router.include_router(appointment_routes.router)
 api_router.include_router(roles_routes.router)
 api_router.include_router(shifts_routes.router)
 api_router.include_router(time_off_request_routes.router)
+api_router.include_router(availability_routes.router)
 api_router.include_router(attendance_routes.router)
 api_router.include_router(goals_routes.router)
