@@ -17,7 +17,7 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
   const isEdit = !!initial?.id;
   const create = useCreateStaff();
   const update = useUpdateStaff();
-  const servicesQ = useServices({ page: 1, page_size: 200 });
+  const servicesQ = useServices({ page: 1, page_size: 100, active_only: true });
   const rolesQ = useQuery({ queryKey: ["roles"], queryFn: async () => { try { return (await apiClient.get("/roles")).data; } catch { return { roles: [] }; } }, staleTime: 60000 });
   const upload = useImageUpload({ folder: "staff-profiles" });
   const certUpload = useImageUpload({ folder: "staff-certificates", mediaType: "document" });
@@ -80,10 +80,46 @@ export function StaffFormDialog({ open, onOpenChange, initial }: { open: boolean
         </Grid>
         <Field label="Bio"><Textarea rows={3} value={form.bio || ""} onChange={(e) => set("bio", e.target.value)} /></Field>
         <Field label="Roles"><Box borderWidth="1px" rounded="md" p="3" maxH="180px" overflowY="auto">{roles.length === 0 ? <Text fontSize="sm" color="fg.muted">No roles available (user role will be used).</Text> : <Stack gap="2">{roles.map((r: any) => <HStack key={r.id || r.name} as="label"><input type="checkbox" checked={(form.role_ids || []).includes(r.id || r.name)} onChange={() => toggle("role_ids", r.id || r.name)} /><Text fontSize="sm">{r.name || r.id}</Text></HStack>)}</Stack>}</Box></Field>
-        <Field label="Services"><Box borderWidth="1px" rounded="md" p="3" maxH="180px" overflowY="auto">{servicesQ.isLoading ? <Skeleton h="16" /> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No services available.</Text> : <Stack gap="2">{services.map((s: any) => <HStack key={s.id} as="label" align="start"><input type="checkbox" checked={(form.service_ids || []).includes(s.id)} onChange={() => toggle("service_ids", s.id)} /><Box><Text fontSize="sm">{s.name}</Text><Text fontSize="xs" color="fg.muted">{formatNaira(s.price)} · {s.duration_minutes} min</Text></Box></HStack>)}</Stack>}</Box></Field>
+        <Field label="Services">
+          <Box borderWidth="1px" rounded="md" p="3" maxH="220px" overflowY="auto">
+            {servicesQ.isLoading ? <Stack gap="2">{[...Array(4)].map((_, i) => <Skeleton key={i} h="5" />)}</Stack> : servicesQ.isError ? <Stack align="start" gap="2"><Text fontSize="sm" color="red.500">Unable to load active services.</Text><Button size="xs" variant="outline" onClick={() => servicesQ.refetch()}>Retry loading services</Button></Stack> : services.length === 0 ? <Text fontSize="sm" color="fg.muted">No active services available.</Text> : <Stack gap="2">
+              {services.map((s: any) => (
+                <HStack key={s.id} as="label" align="start" cursor="pointer">
+                  <input type="checkbox" checked={(form.service_ids || []).includes(s.id)} onChange={() => toggle("service_ids", s.id)} style={{ marginTop: 3 }} />
+                  <Avatar.Root size="sm"><Avatar.Image src={s.public_image_url || undefined} /><Avatar.Fallback name={s.name} /></Avatar.Root>
+                  <Box>
+                    <Text fontSize="sm" fontWeight="medium">{s.name}</Text>
+                    <Text fontSize="xs" color="fg.muted">{s.category ? `${s.category} · ` : ""}{s.duration_minutes} min · {formatNaira(s.price)}</Text>
+                  </Box>
+                </HStack>
+              ))}
+            </Stack>}
+          </Box>
+          {(form.service_ids || []).length > 0 && <Wrap mt="2">{(form.service_ids || []).map((sid) => { const s = services.find((x: any) => x.id === sid); return <WrapItem key={sid}><Badge colorPalette="blue">{s?.name || sid}</Badge></WrapItem>; })}</Wrap>}
+        </Field>
         <Field label="Specialties"><Stack gap="2"><HStack><Input value={specialtyInput} onChange={(e) => setSpecialtyInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag("specialties", specialtyInput, () => setSpecialtyInput("")); } }} placeholder="Type specialty and press Enter" /><Button onClick={() => addTag("specialties", specialtyInput, () => setSpecialtyInput(""))}>Add</Button></HStack><Wrap>{(form.specialties || []).map((s, i) => <WrapItem key={`${s}-${i}`}><Badge colorPalette="blue" display="inline-flex" gap="1" alignItems="center">{s}<IconButton aria-label="Remove" size="2xs" variant="ghost" onClick={() => removeTag("specialties", i)}><LuX /></IconButton></Badge></WrapItem>)}</Wrap></Stack></Field>
         <Field label="Certifications"><Stack gap="2"><HStack><Input value={certInput} onChange={(e) => setCertInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag("certifications", certInput, () => setCertInput("")); } }} placeholder="Type certification and press Enter" /><Button onClick={() => addTag("certifications", certInput, () => setCertInput(""))}>Add</Button></HStack><Wrap>{(form.certifications || []).map((s, i) => <WrapItem key={`${s}-${i}`}><Badge colorPalette="purple" display="inline-flex" gap="1" alignItems="center">{s}<IconButton aria-label="Remove" size="2xs" variant="ghost" onClick={() => removeTag("certifications", i)}><LuX /></IconButton></Badge></WrapItem>)}</Wrap></Stack></Field>
-        <Field label="Certificate Files"><Stack gap="2"><Input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,image/*" disabled={busy} onChange={async (e) => { const f = certUpload.handleFileChange(e); if (!f) return; try { const url = await certUpload.uploadImage(f); setForm((p) => ({ ...p, certification_files: [...(p.certification_files || []), url] })); } catch (err: any) { toaster.create({ title: "Upload failed", description: err?.message, type: "error" }); } e.target.value = ""; }} /><Wrap>{(form.certification_files || []).map((url, i) => <WrapItem key={`${url}-${i}`}><HStack borderWidth="1px" rounded="md" p="2"><Text fontSize="xs" maxW="220px" truncate>{url.split("/").pop()}</Text><IconButton aria-label="Remove file" size="2xs" variant="ghost" onClick={() => removeTag("certification_files", i)}><LuX /></IconButton></HStack></WrapItem>)}</Wrap></Stack></Field>
+        <Field label="Certificate Files">
+          <Stack gap="2">
+            <Input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,image/*" disabled={busy} onChange={async (e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length === 0) return;
+              const uploaded: string[] = [];
+              for (const file of files) {
+                try {
+                  const url = await certUpload.uploadImage(file);
+                  uploaded.push(url);
+                } catch (err: any) {
+                  toaster.create({ title: "Upload failed", description: err?.message || `Failed to upload ${file.name}`, type: "error" });
+                }
+              }
+              if (uploaded.length > 0) setForm((p) => ({ ...p, certification_files: [...(p.certification_files || []), ...uploaded] }));
+              e.target.value = "";
+            }} />
+            <Text fontSize="xs" color="fg.muted">{certUpload.isUploading ? `Uploading ${certUpload.uploadProgress}%` : "Select one or more files (PDF, images, DOC). Each file is stored in certificate files."}</Text>
+            <Wrap>{(form.certification_files || []).map((url, i) => <WrapItem key={`${url}-${i}`}><HStack borderWidth="1px" rounded="md" p="2" maxW="full"><Text fontSize="xs" maxW="260px" truncate>{url.split("/").pop() || url}</Text><IconButton aria-label="Remove file" size="2xs" variant="ghost" onClick={() => removeTag("certification_files", i)}><LuX /></IconButton></HStack></WrapItem>)}</Wrap>
+          </Stack>
+        </Field>
       </Stack></Dialog.Body>
       <Dialog.Footer><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button><Button colorPalette="brand" loading={busy} onClick={onSubmit}>{isEdit ? "Update Staff Member" : "Add Staff Member"}</Button></Dialog.Footer>
     </Dialog.Content></Dialog.Positioner></Portal>
