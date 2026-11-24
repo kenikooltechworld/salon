@@ -6,8 +6,9 @@ import { LuArrowLeft } from "react-icons/lu";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import {
-  useBookingDetail, useCancelBooking, useCompleteBooking, useConfirmBooking, useNoShowBooking, useStartBooking,
+  bookingsApi, useBookingDetail, useCancelBooking, useCompleteBooking, useConfirmBooking, useNoShowBooking, useStartBooking,
 } from "@/features/bookings";
+import { useQueryClient } from "@tanstack/react-query";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 
 function Info({ label, value }: { label: string; value: React.ReactNode }) {
@@ -17,6 +18,7 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: b, isLoading, isError } = useBookingDetail(id);
   const confirm = useConfirmBooking(); const complete = useCompleteBooking(); const cancel = useCancelBooking();
   const noShow = useNoShowBooking(); const start = useStartBooking();
@@ -91,6 +93,7 @@ export default function BookingDetailPage() {
             {(b.status === "confirmed" || b.status === "in_progress") && <Button colorPalette="purple" loading={complete.isPending} onClick={() => act(() => complete.mutateAsync(b.id), "Booking completed")}>Complete</Button>}
             {canAct && <Button colorPalette="red" variant="outline" loading={cancel.isPending} onClick={() => act(() => cancel.mutateAsync({ id: b.id, reason: "Cancelled by staff" }), "Booking cancelled")}>Cancel</Button>}
             {canAct && <Button variant="outline" loading={noShow.isPending} onClick={() => act(() => noShow.mutateAsync({ id: b.id, reason: "Marked as no-show" }), "Marked as no-show")}>No-Show</Button>}
+            {b.status === "completed" && b.payment_status !== "completed" && b.payment_option !== "now" && <Button colorPalette="green" variant="outline" onClick={async () => { try { await bookingsApi.collectPayment(b.id, { payment_method: "cash", amount: Number(b.price || 0) }); toaster.create({ title: "Payment collected", type: "success" }); qc.invalidateQueries({ queryKey: ["bookings"] }); } catch (e: any) { toaster.create({ title: "Failed to collect payment", description: e?.response?.data?.detail || e?.message, type: "error" }); } }}>Collect Payment</Button>}
             <Button variant="ghost" onClick={() => navigate("/bookings")}>Close</Button>
           </Stack>
         </Card.Body>

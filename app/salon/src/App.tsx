@@ -137,6 +137,7 @@ export default function App() {
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/bookings" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingsPage /></RoleRoute>} />
             <Route path="/bookings/new" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingCreatePage /></RoleRoute>} />
+            <Route path="/bookings/create" element={<Navigate to="/bookings/new" replace />} />
             <Route path="/bookings/confirmation" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingConfirmationPage /></RoleRoute>} />
             <Route path="/bookings/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
