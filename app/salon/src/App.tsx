@@ -13,6 +13,8 @@ import CustomerDetailPage from "@/pages/customers/CustomerDetailPage";
 import CustomerAppointmentsPage from "@/pages/customers/CustomerAppointmentsPage";
 import AppointmentDetailPage from "@/pages/customers/AppointmentDetailPage";
 import BookingsPage from "@/pages/bookings/BookingsPage";
+import BookingCreatePage from "@/pages/bookings/BookingCreatePage";
+import BookingDetailPage from "@/pages/bookings/BookingDetailPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import HomePage from "@/pages/Home";
@@ -33,6 +35,8 @@ import ServiceDetailPage from "@/pages/services/ServiceDetailPage";
 import ServiceAddonsPage from "@/pages/services/ServiceAddonsPage";
 import ServicePackagesPage from "@/pages/services/ServicePackagesPage";
 import ServiceCommissionsPage from "@/pages/services/ServiceCommissionsPage";
+import StaffPage from "@/pages/staff/StaffPage";
+import StaffDetailPage from "@/pages/staff/StaffDetailPage";
 import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import NotificationsPage from "@/pages/notifications/NotificationsPage";
 import NotificationDetailPage from "@/pages/notifications/NotificationDetailPage";
@@ -131,12 +135,16 @@ export default function App() {
             <Route path="/services/commissions" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceCommissionsPage /></RoleRoute>} />
             <Route path="/services/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><ServiceDetailPage /></RoleRoute>} />
             <Route path="/bookings" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingsPage /></RoleRoute>} />
+            <Route path="/bookings/new" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingCreatePage /></RoleRoute>} />
+            <Route path="/bookings/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><BookingDetailPage /></RoleRoute>} />
             <Route path="/customers" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomersPage /></RoleRoute>} />
             <Route path="/customers/:id" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerDetailPage /></RoleRoute>} />
             <Route path="/customers/:id/appointments" element={<RoleRoute roles={["owner","admin","manager","staff"]}><CustomerAppointmentsPage /></RoleRoute>} />
             <Route path="/customers/:id/appointments/:appointmentId" element={<RoleRoute roles={["owner","admin","manager","staff"]}><AppointmentDetailPage /></RoleRoute>} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/notifications/:id" element={<NotificationDetailPage />} />
+            <Route path="/staff" element={<StaffPage />} />
+            <Route path="/staff/:staffId" element={<StaffDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/settings" element={<RoleRoute roles={["owner","admin"]}><SettingsPage /></RoleRoute>} />
             <Route path="/settings/general" element={<RoleRoute roles={["owner","admin"]}><GeneralSettings /></RoleRoute>} />

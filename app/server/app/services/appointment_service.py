@@ -3,11 +3,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Sequence
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment
@@ -23,16 +22,56 @@ class AppointmentService:
         self.session = session
 
     async def list_appointments(
-        self, tenant_id: uuid.UUID, *, status: str | None = None, staff_id: str | None = None
-    ) -> Sequence[Appointment]:
+        self,
+        tenant_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        staff_id: str | None = None,
+        customer_id: str | None = None,
+        service_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[Sequence[Appointment], int]:
         stmt = select(Appointment).where(Appointment.tenant_id == tenant_id)
+        count_stmt = select(func.count()).select_from(Appointment).where(Appointment.tenant_id == tenant_id)
+
         if status:
             stmt = stmt.where(Appointment.status == status)
+            count_stmt = count_stmt.where(Appointment.status == status)
         if staff_id:
             stmt = stmt.where(Appointment.staff_id == staff_id)
-        stmt = stmt.order_by(Appointment.start_time.desc())
+            count_stmt = count_stmt.where(Appointment.staff_id == staff_id)
+        if customer_id:
+            stmt = stmt.where(Appointment.customer_id == customer_id)
+            count_stmt = count_stmt.where(Appointment.customer_id == customer_id)
+        if service_id:
+            stmt = stmt.where(Appointment.service_id == service_id)
+            count_stmt = count_stmt.where(Appointment.service_id == service_id)
+        if start_date:
+            stmt = stmt.where(Appointment.start_time >= start_date)
+            count_stmt = count_stmt.where(Appointment.start_time >= start_date)
+        if end_date:
+            stmt = stmt.where(Appointment.start_time <= end_date)
+            count_stmt = count_stmt.where(Appointment.start_time <= end_date)
+        if search:
+            q = f"%{search.strip()}%"
+            f = or_(
+                Appointment.guest_name.ilike(q),
+                Appointment.guest_email.ilike(q),
+                Appointment.guest_phone.ilike(q),
+                Appointment.notes.ilike(q),
+                Appointment.status.ilike(q),
+            )
+            stmt = stmt.where(f)
+            count_stmt = count_stmt.where(f)
+
+        total = (await self.session.execute(count_stmt)).scalar_one()
+        stmt = stmt.order_by(Appointment.start_time.desc()).offset((page - 1) * page_size).limit(page_size)
         result = await self.session.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     async def create(self, tenant_id: uuid.UUID, data: AppointmentCreate) -> Appointment:
         if data.idempotency_key:
@@ -49,6 +88,8 @@ class AppointmentService:
         await self._validate_refs(tenant_id, data.service_id, data.staff_id)
         if data.end_time <= data.start_time:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_time must be after start_time")
+        await self._ensure_no_conflict(tenant_id, data.staff_id, data.start_time, data.end_time)
+
         payload = data.model_dump()
         payload.setdefault("status", "scheduled")
         if payload.get("status") not in _APPT_STATUSES:
@@ -65,9 +106,7 @@ class AppointmentService:
         )
         return result.scalar_one_or_none()
 
-    async def update(
-        self, tenant_id: uuid.UUID, appointment_id: uuid.UUID, data: AppointmentUpdate
-    ) -> Appointment | None:
+    async def update(self, tenant_id: uuid.UUID, appointment_id: uuid.UUID, data: AppointmentUpdate) -> Appointment | None:
         appt = await self.get(tenant_id, appointment_id)
         if appt is None:
             return None
@@ -82,6 +121,8 @@ class AppointmentService:
         if new_status == "cancelled":
             appt.cancelled_at = payload.get("cancelled_at") or now
             appt.cancelled_by = payload.get("cancelled_by") or appt.cancelled_by
+        if new_status == "no_show" and not payload.get("no_show_reason") and not appt.no_show_reason:
+            appt.no_show_reason = "Marked as no-show"
         for field, value in payload.items():
             if field in {"cancelled_at", "cancelled_by"}:
                 continue
@@ -102,19 +143,29 @@ class AppointmentService:
         await self.session.flush()
         return True
 
+    async def _ensure_no_conflict(self, tenant_id: uuid.UUID, staff_id: str, start_time: datetime, end_time: datetime, exclude_id: uuid.UUID | None = None) -> None:
+        stmt = select(Appointment.id).where(
+            Appointment.tenant_id == tenant_id,
+            Appointment.staff_id == staff_id,
+            Appointment.status.in_(["scheduled", "confirmed", "in_progress"]),
+            Appointment.start_time < end_time,
+            Appointment.end_time > start_time,
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(Appointment.id != exclude_id)
+        exists = (await self.session.execute(stmt)).scalar_one_or_none()
+        if exists is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Staff member has a conflicting appointment for this time slot")
+
     async def _validate_refs(self, tenant_id: uuid.UUID, service_id: str, staff_id: str) -> None:
         try:
             svc_uuid = uuid.UUID(str(service_id))
             staff_uuid = uuid.UUID(str(staff_id))
         except (ValueError, TypeError):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid service_id or staff_id")
-        svc = (
-            await self.session.execute(select(Service.id).where(Service.id == svc_uuid, Service.tenant_id == tenant_id))
-        ).scalar_one_or_none()
+        svc = (await self.session.execute(select(Service.id).where(Service.id == svc_uuid, Service.tenant_id == tenant_id))).scalar_one_or_none()
         if svc is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Service not found for tenant")
-        st = (
-            await self.session.execute(select(Staff.id).where(Staff.id == staff_uuid, Staff.tenant_id == tenant_id))
-        ).scalar_one_or_none()
+        st = (await self.session.execute(select(Staff.id).where(Staff.id == staff_uuid, Staff.tenant_id == tenant_id))).scalar_one_or_none()
         if st is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff not found for tenant")
