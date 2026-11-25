@@ -22,7 +22,7 @@ function ConfirmDialog({ open, onOpenChange, title, desc, onConfirm, loading }: 
 
 function AddonForm({ open, onOpenChange, addon }: { open:boolean; onOpenChange:(v:boolean)=>void; addon?:ServiceAddon|null }) {
   const create = useCreateServiceAddon(); const update = useUpdateServiceAddon();
-  const servicesQ = useServices({ page:1, page_size:200, active_only:true });
+  const servicesQ = useServices({ page:1, page_size:100, active_only:true });
   const upload = useImageUpload({ folder: "salon-addons" });
   const isEdit = !!addon?.id;
   const [form, setForm] = useState<any>({});

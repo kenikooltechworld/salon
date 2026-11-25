@@ -19,7 +19,7 @@ function Confirm({ open, onOpenChange, onConfirm, loading, title, desc }: any) {
 
 function PackageForm({ open, onOpenChange, pkg }: { open:boolean; onOpenChange:(v:boolean)=>void; pkg?:ServicePackage|null }) {
   const create = useCreateServicePackage(); const update = useUpdateServicePackage();
-  const servicesQ = useServices({ page:1, page_size:200, active_only:true });
+  const servicesQ = useServices({ page:1, page_size:100, active_only:true });
   const upload = useImageUpload({ folder: "salon-packages" });
   const isEdit = !!pkg?.id;
   const [form, setForm] = useState<any>({});

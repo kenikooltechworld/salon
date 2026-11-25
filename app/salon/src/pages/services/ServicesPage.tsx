@@ -45,7 +45,7 @@ export default function ServicesPage() {
   const catsQ = useServiceCategories();
   const delSvc = useDeleteService();
   const delCatMut = useDeleteServiceCategory();
-  const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data });
+  const staffQ = useQuery({ queryKey: ["staff","all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:100 } })).data });
   const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const services = data?.services || [];
   const categories = catsQ.data?.categories || [];

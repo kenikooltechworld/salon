@@ -20,7 +20,7 @@ export default function ServiceDetailPage() {
   const manage = ["owner", "admin", "manager"].includes((role || "").toLowerCase());
   const { data: service, isLoading } = useService(id);
   const catsQ = useServiceCategories();
-  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:200 } })).data });
+  const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff", { params: { page:1, page_size:100 } })).data });
   const staffData = staffQ.data as any; const staff = Array.isArray(staffData) ? staffData : (staffData?.staff || []);
   const del = useDeleteService();
   const [showEdit, setShowEdit] = useState(false);
