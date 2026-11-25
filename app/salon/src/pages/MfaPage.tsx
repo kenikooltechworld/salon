@@ -4,6 +4,7 @@ import QRCode from "react-qr-code";
 import { api } from "@/lib/api";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { TrustIndicators } from "@/components/auth/TrustIndicators";
+import { getApiErrorMessage } from "@/lib/utils/auth-validation";
 
 export default function MfaPage() {
   const [qr, setQr] = useState("");
@@ -22,26 +23,29 @@ export default function MfaPage() {
       const res = await api.post("/auth/mfa/setup");
       setSecret(res.data.secret); setQr(res.data.qr_code || res.data.otpauth_uri); setBackupCodes(res.data.backup_codes ?? []);
       setStep("verify");
-    } catch (err: any) { setError(err?.response?.data?.detail || "Setup failed"); }
+    } catch (err: any) { setError(getApiErrorMessage(err, "Setup failed")); }
     finally { setLoading(false); }
   };
 
   const verify = async () => {
+    if (!/^\d{6}$/.test(code)) { setError("Enter a valid 6-digit code"); return; }
     setLoading(true); setError(""); setMessage("");
     try {
       await api.post("/auth/mfa/verify", { code });
       setEnabled(true); setStep("complete"); setMessage("MFA enabled successfully.");
-    } catch (err: any) { setError(err?.response?.data?.detail || "Invalid code"); }
+    } catch (err: any) { setError(getApiErrorMessage(err, "Invalid code")); }
     finally { setLoading(false); }
   };
 
   const disable = async () => {
+    if (!/^\d{6}$/.test(code)) { setError("Enter a valid 6-digit code to disable MFA"); return; }
     setLoading(true); setError(""); setMessage("");
     try {
       const password = window.prompt("Enter your password to disable MFA") || "";
+      if (!password) { setError("Password is required to disable MFA"); setLoading(false); return; }
       await api.post("/auth/mfa/disable", { password, code });
       setEnabled(false); setStep("idle"); setQr(""); setSecret(""); setBackupCodes([]); setCode(""); setMessage("MFA disabled.");
-    } catch (err: any) { setError(err?.response?.data?.detail || "Disable failed"); }
+    } catch (err: any) { setError(getApiErrorMessage(err, "Disable failed")); }
     finally { setLoading(false); }
   };
 

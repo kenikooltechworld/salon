@@ -1,11 +1,26 @@
 ﻿"""Pydantic schemas for auth and tenancy."""
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+def validate_strong_password(value: str) -> str:
+    if len(value) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    if not re.search(r"[A-Z]", value):
+        raise ValueError("Password must contain an uppercase letter")
+    if not re.search(r"[a-z]", value):
+        raise ValueError("Password must contain a lowercase letter")
+    if not re.search(r"[0-9]", value):
+        raise ValueError("Password must contain a number")
+    if not re.search(r"[^A-Za-z0-9]", value):
+        raise ValueError("Password must contain a special character")
+    return value
 
 
 class TenantCreate(BaseModel):
@@ -95,7 +110,7 @@ class RegisterResponse(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -113,9 +128,19 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=128)
 
+    @field_validator("new_password")
+    @classmethod
+    def _new_password(cls, v: str) -> str:
+        return validate_strong_password(v)
+
 
 class ChangePasswordRequiredRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def _new_password(cls, v: str) -> str:
+        return validate_strong_password(v)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -126,6 +151,19 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     code: str = Field(min_length=6, max_length=6)
     new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("Code must be 6 digits")
+        return v
+
+    @field_validator("new_password")
+    @classmethod
+    def _new_password(cls, v: str) -> str:
+        return validate_strong_password(v)
 
 
 class ForgotPasswordResponse(BaseModel):
@@ -162,6 +200,14 @@ class MfaSetupResponse(BaseModel):
 class MfaVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("Code must be 6 digits")
+        return v
+
 
 class MfaVerifyResponse(BaseModel):
     message: str
@@ -172,10 +218,26 @@ class MfaValidateRequest(BaseModel):
     email: str
     code: str = Field(min_length=6, max_length=6)
 
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("Code must be 6 digits")
+        return v
+
 
 class MfaDisableRequest(BaseModel):
     password: str
     code: str = Field(min_length=6, max_length=6)
+
+    @field_validator("code")
+    @classmethod
+    def _code(cls, v: str) -> str:
+        v = v.strip()
+        if not re.fullmatch(r"\d{6}", v):
+            raise ValueError("Code must be 6 digits")
+        return v
 
 
 class RecoverAccountRequest(BaseModel):

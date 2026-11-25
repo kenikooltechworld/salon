@@ -81,9 +81,22 @@ class AuthController:
     async def login(
         self, data: LoginRequest, request: Request, response: Response
     ) -> dict:
+        from app.services.registration_service import PendingVerificationError
+
         enforce_rate_limit(request, "auth:login", limit=10, window_seconds=600)
         enforce_rate_limit(request, "auth:login:email", limit=10, window_seconds=600, identifier=str(data.email).lower())
-        user = await self.auth_service.authenticate(data)
+        try:
+            user = await self.auth_service.authenticate(data)
+        except PendingVerificationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "message": str(exc),
+                    "code": "EMAIL_NOT_VERIFIED",
+                    "requires_verification": True,
+                    "email": exc.email,
+                },
+            )
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"

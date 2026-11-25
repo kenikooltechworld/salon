@@ -22,6 +22,14 @@ MAX_ATTEMPTS = 5
 LOCK_MINUTES = 15
 
 
+class PendingVerificationError(ValueError):
+    """Raised when a registration exists but email is not yet verified."""
+
+    def __init__(self, email: str, message: str = "Email verification pending. Please verify your email."):
+        self.email = email
+        super().__init__(message)
+
+
 def _norm_phone(phone: str) -> str:
     return re.sub(r"[\s\-()]", "", phone.strip())
 
@@ -51,10 +59,12 @@ class RegistrationService:
 
         existing_temp = await self.session.execute(select(TempRegistration).where(TempRegistration.email == email))
         temp = existing_temp.scalar_one_or_none()
+        already_pending = temp is not None and temp.expires_at >= now
         if temp and temp.expires_at < now:
             await self.session.delete(temp)
             await self.session.flush()
             temp = None
+            already_pending = False
 
         subdomain = await generate_unique_subdomain(self.session, data["salon_name"])
         code = "".join(str(random.randint(0, 9)) for _ in range(6))
@@ -82,6 +92,8 @@ class RegistrationService:
             )
             self.session.add(temp)
         else:
+            if temp.locked_until and temp.locked_until > now:
+                raise ValueError("Too many failed attempts. Try again later")
             temp.phone = phone
             temp.salon_name = data["salon_name"].strip()
             temp.owner_name = data["owner_name"].strip()
@@ -105,6 +117,8 @@ class RegistrationService:
             "temp_registration_id": str(temp.id),
             "email": temp.email,
             "expires_at": temp.verification_code_expires.isoformat(),
+            "pending_verification": already_pending,
+            "requires_verification": True,
         }
 
     async def verify_code(self, email: str, code: str) -> dict:

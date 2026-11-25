@@ -6,6 +6,7 @@ import { authService } from "@/features/auth";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { TrustIndicators } from "@/components/auth/TrustIndicators";
 import { toaster } from "@/components/ui/toaster";
+import { getApiErrorMessage } from "@/lib/utils/auth-validation";
 
 export default function MfaVerifyPage() {
   const navigate = useNavigate();
@@ -19,17 +20,17 @@ export default function MfaVerifyPage() {
 
   const handleVerify = async () => {
     setError("");
-    if (method !== "backup" && code.length !== 6) { setError("Please enter a 6-digit code"); return; }
-    if (method === "backup" && !code) { setError("Please enter a backup code"); return; }
+    if (method !== "backup" && !/^\d{6}$/.test(code)) { setError("Enter a valid 6-digit code"); return; }
+    if (method === "backup" && !code.trim()) { setError("Backup code is required"); return; }
     setIsLoading(true);
     try {
-      await api.post("/auth/mfa/validate", { email, code });
+      await api.post("/auth/mfa/validate", { email, code: code.trim() });
       localStorage.removeItem("mfaEmail");
       await authService.loadSession();
       toaster.create({ title: "Verified", type: "success" });
       navigate("/dashboard");
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || "Invalid code. Please try again.");
+      setError(getApiErrorMessage(err, "Invalid code. Please try again."));
     } finally {
       setIsLoading(false);
     }

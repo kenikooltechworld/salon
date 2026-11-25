@@ -6,6 +6,7 @@ import { TrustIndicators } from "@/components/auth/TrustIndicators";
 import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { toaster } from "@/components/ui/toaster";
 import { useResendVerificationCode, useVerifyRegistrationCode } from "@/hooks/useRegistration";
+import { getApiErrorMessage } from "@/lib/utils/auth-validation";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export default function VerifyEmailPage() {
 
   const handleVerify = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (code.length !== 6) { setError("Please enter all 6 digits"); return; }
+    if (!/^\d{6}$/.test(code)) { setError("Enter a valid 6-digit code"); return; }
     setError("");
     try {
       const response = await verifyMutation.mutateAsync({ email, code });
@@ -39,7 +40,7 @@ export default function VerifyEmailPage() {
       });
       toaster.create({ title: "Registration verified", description: "Your account has been created successfully.", type: "success" });
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || err?.message || "Failed to verify code. Please try again.";
+      const msg = getApiErrorMessage(err, "Failed to verify code. Please try again.");
       setError(msg);
       toaster.create({ title: "Verification Failed", description: msg, type: "error" });
     }
@@ -53,8 +54,9 @@ export default function VerifyEmailPage() {
       setResendCountdown(60);
       toaster.create({ title: "Code sent", description: "Verification code resent to your email.", type: "success" });
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || err?.message || "Failed to resend code.";
+      const msg = getApiErrorMessage(err, "Failed to resend code.");
       setError(msg);
+      toaster.create({ title: "Failed to resend code", description: msg, type: "error" });
     }
   };
 

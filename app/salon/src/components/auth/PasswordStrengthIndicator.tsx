@@ -15,6 +15,7 @@ export function PasswordStrengthIndicator({ password, showRequirements = true }:
     { ok: req.uppercase, label: "One uppercase letter" },
     { ok: req.lowercase, label: "One lowercase letter" },
     { ok: req.number, label: "One number" },
+    { ok: req.special, label: "One special character" },
   ];
   return (
     <VStack align="stretch" gap="2">

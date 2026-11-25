@@ -8,19 +8,35 @@ export interface PasswordStrength {
   percentage: number;
 }
 
+export const PASSWORD_RULES = {
+  minLength: 8,
+  uppercase: /[A-Z]/,
+  lowercase: /[a-z]/,
+  number: /[0-9]/,
+  special: /[^A-Za-z0-9]/,
+};
+
 export function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+export function validatePhone(phone: string): boolean {
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+  return /^\+?[0-9]{7,20}$/.test(cleaned);
+}
+
+export function normalizePhone(phone: string): string {
+  return phone.replace(/[\s\-()]/g, "").trim();
 }
 
 export function calculatePasswordStrength(password: string): PasswordStrength {
   let score = 0;
   if (!password) return { score: 0, label: "Very Weak", color: "red", percentage: 0 };
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  const req = getPasswordRequirements(password);
+  if (req.length) score++;
+  if (req.uppercase && req.lowercase) score++;
+  if (req.number) score++;
+  if (req.special) score++;
   score = Math.min(score, 4) as 0 | 1 | 2 | 3 | 4;
   const map: Record<number, PasswordStrength> = {
     0: { score: 0, label: "Very Weak", color: "red", percentage: 20 },
@@ -34,10 +50,37 @@ export function calculatePasswordStrength(password: string): PasswordStrength {
 
 export function getPasswordRequirements(password: string) {
   return {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^a-zA-Z0-9]/.test(password),
+    length: password.length >= PASSWORD_RULES.minLength,
+    uppercase: PASSWORD_RULES.uppercase.test(password),
+    lowercase: PASSWORD_RULES.lowercase.test(password),
+    number: PASSWORD_RULES.number.test(password),
+    special: PASSWORD_RULES.special.test(password),
   };
+}
+
+export function validatePassword(password: string): string | null {
+  const req = getPasswordRequirements(password);
+  if (!req.length) return "Password must be at least 8 characters";
+  if (!req.uppercase) return "Password must contain an uppercase letter";
+  if (!req.lowercase) return "Password must contain a lowercase letter";
+  if (!req.number) return "Password must contain a number";
+  if (!req.special) return "Password must contain a special character";
+  return null;
+}
+
+export function getApiErrorMessage(err: any, fallback = "Something went wrong. Please try again."): string {
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d: any) => {
+        const loc = Array.isArray(d.loc) ? d.loc.filter((x: string) => x !== "body") : [];
+        const field = loc.length ? `${loc[loc.length - 1].toString().replace(/_/g, " ")}: ` : "";
+        return `${field}${d.msg || "Invalid value"}`;
+      })
+      .join(", ");
+  }
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && typeof detail.message === "string") return detail.message;
+  if (typeof err?.message === "string" && err.message) return err.message;
+  return fallback;
 }

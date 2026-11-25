@@ -38,7 +38,10 @@ async def register(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except EmailDeliveryError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send verification email. Please try again.") from exc
-    return RegisterResponse(success=True, message="Verification code sent to your email", data=result)
+    message = "Verification code sent to your email"
+    if result.get("pending_verification"):
+        message = "Email already pending verification. A new verification code has been sent."
+    return RegisterResponse(success=True, message=message, data=result)
 
 
 @router.post("/verify-code", response_model=VerifyCodeResponse)

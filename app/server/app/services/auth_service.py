@@ -79,9 +79,21 @@ class AuthService:
         return tenant, user
 
     async def authenticate(self, data: LoginRequest) -> Optional[User]:
-        result = await self.session.execute(select(User).where(User.email == data.email))
+        from app.services.registration_service import PendingVerificationError
+        from app.models.temp_registration import TempRegistration
+
+        email = str(data.email).lower().strip()
+        result = await self.session.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if user is None:
+            temp_result = await self.session.execute(select(TempRegistration).where(TempRegistration.email == email))
+            temp = temp_result.scalar_one_or_none()
+            now = datetime.now(timezone.utc)
+            if temp is not None and temp.expires_at >= now:
+                if temp.locked_until is not None and temp.locked_until > now:
+                    raise PendingVerificationError(email, "Too many failed attempts. Try again later")
+                if verify_password(data.password, temp.password_hash):
+                    raise PendingVerificationError(email)
             return None
         if user.status != "active":
             return None
