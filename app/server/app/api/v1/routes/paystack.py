@@ -6,15 +6,14 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.controllers.payment_controller import PaymentController
-from app.lib.deps import db_session, get_current_user, require_roles
-from app.lib.rate_limit import enforce_rate_limit
-from app.lib.tenant_context import require_public_tenant
-from app.models.payment import Payment as PaymentModel
+from app.lib.deps import db_session, get_current_user
 from app.models.tenant import Tenant
-from app.schemas.payment import PaymentCreate, PaymentRead
+from app.models.user import User
 from app.services.paystack_service import PaystackService
 
 router = APIRouter(prefix="/paystack", tags=["paystack"])
@@ -47,10 +46,6 @@ async def register_subaccount(
     Subscribers should set percentage_charge=0 (no platform fee).
     Free users set percentage_charge=<platform fee %>, e.g. 10.
     """
-    from pydantic import BaseModel
-
-    tenant_id = current_user.tenant_id
-
     pss = PaystackService()
     try:
         result = await pss.create_subaccount(
@@ -108,8 +103,6 @@ async def initialize_payment(
 
     Uses the tenant's registered Paystack subaccount for automatic split.
     """
-    from pydantic import BaseModel
-
     tenant_id = current_user.tenant_id
     tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
     if tenant is None:
