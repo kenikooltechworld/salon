@@ -1,7 +1,7 @@
 ﻿import { useCurrency } from "@/components/ui/naira";
 import { useEffect, useState } from "react";
 import { Avatar, Box, Button, Checkbox, Dialog, Field, Flex, Grid, HStack, IconButton, Image, Input, NativeSelect, Portal, Stack, Text, Textarea } from "@chakra-ui/react";
-import { LuPlus, LuX } from "react-icons/lu";
+import { LuChevronDown, LuPlus, LuX } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { useCreateService, useCreateServiceCategory, useUpdateService, useUpdateServiceCategory, type Service, type ServiceCategory } from "@/features/services";
 import { useImageUpload } from "@/hooks/useImageUpload";
@@ -46,9 +46,11 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
   const upload = useImageUpload({ folder: "salon-services" });
   const isEdit = !!service?.id;
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
   const [form, setForm] = useState<any>({});
   useEffect(() => {
     if (!open) return;
+    setStaffOpen(false);
     upload.clearPreview();
     setForm(service ? {
       name: service.name, description: service.description || "", duration_minutes: service.duration_minutes, price: String(service.price),
@@ -112,25 +114,33 @@ export function ServiceFormDialog({ open, onOpenChange, service, categories, sta
 
       <Box>
         <Text fontSize="sm" fontWeight="medium" mb="2">Assigned Staff</Text>
-        <Box borderWidth="1px" rounded="md" maxH="48" overflowY="auto" divideY="1px">
-          {staff.length === 0 ? <Text fontSize="sm" color="fg.muted" p="3">No staff members found.</Text> : staff.map((s:any) => {
-            const id = s.id;
-            const checked = (form.staff_ids||[]).includes(id);
-            const name = getStaffDisplayName(s);
-            const specialties = Array.isArray(s.specialties) ? s.specialties : [];
-            return <Flex key={id} as="label" align="center" gap="3" px="3" py="2" cursor="pointer" bg={checked?"brand.subtle":"transparent"} _hover={{ bg: checked?"brand.subtle":"bg.muted" }}>
-              <Checkbox.Root checked={checked} onCheckedChange={() => toggleStaff(id)}>
-                <Checkbox.HiddenInput />
-                <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-              </Checkbox.Root>
-              <Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(s)} /><Avatar.Fallback name={name} /></Avatar.Root>
-              <Box flex="1" minW="0">
-                <Text fontSize="sm" fontWeight="medium" truncate>{name}</Text>
-                {specialties.length > 0 && <Text fontSize="xs" color="fg.muted" truncate>{specialties.join(", ")}</Text>}
-              </Box>
-            </Flex>;
-          })}
+        <Box position="relative">
+          <Button w="full" variant="outline" justifyContent="space-between" onClick={() => setStaffOpen((v) => !v)}>
+            <Text fontSize="sm" fontWeight="normal" truncate>{(form.staff_ids||[]).length > 0 ? `${(form.staff_ids||[]).length} staff member${(form.staff_ids||[]).length === 1 ? "" : "s"} selected` : "Select staff members"}</Text>
+            <LuChevronDown />
+          </Button>
+          {staffOpen && (
+            <Box position="absolute" top="calc(100% + 4px)" left="0" right="0" zIndex="20" borderWidth="1px" rounded="md" bg="bg.panel" shadow="md" p="3" maxH="240px" overflowY="auto">
+              {staff.length === 0 ? <Text fontSize="sm" color="fg.muted">No staff members found.</Text> : <Stack gap="2">
+                {staff.map((s:any) => {
+                  const id = s.id;
+                  const checked = (form.staff_ids||[]).includes(id);
+                  const name = getStaffDisplayName(s);
+                  const specialties = Array.isArray(s.specialties) ? s.specialties : [];
+                  return <HStack key={id} as="label" align="start" cursor="pointer">
+                    <input type="checkbox" checked={checked} onChange={() => toggleStaff(id)} style={{ marginTop: 3 }} />
+                    <Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(s)} /><Avatar.Fallback name={name} /></Avatar.Root>
+                    <Box>
+                      <Text fontSize="sm" fontWeight="medium">{name}</Text>
+                      {specialties.length > 0 && <Text fontSize="xs" color="fg.muted">{specialties.join(", ")}</Text>}
+                    </Box>
+                  </HStack>;
+                })}
+              </Stack>}
+            </Box>
+          )}
         </Box>
+        {(form.staff_ids||[]).length > 0 && <HStack wrap="wrap" mt="2" gap="2">{(form.staff_ids||[]).map((sid:string) => { const s = staff.find((x:any)=>x.id===sid); const name = s ? getStaffDisplayName(s) : sid; return <HStack key={sid} borderWidth="1px" rounded="full" px="2" py="1" gap="1"><Text fontSize="xs">{name}</Text><IconButton aria-label="Remove staff" size="2xs" variant="ghost" onClick={() => toggleStaff(sid)}><LuX /></IconButton></HStack>; })}</HStack>}
       </Box>
 
       <Box borderTopWidth="1px" pt="4">
