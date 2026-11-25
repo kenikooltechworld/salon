@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     cloudflare_r2_public_url: str = Field(default="", alias="CLOUDFLARE_R2_PUBLIC_URL")
     cloudflare_r2_bucket: str = Field(default="kenikool-salon", alias="CLOUDFLARE_R2_BUCKET")
 
+    cloudinary_cloud_name: str = Field(default="", alias="CLOUDINARY_CLOUD_NAME")
+    cloudinary_api_key: str = Field(default="", alias="CLOUDINARY_API_KEY")
+    cloudinary_api_secret: str = Field(default="", alias="CLOUDINARY_API_SECRET")
+
     jwt_secret_key: str = Field(
         default="dev-jwt-secret-change-in-production",
         alias="JWT_SECRET_KEY",

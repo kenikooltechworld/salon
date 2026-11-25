@@ -6,10 +6,14 @@ import logging
 import mimetypes
 import uuid
 
-import boto3
-from botocore.config import Config
-
 from app.config import settings
+
+try:
+    import cloudinary
+    import cloudinary.uploader
+    CLOUDINARY_AVAILABLE = True
+except ImportError:
+    CLOUDINARY_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 FILE_SIZE_LIMITS = {"image": 5 * 1024 * 1024, "document": 10 * 1024 * 1024}
@@ -39,16 +43,27 @@ class MediaUploadError(Exception):
     pass
 
 
-def _client():
-    if not all([settings.cloudflare_access_key, settings.cloudflare_secret_access_key, settings.cloudflare_s3_api_endpoint, settings.cloudflare_r2_bucket]):
-        raise MediaUploadError("Cloudflare R2 storage is not configured")
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.cloudflare_s3_api_endpoint,
-        aws_access_key_id=settings.cloudflare_access_key,
-        aws_secret_access_key=settings.cloudflare_secret_access_key,
-        region_name="auto",
-        config=Config(signature_version="s3v4"),
+def _configure_cloudinary() -> None:
+    if not CLOUDINARY_AVAILABLE:
+        raise MediaUploadError(
+            "Cloudinary is not installed. Install it with: pip install cloudinary"
+        )
+    if not all(
+        [
+            settings.cloudinary_cloud_name,
+            settings.cloudinary_api_key,
+            settings.cloudinary_api_secret,
+        ]
+    ):
+        raise MediaUploadError(
+            "Missing Cloudinary credentials. Set CLOUDINARY_CLOUD_NAME, "
+            "CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET."
+        )
+    cloudinary.config(
+        cloud_name=settings.cloudinary_cloud_name,
+        api_key=settings.cloudinary_api_key,
+        api_secret=settings.cloudinary_api_secret,
+        secure=True,
     )
 
 
@@ -97,6 +112,8 @@ def _detect_document_type(data: bytes, base64_data: str) -> tuple[str, str]:
 
 
 def upload_media(base64_data: str, media_type: str = "image", folder: str = "salon-media", tenant_id: str | None = None) -> str:
+    _configure_cloudinary()
+
     try:
         raw = base64_data.split(",", 1)[1] if "," in base64_data else base64_data
         data = base64.b64decode(raw, validate=False)
@@ -107,8 +124,6 @@ def upload_media(base64_data: str, media_type: str = "image", folder: str = "sal
     if len(data) > max_size:
         raise MediaUploadError(f"File exceeds {max_size // (1024 * 1024)}MB limit")
 
-    ext = "bin"
-    content_type = "application/octet-stream"
     if media_type == "image":
         try:
             from PIL import Image
@@ -123,17 +138,33 @@ def upload_media(base64_data: str, media_type: str = "image", folder: str = "sal
     else:
         raise MediaUploadError("Unsupported media type")
 
-    key = f"{folder.strip('/')}/{tenant_id or 'public'}/{uuid.uuid4().hex}.{ext}"
-    try:
-        client = _client()
-        client.put_object(Bucket=settings.cloudflare_r2_bucket, Key=key, Body=data, ContentType=content_type)
-    except MediaUploadError:
-        raise
-    except Exception as e:
-        logger.exception("R2 upload failed")
-        raise MediaUploadError("Image upload failed") from e
+    folder_path = folder.strip("/")
+    if tenant_id:
+        folder_path = f"{folder_path}/{tenant_id}"
 
-    public_base = settings.cloudflare_r2_public_url.rstrip("/")
-    if not public_base:
-        raise MediaUploadError("Cloudflare R2 public URL is not configured")
-    return f"{public_base}/{key}"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    try:
+        if media_type == "image":
+            result = cloudinary.uploader.upload(
+                io.BytesIO(data),
+                folder=folder_path,
+                public_id=filename.rsplit(".", 1)[0],
+                resource_type="image",
+                quality="auto",
+                fetch_format="auto",
+            )
+        else:
+            result = cloudinary.uploader.upload(
+                io.BytesIO(data),
+                folder=folder_path,
+                public_id=filename.rsplit(".", 1)[0],
+                resource_type="raw",
+            )
+    except Exception as e:
+        logger.exception("Cloudinary upload failed")
+        raise MediaUploadError("Media upload failed") from e
+
+    secure_url = result.get("secure_url") or result.get("url")
+    if not secure_url:
+        raise MediaUploadError("Cloudinary upload returned no URL")
+    return secure_url

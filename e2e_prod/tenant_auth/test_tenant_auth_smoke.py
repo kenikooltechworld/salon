@@ -122,3 +122,6 @@ def test_prod_ui_register_redirects_to_verify(page, prod_config, identity):
 
     expect(page).to_have_url(re.compile(r"/auth/verify\?email="), timeout=30000)
     expect(page.get_by_role("heading", name=re.compile("Verify", re.I))).to_be_visible(timeout=30000)
+
+
+# is there any method or logic that said if tenant is created there subdomain should not be accessible without publishing? 
