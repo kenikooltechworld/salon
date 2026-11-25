@@ -73,12 +73,12 @@ async def update_service(
     return await controller.update(current_user.tenant_id, current_user.id, service_id, data)
 
 
-@router.delete("/{service_id}", response_model=ServiceRead)
+@router.delete("/{service_id}")
 async def delete_service(
     service_id: uuid.UUID,
     current_user: User = Depends(require_roles("owner","admin","manager")),
     session: AsyncSession = Depends(db_session),
 ):
-    """Soft-delete a service (marks inactive, preserves history)."""
+    """Permanent delete if no records; otherwise deactivates service to preserve history."""
     controller = ServiceController(session)
     return await controller.delete(current_user.tenant_id, current_user.id, service_id)

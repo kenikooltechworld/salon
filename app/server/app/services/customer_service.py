@@ -139,19 +139,30 @@ class CustomerService:
             return None
 
         cid_str = str(customer_id)
-        deleted: dict[str, int] = {}
+        related: dict[str, int] = {}
+        for name, stmt in [
+            ("appointment_history", select(func.count()).select_from(AppointmentHistory).where(AppointmentHistory.tenant_id == tenant_id, AppointmentHistory.customer_id == customer_id)),
+            ("appointments", select(func.count()).select_from(Appointment).where(Appointment.tenant_id == tenant_id, Appointment.customer_id == cid_str)),
+            ("invoices", select(func.count()).select_from(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.customer_id == customer_id)),
+            ("payments", select(func.count()).select_from(Payment).where(Payment.tenant_id == tenant_id, Payment.customer_id == customer_id)),
+        ]:
+            count = int((await self.session.execute(stmt)).scalar_one() or 0)
+            if count:
+                related[name] = count
+        if related:
+            customer.status = "inactive"
+            await self.session.flush()
+            return {
+                "action": "deactivated",
+                "customer_id": cid_str,
+                "customer_name": f"{customer.first_name} {customer.last_name}",
+                "related_records": related,
+                "customer_deactivated": True,
+            }
 
-        # App has no full legacy domain parity for all models; cascade what exists.
-        res = await self.session.execute(delete(AppointmentHistory).where(AppointmentHistory.tenant_id == tenant_id, AppointmentHistory.customer_id == customer_id))
-        deleted["appointment_history"] = res.rowcount or 0
+        deleted: dict[str, int] = {}
         res = await self.session.execute(delete(CustomerPreference).where(CustomerPreference.tenant_id == tenant_id, CustomerPreference.customer_id == cid_str))
         deleted["customer_preferences"] = res.rowcount or 0
-        res = await self.session.execute(delete(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.customer_id == customer_id))
-        deleted["invoices"] = res.rowcount or 0
-        res = await self.session.execute(delete(Payment).where(Payment.tenant_id == tenant_id, Payment.customer_id == customer_id))
-        deleted["payments"] = res.rowcount or 0
-        res = await self.session.execute(delete(Appointment).where(Appointment.tenant_id == tenant_id, Appointment.customer_id == cid_str))
-        deleted["appointments"] = res.rowcount or 0
         res = await self.session.execute(
             delete(Notification).where(
                 Notification.tenant_id == tenant_id,
@@ -164,6 +175,7 @@ class CustomerService:
         await self.session.delete(customer)
         await self.session.flush()
         return {
+            "action": "deleted",
             "customer_id": cid_str,
             "customer_name": f"{customer.first_name} {customer.last_name}",
             "deleted_records": deleted,

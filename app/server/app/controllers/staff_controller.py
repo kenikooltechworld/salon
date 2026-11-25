@@ -61,11 +61,20 @@ class StaffController:
         return StaffRead.model_validate(item)
 
     async def delete(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict:
-        ok = await self.service.delete(tenant_id, staff_id)
-        if not ok:
+        result = await self.service.delete(tenant_id, staff_id)
+        if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
         await self.session.commit()
-        return {"message": "Staff member terminated successfully"}
+        if result.get("action") == "deleted":
+            return {"message": "Staff member permanently deleted", **result}
+        return {"message": "Staff member terminated successfully", **result}
+
+    async def terminate(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict:
+        result = await self.service.terminate(tenant_id, staff_id)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
+        await self.session.commit()
+        return {"message": "Staff member terminated successfully", **result}
 
     async def upload_certificate(self, tenant_id: uuid.UUID, staff_id: uuid.UUID, base64_data: str) -> dict:
         from app.services.media_service import upload_media, MediaUploadError

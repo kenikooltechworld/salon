@@ -91,19 +91,36 @@ class ServiceService:
         await self.session.refresh(service)
         return service
 
-    async def delete(self, tenant_id: uuid.UUID, service_id: uuid.UUID) -> bool:
-        """Soft-delete: mark service inactive to preserve history."""
+    async def delete(self, tenant_id: uuid.UUID, service_id: uuid.UUID) -> dict | None:
+        """Permanent delete if no records; otherwise deactivate to preserve history."""
         service = await self.get(tenant_id, service_id)
         if service is None:
-            return False
-        previous_staff_ids = list(service.staff_ids or [])
-        service.is_active = False
-        service.allow_public_booking = False
-        service.staff_ids = []
+            return None
+        from app.models.appointment import Appointment
+        from app.models.appointment_history import AppointmentHistory
+        from app.models.service_commission import ServiceCommission
+        records: dict[str, int] = {}
+        for name, stmt in [
+            ("appointments", select(func.count()).select_from(Appointment).where(Appointment.tenant_id == tenant_id, Appointment.service_id == str(service_id))),
+            ("appointment_history", select(func.count()).select_from(AppointmentHistory).where(AppointmentHistory.tenant_id == tenant_id, AppointmentHistory.service_id == service_id)),
+            ("commissions", select(func.count()).select_from(ServiceCommission).where(ServiceCommission.tenant_id == tenant_id, ServiceCommission.service_id == service_id)),
+        ]:
+            count = int((await self.session.execute(stmt)).scalar_one() or 0)
+            if count:
+                records[name] = count
+        if records:
+            previous_staff_ids = list(service.staff_ids or [])
+            service.is_active = False
+            service.allow_public_booking = False
+            service.staff_ids = []
+            await self.session.flush()
+            await self._sync_staff_service_links(tenant_id, service.id, [], previous_staff_ids=previous_staff_ids)
+            await self.session.refresh(service)
+            return {"action": "deactivated", "id": str(service.id), "related_records": records}
+
+        await self.session.delete(service)
         await self.session.flush()
-        await self._sync_staff_service_links(tenant_id, service.id, [], previous_staff_ids=previous_staff_ids)
-        await self.session.refresh(service)
-        return True
+        return {"action": "deleted", "id": str(service_id)}
 
     async def _ensure_unique_name(
         self, tenant_id: uuid.UUID, name: str, *, exclude_id: uuid.UUID | None = None

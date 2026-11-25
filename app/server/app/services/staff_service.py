@@ -243,11 +243,83 @@ class StaffService:
             return None
         return await self.update(tenant_id, row.id, data)
 
-    async def delete(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> bool:
+    async def _has_records(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict[str, int]:
+        from app.models.appointment import Appointment
+        from app.models.appointment_history import AppointmentHistory
+        from app.models.attendance import AttendanceRecord
+        from app.models.goal import Goal, GoalAchievement
+        from app.models.service_commission import ServiceCommission
+        from app.models.shift import Shift
+        from app.models.time_off_request import TimeOffRequest
+
+        sid = str(staff_id)
+        checks: dict[str, int] = {}
+        for name, stmt in [
+            ("appointments", select(func.count()).select_from(Appointment).where(Appointment.tenant_id == tenant_id, Appointment.staff_id == sid)),
+            ("appointment_history", select(func.count()).select_from(AppointmentHistory).where(AppointmentHistory.tenant_id == tenant_id, AppointmentHistory.staff_id == staff_id)),
+            ("commissions", select(func.count()).select_from(ServiceCommission).where(ServiceCommission.tenant_id == tenant_id, ServiceCommission.staff_id == staff_id)),
+            ("attendance_records", select(func.count()).select_from(AttendanceRecord).where(AttendanceRecord.tenant_id == tenant_id, AttendanceRecord.staff_id == sid)),
+            ("shifts", select(func.count()).select_from(Shift).where(Shift.tenant_id == tenant_id, Shift.staff_id == sid)),
+            ("time_off_requests", select(func.count()).select_from(TimeOffRequest).where(TimeOffRequest.tenant_id == tenant_id, TimeOffRequest.staff_id == sid)),
+            ("goals", select(func.count()).select_from(Goal).where(Goal.tenant_id == tenant_id, Goal.staff_id == sid)),
+            ("goal_achievements", select(func.count()).select_from(GoalAchievement).where(GoalAchievement.tenant_id == tenant_id, GoalAchievement.staff_id == sid)),
+        ]:
+            count = int((await self.session.execute(stmt)).scalar_one() or 0)
+            if count:
+                checks[name] = count
+        return checks
+
+    async def terminate(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict | None:
         staff = await self.get(tenant_id, staff_id)
         if staff is None:
-            return False
+            return None
         staff.status = "terminated"
+        staff.is_available_for_public_booking = False
         await self._sync_service_staff_ids(tenant_id, [], staff.id)
+        try:
+            uid = uuid.UUID(str(staff.user_id))
+            user = (await self.session.execute(select(User).where(User.id == uid, User.tenant_id == tenant_id))).scalar_one_or_none()
+            if user and str(user.role).lower() not in {"owner"}:
+                user.status = "inactive"
+        except Exception:
+            pass
         await self.session.flush()
-        return True
+        await self.session.refresh(staff)
+        return {"id": str(staff.id), "status": staff.status, "action": "terminated"}
+
+    async def delete(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> dict | None:
+        staff = await self.get(tenant_id, staff_id)
+        if staff is None:
+            return None
+        records = await self._has_records(tenant_id, staff_id)
+        if records:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Staff has related records and cannot be permanently deleted. Terminate the staff member to preserve history.",
+                    "action": "terminate_required",
+                    "related_records": records,
+                },
+            )
+        await self._sync_service_staff_ids(tenant_id, [], staff.id)
+        # remove staff-only records
+        from app.models.availability import Availability
+        from app.models.staff_settings import StaffSettings
+        await self.session.execute(select(Availability).where(Availability.tenant_id == tenant_id, Availability.staff_id == str(staff_id)).execution_options(synchronize_session=False))
+        # delete availability/staff settings
+        from sqlalchemy import delete as sqldelete
+        await self.session.execute(sqldelete(Availability).where(Availability.tenant_id == tenant_id, Availability.staff_id == str(staff_id)))
+        await self.session.execute(sqldelete(StaffSettings).where(StaffSettings.tenant_id == tenant_id, StaffSettings.user_id == str(staff.user_id)))
+        # delete user if no other staff profile and not owner
+        try:
+            uid = uuid.UUID(str(staff.user_id))
+            user = (await self.session.execute(select(User).where(User.id == uid, User.tenant_id == tenant_id))).scalar_one_or_none()
+            if user and str(user.role).lower() != "owner":
+                other_staff = (await self.session.execute(select(func.count()).select_from(Staff).where(Staff.tenant_id == tenant_id, Staff.user_id == str(user.id), Staff.id != staff_id))).scalar_one()
+                if int(other_staff or 0) == 0:
+                    await self.session.delete(user)
+        except Exception:
+            pass
+        await self.session.delete(staff)
+        await self.session.flush()
+        return {"id": str(staff_id), "action": "deleted"}

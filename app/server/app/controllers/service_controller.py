@@ -102,21 +102,28 @@ class ServiceController:
         await self._notify_staff(tenant_id, list(item.staff_ids or []), notification_type="service.updated", title="Service updated", content=f'Service "{item.name}" was updated.', data={"service_id": str(item.id)})
         return ServiceRead.model_validate(item)
 
-    async def delete(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, service_id: uuid.UUID) -> ServiceRead:
+    async def delete(self, tenant_id: uuid.UUID, actor_id: uuid.UUID, service_id: uuid.UUID) -> dict:
         item = await self.service.get(tenant_id, service_id)
         if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
-        await self.service.delete(tenant_id, service_id)
+        read = ServiceRead.model_validate(item).model_dump()
+        result = await self.service.delete(tenant_id, service_id)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
         await self.session.flush()
+        action = result.get("action")
         await self.notifications.create(
             tenant_id,
             NotificationCreate(
                 recipient_id=actor_id,
-                notification_type="service.deleted",
-                title="Service deactivated",
-                content=f'Service "{item.name}" was deactivated.',
-                data={"service_id": str(item.id)},
+                notification_type="service.deleted" if action == "deleted" else "service.deactivated",
+                title="Service deleted" if action == "deleted" else "Service deactivated",
+                content=f'Service "{item.name}" was {"permanently deleted" if action == "deleted" else "deactivated because it has related records"}.',
+                data={"service_id": str(item.id), **result},
             ),
         )
-        await self.session.refresh(item)
-        return ServiceRead.model_validate(item)
+        await self.session.commit()
+        if action == "deactivated":
+            await self.session.refresh(item)
+            read = ServiceRead.model_validate(item).model_dump()
+        return {"message": "Service permanently deleted" if action == "deleted" else "Service has related records and was deactivated to preserve history", **result, "service": read}

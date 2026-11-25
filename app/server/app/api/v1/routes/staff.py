@@ -98,6 +98,16 @@ async def delete_staff(
     return await controller.delete(current_user.tenant_id, staff_id)
 
 
+@router.post("/{staff_id}/terminate")
+async def terminate_staff(
+    staff_id: uuid.UUID,
+    current_user: User = Depends(require_roles("owner", "admin", "manager")),
+    session: AsyncSession = Depends(db_session),
+):
+    controller = StaffController(session)
+    return await controller.terminate(current_user.tenant_id, staff_id)
+
+
 @router.post("/{staff_id}/certificates")
 async def upload_staff_certificate(
     staff_id: uuid.UUID,

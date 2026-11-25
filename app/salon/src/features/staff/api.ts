@@ -17,6 +17,7 @@ export const staffApi = {
   create: (payload: StaffPayload) => apiClient.post<Staff>("/staff", payload),
   update: (id: string, payload: Partial<StaffPayload>) => apiClient.put<Staff>(`/staff/${id}`, payload),
   remove: (id: string) => apiClient.delete(`/staff/${id}`),
+  terminate: (id: string) => apiClient.post(`/staff/${id}/terminate`),
   getByUser: (userId: string) => apiClient.get<Staff>(`/staff/user/${userId}`),
   metrics: (id: string) => apiClient.get(`/staff/${id}/metrics`),
   activityFeed: (id: string, limit = 10) => apiClient.get(`/staff/${id}/activity-feed`, { params: { limit } }),

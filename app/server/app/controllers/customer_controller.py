@@ -65,10 +65,14 @@ class CustomerController:
         if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
         await self.session.commit()
+        if result.get("action") == "deactivated":
+            return {
+                "message": "Customer has related records and was deactivated to preserve history",
+                **result,
+            }
         return {
-            "message": "Customer and all related data deleted successfully",
-            "deleted_records": result.get("total_related_records_deleted", 0),
-            "details": result.get("deleted_records", {}),
+            "message": "Customer permanently deleted",
+            **result,
         }
 
     async def resend_portal_invitation(self, tenant_id: uuid.UUID, customer_id: uuid.UUID) -> dict:

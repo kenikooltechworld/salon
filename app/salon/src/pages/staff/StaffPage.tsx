@@ -1,11 +1,11 @@
 ﻿import { useState } from "react";
 import { Badge, Box, Button, Card, Flex, Grid, Heading, HStack, IconButton, Image, Input, NativeSelect, Skeleton, Stack, Text } from "@chakra-ui/react";
-import { LuPencil, LuPlus, LuSearch, LuTrash2 } from "react-icons/lu";
+import { LuPencil, LuPlus, LuSearch, LuTrash2, LuUserX } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { toaster } from "@/components/ui/toaster";
 import { useAuthStore } from "@/features/auth";
 import { formatNaira } from "@/components/ui/naira";
-import { useDeleteStaff, useStaff, type Staff } from "@/features/staff";
+import { useDeleteStaff, useStaff, useTerminateStaff, type Staff } from "@/features/staff";
 import { StaffFormDialog } from "@/components/staff/StaffFormDialog";
 import { Dialog, Portal } from "@chakra-ui/react";
 
@@ -13,10 +13,10 @@ const canManage = (role?: string) => ["owner", "admin", "manager"].includes((rol
 function statusColor(status: string) { return status === "active" ? "green" : status === "inactive" ? "gray" : status === "on_leave" ? "orange" : "red"; }
 function statusLabel(status: string) { return status.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "); }
 
-function ConfirmDialog({ open, onOpenChange, title, desc, onConfirm, loading }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; desc: string; onConfirm: () => void; loading?: boolean }) {
+function ConfirmDialog({ open, onOpenChange, title, desc, confirmLabel, confirmColor = "red", onConfirm, loading }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; desc: string; confirmLabel: string; confirmColor?: string; onConfirm: () => void; loading?: boolean }) {
   return <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)}><Portal><Dialog.Backdrop /><Dialog.Positioner><Dialog.Content>
-    <Dialog.Header><Dialog.Title>{title}</Dialog.Title></Dialog.Header><Dialog.Body><Text color="fg.muted">{desc}</Text></Dialog.Body>
-    <Dialog.Footer><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button colorPalette="red" loading={loading} onClick={onConfirm}>Delete</Button></Dialog.Footer>
+    <Dialog.Header><Dialog.Title>{title}</Dialog.Title></Dialog.Header><Dialog.Body><Text color="fg.muted" whiteSpace="pre-wrap">{desc}</Text></Dialog.Body>
+    <Dialog.Footer><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button colorPalette={confirmColor} loading={loading} onClick={onConfirm}>{confirmLabel}</Button></Dialog.Footer>
   </Dialog.Content></Dialog.Positioner></Portal></Dialog.Root>;
 }
 
@@ -29,11 +29,36 @@ export default function StaffPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | null>(null);
   const [del, setDel] = useState<Staff | null>(null);
+  const [term, setTerm] = useState<Staff | null>(null);
   const { data, isLoading } = useStaff({ page: 1, page_size: 100, status: status || undefined });
   const delMut = useDeleteStaff();
+  const termMut = useTerminateStaff();
   const staff = data?.staff || [];
   const filtered = staff.filter((m) => { const q = search.toLowerCase().trim(); if (!q) return true; return `${m.firstName} ${m.lastName} ${m.email}`.toLowerCase().includes(q); });
-  const onDelete = async () => { if (!del) return; try { await delMut.mutateAsync(del.id); toaster.create({ title: "Staff deleted", type: "success" }); setDel(null); } catch (e: any) { toaster.create({ title: "Delete failed", description: e?.response?.data?.detail || e?.message, type: "error" }); } };
+  const onDelete = async () => {
+    if (!del) return;
+    try {
+      const res = await delMut.mutateAsync(del.id);
+      const action = (res as any)?.data?.action;
+      toaster.create({ title: action === "deleted" ? "Staff permanently deleted" : "Staff deactivated", description: (res as any)?.data?.message, type: "success" });
+      setDel(null);
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      const msg = typeof detail === "string" ? detail : detail?.message || e?.message || "Delete failed";
+      toaster.create({ title: detail?.action === "terminate_required" ? "Cannot permanently delete staff" : "Delete failed", description: msg, type: detail?.action === "terminate_required" ? "warning" : "error" });
+      if (detail?.action === "terminate_required") { setTerm(del); setDel(null); }
+    }
+  };
+  const onTerminate = async () => {
+    if (!term) return;
+    try {
+      const res = await termMut.mutateAsync(term.id);
+      toaster.create({ title: "Staff terminated", description: (res as any)?.data?.message || "Staff member terminated and removed from active assignments. Historical records were preserved.", type: "success" });
+      setTerm(null);
+    } catch (e: any) {
+      toaster.create({ title: "Terminate failed", description: e?.response?.data?.detail || e?.message, type: "error" });
+    }
+  };
 
   return <Stack gap="6">
     <Flex justify="space-between" gap="4" direction={{ base: "column", md: "row" }} align={{ md: "center" }}>
@@ -52,13 +77,14 @@ export default function StaffPage() {
             <Flex justify="space-between" gap="2" align="start"><Box minW="0"><Heading size="sm" lineClamp="1">{m.firstName} {m.lastName}</Heading><Text fontSize="sm" color="fg.muted" lineClamp="1">{m.email}</Text></Box><Badge colorPalette={statusColor(m.status)}>{statusLabel(m.status)}</Badge></Flex>
             <Text fontSize="sm" color="fg.muted" lineClamp="2">{m.bio || "No bio provided."}</Text>
             <Flex justify="space-between" fontSize="sm"><Text color="fg.muted">Payment</Text><Text fontWeight="medium">{m.payment_type === "commission" ? `${Number(m.payment_rate)}%` : formatNaira(m.payment_rate)}</Text></Flex>
-            <HStack justify="space-between"><Text fontSize="xs" color="fg.muted" lineClamp="1">{(m.specialties || []).slice(0, 2).join(", ") || "No specialties"}</Text>{manage && <HStack gap="1" onClick={(e) => e.stopPropagation()}><IconButton aria-label="Edit" size="xs" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><LuPencil /></IconButton><IconButton aria-label="Delete" size="xs" variant="ghost" colorPalette="red" onClick={() => setDel(m)}><LuTrash2 /></IconButton></HStack>}</HStack>
+            <HStack justify="space-between"><Text fontSize="xs" color="fg.muted" lineClamp="1">{(m.specialties || []).slice(0, 2).join(", ") || "No specialties"}</Text>{manage && <HStack gap="1" onClick={(e) => e.stopPropagation()}><IconButton aria-label="Edit" size="xs" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><LuPencil /></IconButton>{m.status !== "terminated" && <IconButton aria-label="Terminate" size="xs" variant="ghost" colorPalette="orange" onClick={() => setTerm(m)}><LuUserX /></IconButton>}<IconButton aria-label="Delete permanently" size="xs" variant="ghost" colorPalette="red" onClick={() => setDel(m)}><LuTrash2 /></IconButton></HStack>}</HStack>
           </Stack></Card.Body>
         </Card.Root>
       ))}
     </Grid>
     {!isLoading && filtered.length === 0 && <Box textAlign="center" py="10" color="fg.muted">No staff members found</Box>}
     <StaffFormDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }} initial={editing} />
-    <ConfirmDialog open={!!del} onOpenChange={(v) => !v && setDel(null)} title="Delete Staff Member" desc={`Are you sure you want to delete ${del?.firstName || ""} ${del?.lastName || ""}?`} onConfirm={onDelete} loading={delMut.isPending} />
+    <ConfirmDialog open={!!term} onOpenChange={(v) => !v && setTerm(null)} title="Terminate Staff Member" desc={`Terminate ${term?.firstName || ""} ${term?.lastName || ""}? They will be removed from active assignments and public booking, but appointments, commissions, attendance, and other historical records will be preserved.`} confirmLabel="Terminate" confirmColor="orange" onConfirm={onTerminate} loading={termMut.isPending} />
+    <ConfirmDialog open={!!del} onOpenChange={(v) => !v && setDel(null)} title="Permanently Delete Staff Member" desc={`Permanently delete ${del?.firstName || ""} ${del?.lastName || ""}? This is only allowed when they have no related records. If records exist, deletion will be blocked and you can terminate instead.`} confirmLabel="Delete Permanently" confirmColor="red" onConfirm={onDelete} loading={delMut.isPending} />
   </Stack>;
 }

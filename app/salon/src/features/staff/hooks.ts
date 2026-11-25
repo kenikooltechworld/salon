@@ -48,6 +48,14 @@ export function useDeleteStaff() {
   });
 }
 
+export function useTerminateStaff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => staffApi.terminate(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: staffKeys.all }),
+  });
+}
+
 export function useStaffMetrics(id?: string) {
   return useQuery({ queryKey: staffKeys.metrics(id || ""), queryFn: async () => (await staffApi.metrics(id!)).data, enabled: !!id });
 }
