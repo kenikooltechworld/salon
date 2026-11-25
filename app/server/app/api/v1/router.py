@@ -30,6 +30,8 @@ from app.api.v1.routes import staff as staff_routes
 from app.api.v1.routes import staff_settings as staff_settings_routes
 from app.api.v1.routes import time_off_requests as time_off_request_routes
 from app.api.v1.routes import tenants as tenant_routes
+from app.api.v1.routes import webhooks as webhook_routes
+from app.api.v1.routes import paystack as paystack_routes
 
 api_router = APIRouter()
 api_router.include_router(health_routes.router)
@@ -60,3 +62,5 @@ api_router.include_router(time_off_request_routes.router)
 api_router.include_router(availability_routes.router)
 api_router.include_router(attendance_routes.router)
 api_router.include_router(goals_routes.router)
+api_router.include_router(webhook_routes.router)
+api_router.include_router(paystack_routes.router)

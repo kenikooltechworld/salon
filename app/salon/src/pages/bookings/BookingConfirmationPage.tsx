@@ -8,12 +8,19 @@ export default function BookingConfirmationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const booking = (location.state as any)?.booking;
+  const detail = (location.state as any)?.detail;
 
   useEffect(() => { if (!booking) navigate("/bookings", { replace: true }); }, [booking, navigate]);
   if (!booking) return null;
 
   const start = booking.start_time ? new Date(booking.start_time) : null;
   const ref = String(booking.id || "").slice(-8).toUpperCase();
+
+  const totalPrice = detail?.totalPrice ?? Number(booking?.price || 0);
+  const serviceName = detail?.serviceName || "";
+  const staffName = detail?.staffName || "";
+  const addonNames = detail?.addonNames ?? [];
+  const packageName = detail?.packageName || "";
 
   return <Box minH="60vh" display="flex" alignItems="center" justifyContent="center" p="4">
     <Card.Root maxW="lg" w="full"><Card.Body>
@@ -25,7 +32,12 @@ export default function BookingConfirmationPage() {
           {start && <HStack justify="space-between"><Text color="fg.muted">Date</Text><Text fontWeight="medium">{start.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</Text></HStack>}
           {start && <HStack justify="space-between"><Text color="fg.muted">Time</Text><Text fontWeight="medium">{start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text></HStack>}
           <HStack justify="space-between"><Text color="fg.muted">Status</Text><Text fontWeight="medium" textTransform="capitalize">{String(booking.status || "scheduled").replace(/_/g, " ")}</Text></HStack>
-          {booking.price != null && <HStack justify="space-between"><Text color="fg.muted">Price</Text><Text fontWeight="medium">{formatNaira(booking.price)}</Text></HStack>}
+          <HStack justify="space-between"><Text color="fg.muted">Total Price</Text><Text fontWeight="medium">{formatNaira(totalPrice)}</Text></HStack>
+          {serviceName && <HStack justify="space-between"><Text color="fg.muted">Service</Text><Text fontWeight="medium">{serviceName}</Text></HStack>}
+          {staffName && <HStack justify="space-between"><Text color="fg.muted">Staff</Text><Text fontWeight="medium">{staffName}</Text></HStack>}
+          {start && <HStack justify="space-between"><Text color="fg.muted">Date & Time</Text><Text fontWeight="medium">{start.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })} {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text></HStack>}
+          {addonNames.length > 0 && <HStack justify="space-between"><Text color="fg.muted">Add-ons</Text><Text fontWeight="medium">{addonNames.join(", ")}</Text></HStack>}
+          {packageName && <HStack justify="space-between"><Text color="fg.muted">Package</Text><Text fontWeight="medium">{packageName}</Text></HStack>}
         </Stack>
         <HStack gap="3" w="full" flexWrap="wrap"><Button flex="1" colorPalette="brand" onClick={() => navigate("/bookings")}><LuCalendarCheck2 /> View All Bookings</Button><Button flex="1" variant="outline" onClick={() => navigate("/bookings/new")}>Create Another</Button></HStack>
       </Stack>

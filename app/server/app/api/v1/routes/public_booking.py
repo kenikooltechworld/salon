@@ -1,6 +1,7 @@
 """Public booking routes (host/subdomain tenant context)."""
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date
 
@@ -100,6 +101,36 @@ async def get_public_booking(booking_id: uuid.UUID, request: Request, session: A
 
 
 def _booking_read(appt) -> PublicBookingRead:
+    # Extract booking metadata (addon_ids, package info) from notes JSON marker
+    notes_meta: dict = {}
+    notes = appt.notes or ""
+    if "[booking_meta:" in notes and notes.rstrip().endswith("]"):
+        try:
+            start = notes.find("[booking_meta:") + len("[booking_meta:")
+            end = notes.rfind("]")
+            if start < end:
+                notes_meta = json.loads(notes[start:end])
+        except Exception:
+            notes_meta = {}
+
+    addon_ids: list[uuid.UUID] = []
+    addon_names: list[str] = []
+    addon_prices: list[float] = []
+    for aid in notes_meta.get("addon_ids") or []:
+        addon_ids.append(uuid.UUID(str(aid)))
+        # resolve names/prices
+    for i, aid in enumerate(notes_meta.get("addon_ids") or []):
+        addon_ids.append(uuid.UUID(str(aid)))
+        addon_names.append(str(notes_meta.get("addon_names", [""])[i]) if isinstance(notes_meta.get("addon_names"), list) and len(notes_meta.get("addon_names")) > i else "")
+        addon_prices.append(float(notes_meta.get("addon_prices", [0])[i]) if isinstance(notes_meta.get("addon_prices"), list) and len(notes_meta.get("addon_prices")) > i else 0.0)
+
+    service = None
+    staff = None
+    if notes_meta.get("service_name"):
+        service = {"name": notes_meta.get("service_name")}
+    if notes_meta.get("staff_name"):
+        staff = {"name": notes_meta.get("staff_name")}
+
     return PublicBookingRead(
         id=appt.id,
         tenant_id=appt.tenant_id,
@@ -113,9 +144,19 @@ def _booking_read(appt) -> PublicBookingRead:
         booking_time=appt.start_time.strftime("%H:%M"),
         duration_minutes=int((appt.end_time - appt.start_time).total_seconds() // 60),
         status=appt.status,
-        notes=appt.notes,
+        notes=notes,
         payment_option=appt.payment_option,
         payment_status=appt.payment_status,
+        addon_ids=addon_ids,
+        package_id=uuid.UUID(str(notes_meta["package_id"])) if notes_meta.get("package_id") else None,
+        total_price=float(appt.price or 0),
+        service_name=notes_meta.get("service_name"),
+        service_price=float(appt.price or 0) if notes_meta.get("service_name") else None,
+        staff_name=notes_meta.get("staff_name"),
+        addon_names=addon_names,
+        addon_prices=addon_prices,
+        package_name=notes_meta.get("package_name"),
+        package_price=float(notes_meta.get("package_price", 0)) if notes_meta.get("package_name") else None,
         created_at=appt.created_at,
         updated_at=appt.updated_at,
     )

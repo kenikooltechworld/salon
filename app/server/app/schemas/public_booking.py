@@ -53,6 +53,8 @@ class PublicBookingCreate(BaseModel):
     customer_phone: str = Field(min_length=3, max_length=32)
     notes: str | None = Field(default=None, max_length=1000)
     payment_option: str | None = Field(default="later", pattern=r"^(now|later)$")
+    addon_ids: list[uuid.UUID] = Field(default_factory=list)
+    package_id: uuid.UUID | None = None
 
 
 class PublicBookingRead(BaseModel):
@@ -71,6 +73,16 @@ class PublicBookingRead(BaseModel):
     notes: str | None = None
     payment_option: str | None = None
     payment_status: str | None = None
+    addon_ids: list[uuid.UUID] = Field(default_factory=list)
+    package_id: uuid.UUID | None = None
+    total_price: float = 0.0
+    service_name: str | None = None
+    service_price: float | None = None
+    staff_name: str | None = None
+    addon_names: list[str] = Field(default_factory=list)
+    addon_prices: list[float] = Field(default_factory=list)
+    package_name: str | None = None
+    package_price: float | None = None
     created_at: datetime
     updated_at: datetime
 

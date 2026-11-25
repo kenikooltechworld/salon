@@ -85,6 +85,11 @@ class Settings(BaseSettings):
         default=30, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
     )
 
+    paystack_secret_key: str = Field(default="", alias="PAYSTACK_SECRET_KEY")
+    paystack_public_key: str = Field(default="", alias="PAYSTACK_PUBLIC_KEY")
+    paystack_webhook_secret: str = Field(default="", alias="PAYSTACK_WEBHOOK_SECRET")
+    paystack_base_url: str = Field(default="https://api.paystack.co", alias="PAYSTACK_BASE_URL")
+
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parent.parent / ".env"),
         env_file_encoding="utf-8",

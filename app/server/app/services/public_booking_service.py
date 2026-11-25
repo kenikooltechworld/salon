@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
@@ -12,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.service import Service
+from app.models.service_addon import ServiceAddon
+from app.models.service_package import ServicePackage
 from app.models.staff import Staff
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.schemas.public_booking import PublicBookingCreate
+from app.schemas.public_booking import PublicBookingCreate, PublicBookingRead
 from app.services.availability_service import AvailabilityService
 
 
@@ -77,6 +80,44 @@ class PublicBookingService:
         if not service.allow_public_booking:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This service does not allow public bookings")
 
+        # Fetch addons if provided
+        addons: list[ServiceAddon] = []
+        if data.addon_ids:
+            addon_result = await self.session.execute(
+                select(ServiceAddon).where(
+                    ServiceAddon.id.in_(data.addon_ids),
+                    ServiceAddon.tenant_id == tenant_id,
+                    ServiceAddon.is_active.is_(True),
+                )
+            )
+            addons = list(addon_result.scalars().all())
+            # Validate all addons are applicable to this service
+            applicable_ids = set(data.addon_ids)
+            found_ids = {a.id for a in addons}
+            if found_ids != applicable_ids:
+                missing = applicable_ids - found_ids
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Some add-ons are not available: {', '.join(str(x) for x in missing)}")
+
+        # Fetch package if provided
+        package: ServicePackage | None = None
+        if data.package_id:
+            pkg_result = await self.session.execute(
+                select(ServicePackage).where(
+                    ServicePackage.id == data.package_id,
+                    ServicePackage.tenant_id == tenant_id,
+                    ServicePackage.is_active.is_(True),
+                )
+            )
+            package = pkg_result.scalar_one_or_none()
+            if package is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Package not found or inactive")
+            # Validate package validity
+            now = datetime.now(timezone.utc)
+            if package.valid_from and package.valid_from > now:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Package is not yet available")
+            if package.valid_until and package.valid_until < now:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Package has expired")
+
         booking_time = datetime.strptime(data.booking_time, "%H:%M").time()
         booking_dt = datetime.combine(data.booking_date, booking_time, tzinfo=timezone.utc)
         duration = int(data.duration_minutes or service.duration_minutes)
@@ -90,12 +131,40 @@ class PublicBookingService:
         if not any(s["time"] == data.booking_time and s["available"] for s in slots):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected time slot is not available")
 
-        key = idempotency_key or hashlib.sha256(f"{tenant_id}:{data.customer_email}:{data.booking_date}:{data.booking_time}:{data.service_id}:{data.staff_id}".encode()).hexdigest()
+        # Compute total price
+        total_price = float(service.price or 0)
+        addons_total = 0.0
+        if package:
+            total_price = float(package.package_price or 0)
+        else:
+            for addon in addons:
+                addons_total += float(addon.price or 0)
+                total_price += float(addon.price or 0)
+
+        key = idempotency_key or hashlib.sha256(f"{tenant_id}:{data.customer_email}:{data.booking_date}:{data.booking_time}:{data.service_id}:{data.staff_id}:{','.join(map(str, data.addon_ids))}:{data.package_id}".encode()).hexdigest()
         existing = (await self.session.execute(select(Appointment).where(Appointment.tenant_id == tenant_id, Appointment.idempotency_key == key))).scalar_one_or_none()
         if existing:
             return existing
 
         customer = await self._get_or_create_guest_customer(tenant_id, data.customer_name, str(data.customer_email), data.customer_phone)
+
+        # Store addon/package info in notes as JSON metadata
+        notes_meta = ""
+        if data.notes:
+            notes_meta = data.notes
+        if addons or package:
+            import json
+            meta = {}
+            if addons:
+                meta["addon_ids"] = [str(a.id) for a in addons]
+                meta["addon_names"] = [a.name for a in addons]
+                meta["addon_prices"] = [float(a.price) for a in addons]
+            if package:
+                meta["package_id"] = str(package.id)
+                meta["package_name"] = package.name
+                meta["package_price"] = float(package.package_price)
+            meta_json = json.dumps(meta)
+            notes_meta = f"{notes_meta}\n[booking_meta:{meta_json}]" if notes_meta else f"[booking_meta:{meta_json}]"
 
         appt = Appointment(
             tenant_id=tenant_id,
@@ -105,8 +174,8 @@ class PublicBookingService:
             start_time=booking_dt,
             end_time=end_dt,
             status="scheduled",
-            notes=data.notes,
-            price=service.price,
+            notes=notes_meta,
+            price=total_price,
             is_guest=True,
             guest_name=data.customer_name,
             guest_email=str(data.customer_email),
@@ -114,6 +183,7 @@ class PublicBookingService:
             idempotency_key=key,
             payment_option=data.payment_option or "later",
             payment_status="pending" if (data.payment_option or "later") == "now" else None,
+            addons_total=addons_total,
             ip_address=ip_address,
             user_agent=user_agent[:500] if user_agent else None,
         )

@@ -1,4 +1,4 @@
-﻿"""Tenant ORM model."""
+"""Tenant ORM model."""
 from __future__ import annotations
 
 import uuid
@@ -33,5 +33,8 @@ class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     recovery_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     recovery_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     recovery_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    paystack_subaccount_code: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    paystack_percentage_charge: Mapped[float | None] = mapped_column(nullable=True)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
