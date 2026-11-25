@@ -96,6 +96,18 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in value.split(",") if origin.strip()]
 
     @property
+    def cors_origin_regex(self) -> str | None:
+        """Allow tenant subdomain origins on the configured platform domain."""
+        domain = (self.platform_domain or "").strip().lower().strip(".")
+        if not domain:
+            return None
+        escaped = ".".join(part.replace("-", r"\-") for part in domain.split(".") if part)
+        if not escaped:
+            return None
+        # Allow https://<label>.platform.domain and nested tenant labels.
+        return rf"^https://([a-z0-9](?:[a-z0-9\-]{{0,61}}[a-z0-9])?\.)+{escaped}$"
+
+    @property
     def database_url_async(self) -> str:
         return normalize_database_url(self.database_url, async_driver=True)
 

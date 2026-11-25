@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.lib.rate_limit import enforce_rate_limit
 from app.lib.tenant_context import resolve_tenant_from_request
 from app.schemas.public_booking import (
     AvailabilityResponse,
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/public", tags=["public-booking"])
 
 
 async def _ctx(request: Request, session: AsyncSession):
+    enforce_rate_limit(request, "public:request", limit=100, window_seconds=60)
     ctx = await resolve_tenant_from_request(request, session)
     if ctx is None:
         from fastapi import HTTPException, status
@@ -57,6 +59,7 @@ async def public_availability(
 @router.post("/bookings", response_model=PublicBookingRead)
 async def create_public_booking(request: Request, data: PublicBookingCreate, session: AsyncSession = Depends(get_db)):
     ctx = await _ctx(request, session)
+    enforce_rate_limit(request, "public:booking:create", limit=10, window_seconds=60, identifier=f"{ctx.tenant.id}:{request.client.host if request.client else 'unknown'}")
     svc = PublicBookingService(session)
     appt = await svc.create_booking(
         ctx.tenant.id,
