@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -85,8 +85,16 @@ class Settings(BaseSettings):
         default=30, alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS"
     )
 
-    paystack_secret_key: str = Field(default="", alias="PAYSTACK_SECRET_KEY")
-    paystack_public_key: str = Field(default="", alias="PAYSTACK_PUBLIC_KEY")
+    paystack_secret_key: str = Field(
+        default="",
+        alias="PAYSTACK_LIVE_SECRET_KEY",
+        validation_alias=AliasChoices("PAYSTACK_LIVE_SECRET_KEY", "PAYSTACK_SECRET_KEY"),
+    )
+    paystack_public_key: str = Field(
+        default="",
+        alias="PAYSTACK_LIVE_PUBLIC_KEY",
+        validation_alias=AliasChoices("PAYSTACK_LIVE_PUBLIC_KEY", "PAYSTACK_PUBLIC_KEY"),
+    )
     paystack_webhook_secret: str = Field(default="", alias="PAYSTACK_WEBHOOK_SECRET")
     paystack_base_url: str = Field(default="https://api.paystack.co", alias="PAYSTACK_BASE_URL")
     platform_fee_percentage: float = Field(default=15.0, alias="PLATFORM_FEE_PERCENTAGE")
