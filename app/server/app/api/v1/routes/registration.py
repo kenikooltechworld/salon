@@ -1,14 +1,17 @@
 ﻿"""Registration routes for two-phase salon owner registration."""
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.auth_controller import AuthController
 from app.lib.cookies import set_auth_cookies
 from app.lib.deps import db_session
 from app.lib.rate_limit import enforce_rate_limit
-from app.schemas.auth import RegisterResponse as LegacyRegisterResponse
+from app.schemas.auth import RegisterRequest as LegacyRegisterRequest, RegisterResponse as LegacyRegisterResponse
 from app.schemas.registration import (
     RegisterRequest,
     RegisterResponse,
@@ -23,12 +26,39 @@ from app.services.registration_service import RegistrationService
 router = APIRouter(prefix="/auth", tags=["registration"])
 
 
-@router.post("/register", response_model=RegisterResponse)
+@router.post("/register", response_model=None)
 async def register(
-    data: RegisterRequest,
     request: Request,
+    response: Response,
     session: AsyncSession = Depends(db_session),
 ):
+    """
+    Registration endpoint supporting both contracts:
+    - Two-phase: {salon_name, owner_name, email, phone, password, address, ...} -> temp registration + verify code.
+    - Legacy/direct: {tenant: {...}, user: {...}} -> immediate account creation (backward compat).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request body")
+
+    # Legacy/direct contract: {tenant, user}
+    if "tenant" in body and "user" in body:
+        try:
+            data = LegacyRegisterRequest.model_validate(body)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=getattr(exc, "errors", lambda: str(exc))())
+        controller = AuthController(session)
+        result = await controller.register(data, request, response)
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=result.model_dump(mode="json"))
+
+    # Two-phase contract
+    try:
+        data = RegisterRequest.model_validate(body)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=getattr(exc, "errors", lambda: str(exc))())
     enforce_rate_limit(request, "reg:register", limit=5, window_seconds=600)
     enforce_rate_limit(request, "reg:register:email", limit=3, window_seconds=3600, identifier=str(data.email).lower())
     service = RegistrationService(session)
@@ -41,7 +71,7 @@ async def register(
     message = "Verification code sent to your email"
     if result.get("pending_verification"):
         message = "Email already pending verification. A new verification code has been sent."
-    return RegisterResponse(success=True, message=message, data=result)
+    return RegisterResponse(success=True, message=message, data=result).model_dump(mode="json")
 
 
 @router.post("/verify-code", response_model=VerifyCodeResponse)

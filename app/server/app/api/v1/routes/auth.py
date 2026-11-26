@@ -35,7 +35,7 @@ from app.schemas.registration import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=201)
+@router.post("/register", response_model=RegisterResponse, status_code=201, deprecated=True, include_in_schema=False)
 async def register(
     data: RegisterRequest,
     request: Request,
@@ -43,22 +43,9 @@ async def register(
     session: AsyncSession = Depends(db_session),
 ):
     """
-    Legacy/direct registration contract. The two-phase registration flow is also available
-    at POST /auth/register with {salon_name,owner_name,email,phone,password,address,...}
-    and is handled by registration_routes (included first in the v1 router).
+    Deprecated duplicate. Registration is handled by registration_routes (included first)
+    and supports both two-phase and legacy {tenant,user} contracts.
     """
-    controller = AuthController(session)
-    return await controller.register(data, request, response)
-
-
-@router.post("/register/direct", response_model=RegisterResponse, status_code=201)
-async def register_direct(
-    data: RegisterRequest,
-    request: Request,
-    response: Response,
-    session: AsyncSession = Depends(db_session),
-):
-    """Explicit direct registration endpoint (legacy contract)."""
     controller = AuthController(session)
     return await controller.register(data, request, response)
 
