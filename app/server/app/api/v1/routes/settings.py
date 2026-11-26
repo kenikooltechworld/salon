@@ -20,7 +20,7 @@ from app.services.tenant_settings_service import (
     financial_settings_payload,
     operational_settings_payload,
     reset_tenant_settings,
-    tenant_settings_payload,
+    tenant_settings_payload_async,
     update_commission_settings,
     update_financial_settings,
     update_operational_settings,
@@ -40,7 +40,7 @@ async def get_settings(current_user: User = Depends(get_current_user), session: 
     tenant = await TenantService.get_tenant(session, current_user.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
-    return tenant_settings_payload(tenant)
+    return await tenant_settings_payload_async(session, tenant)
 
 
 @router.put("/settings")
@@ -70,14 +70,18 @@ async def get_billing_subscription(current_user: User = Depends(get_current_user
     tenant = await TenantService.get_tenant(session, current_user.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
-    payload = tenant_settings_payload(tenant)["data"]
+    payload = (await tenant_settings_payload_async(session, tenant))["data"]
     return {
         "data": {
             "plan_name": payload.get("plan_name"),
             "billing_cycle": payload.get("billing_cycle"),
             "status": payload.get("status"),
-            "subscription_status": payload.get("status"),
+            "subscription_status": payload.get("subscription_status"),
             "subscription_tier": payload.get("subscription_tier"),
+            "trial_end": payload.get("trial_end"),
+            "next_billing_date": payload.get("next_billing_date"),
+            "current_period_end": payload.get("current_period_end"),
+            "is_trial": payload.get("is_trial"),
         }
     }
 

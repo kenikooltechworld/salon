@@ -46,7 +46,7 @@ export default function RegisterSuccessPage() {
           </Box>
           <Box bg="brand.50" _dark={{ bg: "brand.900/30" }} borderWidth="1px" borderColor="brand.200" p="4" rounded="lg">
             <Text fontSize="sm" fontWeight="medium" color="brand.700" _dark={{ color: "brand.200" }} mb="1">🎁 30-Day Free Trial</Text>
-            <Text fontSize="sm" color="fg.muted">You have access to all Enterprise features for 30 days. No credit card required.</Text>
+            <Text fontSize="sm" color="fg.muted">Your trial subscription is active. You have access to trial features for 30 days. No credit card required.</Text>
           </Box>
           <Box>
             <Heading size="sm" mb="2">Quick Start Guide:</Heading>

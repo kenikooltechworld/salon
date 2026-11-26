@@ -2,8 +2,10 @@
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.subscription import Subscription
 from app.models.tenant import Tenant
 from app.schemas.tenant_settings import (
     CommissionSettingsSchema,
@@ -30,19 +32,41 @@ def _subdomain_url(tenant: Tenant) -> str:
     return f"https://{tenant.subdomain}.{domain}"
 
 
-def _subscription_payload(tenant: Tenant) -> dict[str, Any]:
+def _subscription_payload(tenant: Tenant, subscription: Subscription | None = None) -> dict[str, Any]:
     tier = tenant.subscription_tier or "trial"
     status = tenant.status or "active"
     billing_cycle = "monthly" if tier != "trial" else "trial"
-    return {
+    payload = {
         "plan_name": tier.capitalize(),
-        "plan_tier": {"trial": 0, "starter": 1, "professional": 2, "enterprise": 3}.get(tier, 0),
+        "plan_tier": {"trial": 0, "starter": 1, "professional": 2, "enterprise": 3, "basic": 1, "pro": 2}.get(tier, 0),
         "billing_cycle": billing_cycle,
         "status": status,
+        "subscription_status": status,
+        "trial_end": None,
+        "next_billing_date": None,
+        "current_period_end": None,
+        "is_trial": tier == "trial",
     }
+    if subscription:
+        payload.update({
+            "billing_cycle": subscription.billing_cycle or payload["billing_cycle"],
+            "status": subscription.status or payload["status"],
+            "subscription_status": subscription.subscription_status or payload["subscription_status"],
+            "trial_end": subscription.trial_end.isoformat() if subscription.trial_end else None,
+            "next_billing_date": subscription.next_billing_date.isoformat() if subscription.next_billing_date else None,
+            "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+            "is_trial": bool(subscription.is_trial),
+        })
+    return payload
 
 
-def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
+async def tenant_settings_payload_async(session: AsyncSession, tenant: Tenant) -> dict[str, Any]:
+    result = await session.execute(select(Subscription).where(Subscription.tenant_id == tenant.id))
+    subscription = result.scalar_one_or_none()
+    return tenant_settings_payload(tenant, subscription=subscription)
+
+
+def tenant_settings_payload(tenant: Tenant, subscription: Subscription | None = None) -> dict[str, Any]:
     stored = dict(tenant.settings or {})
     merged = {**DEFAULT_SETTINGS, **stored}
     merged.update({
@@ -56,7 +80,7 @@ def tenant_settings_payload(tenant: Tenant) -> dict[str, Any]:
     })
     schema = TenantSettingsSchema(**merged)
     data = schema.model_dump()
-    sub = _subscription_payload(tenant)
+    sub = _subscription_payload(tenant, subscription=subscription)
     data.update({
         "tenant_id": str(tenant.id),
         "tenant_name": tenant.name,

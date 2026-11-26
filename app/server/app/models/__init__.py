@@ -8,6 +8,7 @@ from .goal import Goal, GoalAchievement
 from .invoice import Invoice
 from .notification import Notification
 from .payment import Payment
+from .pricing_plan import PricingPlan
 from .role import Role
 from .service import Service
 from .service_addon import ServiceAddon
@@ -17,6 +18,7 @@ from .service_package import ServicePackage
 from .shift import Shift
 from .staff import Staff
 from .staff_settings import StaffSettings
+from .subscription import Subscription
 from .temp_registration import TempRegistration
 from .tenant import Tenant
 from .time_off_request import TimeOffRequest
@@ -32,13 +34,16 @@ __all__ = [
     "CustomerPreference",
     "Goal","GoalAchievement","Invoice",
     "Notification",
-    "Payment","Role",
+    "Payment",
+    "PricingPlan",
+    "Role",
     "Service",
     "ServiceAddon",
     "ServiceCategory",
     "ServiceCommission",
     "ServicePackage","Shift",
     "Staff","StaffSettings",
+    "Subscription",
     "TempRegistration",
     "Tenant","TimeOffRequest",
     "TenantMixin",

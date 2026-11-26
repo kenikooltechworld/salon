@@ -15,6 +15,7 @@ from app.models.temp_registration import TempRegistration
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.email_service import send_email, verification_email_html
+from app.services.subscription_service import SubscriptionService
 
 TEMP_TTL_HOURS = 24
 CODE_TTL_MINUTES = 15
@@ -152,14 +153,27 @@ class RegistrationService:
             raise ValueError("Email already registered")
 
         first, last = _split_name(temp.owner_name)
+        now = datetime.now(timezone.utc)
+        trial_end = now + timedelta(days=30)
         tenant = Tenant(
             name=temp.salon_name,
             subdomain=temp.subdomain,
             email=temp.email,
+            phone=temp.phone,
+            address=temp.address,
             status="active",
+            subscription_tier="trial",
+            is_published=True,
+            settings={
+                "trial_end_date": trial_end.isoformat(),
+                "owner_phone": temp.phone,
+                "owner_email": temp.email,
+            },
         )
         self.session.add(tenant)
         await self.session.flush()
+
+        await SubscriptionService.create_trial_subscription(self.session, tenant.id, trial_days=30)
 
         user = User(
             tenant_id=tenant.id,

@@ -16,6 +16,11 @@ export interface TenantSettingsData {
   plan_name?: string;
   plan_tier?: number;
   billing_cycle?: string;
+  subscription_status?: string;
+  trial_end?: string | null;
+  next_billing_date?: string | null;
+  current_period_end?: string | null;
+  is_trial?: boolean;
   salon_name: string;
   email: string;
   phone: string;
