@@ -61,7 +61,7 @@ async def register_subaccount(
     if not subaccount_code:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Paystack did not return subaccount code")
 
-    tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+    tenant = (await session.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))).scalar_one_or_none()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
@@ -89,6 +89,7 @@ async def get_subaccount(
     return SubaccountRegisterResponse(
         subaccount_code=tenant.paystack_subaccount_code or "",
         percentage_charge=tenant.paystack_percentage_charge or 0.0,
+        message="Subaccount details retrieved successfully",
     )
 
 
