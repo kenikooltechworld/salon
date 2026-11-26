@@ -9,9 +9,9 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 ## 1. Post-Verify Bootstrap
 
-- [ ] **Trial subscription creation**. Legacy verifies code then creates a trial subscription via `SubscriptionService.create_trial_subscription(...)`.
+- [x] **Trial subscription creation**. App now creates Free/tier-0 pricing plan if needed and a 30-day trial subscription during registration verify.
   - Legacy: `KenikoolSalon/backend/app/routes/registration.py`, `KenikoolSalon/backend/app/services/registration_service.py`, `KenikoolSalon/backend/app/services/subscription_service.py`, `KenikoolSalon/backend/app/models/subscription.py`, `KenikoolSalon/backend/app/models/pricing_plan.py`
-  - App: `app/server/app/services/registration_service.py` creates only `Tenant` + `User`, deletes `TempRegistration`; no subscription/pricing models or bootstrap.
+  - App: `app/server/app/services/registration_service.py`, `app/server/app/services/subscription_service.py`, `app/server/app/models/subscription.py`, `app/server/app/models/pricing_plan.py`, migration `g1h2i3j4k5l6_add_pricing_plans_and_subscriptions.py`. Live `/billing/subscription` now exposes trial fields.
 
 - [ ] **Default RBAC roles/permissions bootstrap**. Legacy creates default permissions/roles for the tenant and assigns Owner role.
   - Legacy: `KenikoolSalon/backend/app/services/rbac_service.py` (`create_default_roles`, permission/resource/action seeding), `KenikoolSalon/backend/app/services/registration_service.py`
