@@ -28,17 +28,17 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
   - App: `app/server/app/models/temp_registration.py`
   - Gap: `referral_tenant_id` is stored as column but not populated/validated by business logic in inspected app flow.
 
-- [ ] **Tenant lifecycle/subscription fields parity**. Legacy tenant includes deletion/recovery and subscription-tier lifecycle tied to subscription domain.
+- [~] **Tenant lifecycle/subscription fields parity**. App now has `deleted_at`, `deletion_status`, and `recovery_token` (legacy-shaped) plus existing `recovery_token_hash`/expiry/requested fields. Subscription-tier lifecycle is still only partially coupled to the new subscription domain.
   - Legacy: `KenikoolSalon/backend/app/models/tenant.py` (`deleted_at`, `deletion_status`, `recovery_token`, `recovery_token_expires_at`, `subscription_tier` choices incl. trial/starter/professional/enterprise)
-  - App: `app/server/app/models/tenant.py` has `is_published`, `settings`, paystack subaccount fields, `recovery_token_hash`; missing legacy deletion lifecycle fields and subscription domain coupling.
+  - App: `app/server/app/models/tenant.py`, `app/server/app/schemas/auth.py`, migration `j4k5l6m7n8o9_model_parity_tenant_user.py`.
 
-- [ ] **User model parity for registration/onboarding**. 
+- [~] **User model parity for registration/onboarding**. App now has `role_ids`, `specialty`, `last_failed_login`, `password_change_required`; keeps `locked_until` naming (equivalent to legacy account lock timestamp) and email/reset/verification fields.
   - Legacy: `KenikoolSalon/backend/app/models/user.py` has `role_ids`, `specialty`, `last_failed_login`, `account_locked_until`, `password_change_required`
-  - App: `app/server/app/models/user.py` has single `role`, lock/reset/verification fields, `password_change_required`; missing `role_ids`, `specialty`, legacy lock timestamp naming/shape differences.
+  - App: `app/server/app/models/user.py`, `app/server/app/schemas/auth.py`, migrations `h2i3j4k5l6m7_add_user_role_ids.py`, `j4k5l6m7n8o9_model_parity_tenant_user.py`.
 
-- [ ] **Pricing/subscription domain missing**.
+- [~] **Pricing/subscription domain missing**. Core trial bootstrap exists (PricingPlan/Subscription/trial creation + billing fields), but full legacy subscription/pricing lifecycle/admin behavior is not yet complete.
   - Legacy: `KenikoolSalon/backend/app/models/pricing_plan.py`, `KenikoolSalon/backend/app/models/subscription.py`, `KenikoolSalon/backend/app/services/subscription_service.py`
-  - App: no equivalent pricing plan/subscription models/services found in `app/server/app/models` or registration flow.
+  - App: `app/server/app/models/pricing_plan.py`, `app/server/app/models/subscription.py`, `app/server/app/services/subscription_service.py`, migration `g1h2i3j4k5l6_add_pricing_plans_and_subscriptions.py`.
 
 ## 3. Registration Flow / API Contract
 
