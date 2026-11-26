@@ -121,6 +121,17 @@ async def resolve_account(
     )
 
 
+@router.get("/banks", response_model=list[dict[str, Any]])
+async def list_paystack_banks():
+    """List all Paystack-supported banks."""
+    pss = PaystackService()
+    try:
+        data = await pss.list_banks(country="nigeria")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    return data
+
+
 class InitializePaymentRequest(BaseModel):
     amount: Decimal
     customer_email: str

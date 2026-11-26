@@ -4,32 +4,19 @@ import { useNavigate } from "react-router-dom";
 import { LuArrowLeft, LuCheck, LuInfo } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import { DEFAULT_FINANCIAL_SETTINGS, getErrorMessage, normalizeFinancialSettings, normalizePaystackSubaccount, useFinancialSettings, usePaystackSubaccount, useRegisterPaystackSubaccount, useResolvePaystackAccount, useUpdateFinancialSettings, type FinancialSettingsData } from "@/features/settings";
-
-const BANKS = [
-  { code: "044", name: "Access Bank" },
-  { code: "045", name: "Fidelity Bank" },
-  { code: "046", name: "Keystone Bank" },
-  { code: "047", name: "Zenith Bank" },
-  { code: "050", name: "Moniepoint MFB" },
-  { code: "053", name: "Wema Bank" },
-  { code: "057", name: "Guaranty Trust Bank" },
-  { code: "058", name: "First City Monument Bank" },
-  { code: "059", name: "First Bank of Nigeria" },
-  { code: "060", name: "Polaris Bank" },
-  { code: "063", name: "United Bank for Africa" },
-  { code: "070", name: "FCMB" },
-  { code: "071", name: "Unity Bank" },
-  { code: "072", name: "Sterling Bank" },
-  { code: "076", name: "Globus Bank" },
-  { code: "079", name: "Prime Bank" },
-  { code: "084", name: "Providus Bank" },
-  { code: "087", name: "Ecobank Nigeria" },
-  { code: "092", name: "Coronation Merchant Bank" },
-  { code: "093", name: "Premium Merchant Bank" },
-  { code: "094", name: "NPF Microfinance Bank" },
-  { code: "095", name: "OPay" },
-];
+import {
+  DEFAULT_FINANCIAL_SETTINGS,
+  getErrorMessage,
+  normalizeFinancialSettings,
+  normalizePaystackSubaccount,
+  useFinancialSettings,
+  usePaystackBanks,
+  usePaystackSubaccount,
+  useRegisterPaystackSubaccount,
+  useResolvePaystackAccount,
+  useUpdateFinancialSettings,
+  type FinancialSettingsData,
+} from "@/features/settings";
 
 const num = (v: string, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
 const LabelTip = ({ label, tip }: { label: string; tip: string }) => (
@@ -40,6 +27,7 @@ export default function FinancialSettings() {
   const navigate = useNavigate();
   const { data, isLoading: isFinancialLoading, isError } = useFinancialSettings();
   const update = useUpdateFinancialSettings();
+  const banksQ = usePaystackBanks();
 
   const [config, setConfig] = useState<FinancialSettingsData>(DEFAULT_FINANCIAL_SETTINGS);
 
@@ -57,6 +45,8 @@ export default function FinancialSettings() {
 
   if (isFinancialLoading) return <Container maxW="6xl" py="6"><Stack gap="4"><Skeleton h="10" /><Skeleton h="24" /><Skeleton h="24" /><Skeleton h="24" /></Stack></Container>;
   if (isError) return <Container maxW="6xl" py="6"><Card.Root><Card.Body><Stack gap="3"><Text color="fg.error">Failed to load financial settings.</Text><Button variant="outline" onClick={() => navigate("/settings")}>Back to Settings</Button></Stack></Card.Body></Card.Root></Container>;
+
+  const banks = banksQ.data || [];
 
   return (
     <Container maxW="6xl" py="6"><Stack gap="6">
@@ -83,8 +73,9 @@ export default function FinancialSettings() {
 
         <Stack gap="4" pt="6" borderTopWidth="1px">
           <Heading size="md">Account Setup</Heading>
-          <PaystackSubaccountSection />
+          <PaystackSubaccountSection banks={banks} />
         </Stack>
+
         <Stack gap="4" pt="6" borderTopWidth="1px">
           <Heading size="md">Invoice Configuration</Heading>
           <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">
@@ -98,9 +89,9 @@ export default function FinancialSettings() {
       </Stack></Card.Body></Card.Root>
     </Stack></Container>
   );
-};
+}
 
-function PaystackSubaccountSection() {
+function PaystackSubaccountSection({ banks }: { banks: any[] }) {
   const { data, isLoading, isError } = usePaystackSubaccount();
   const registerSubaccount = useRegisterPaystackSubaccount();
   const resolveAccount = useResolvePaystackAccount();
@@ -190,8 +181,8 @@ function PaystackSubaccountSection() {
               style={{ width: "100%", padding: 8 }}
             >
               <option value="">Select your bank</option>
-              {BANKS.map((b) => (
-                <option key={b.code} value={b.code}>{b.name}</option>
+              {banks.map((b) => (
+                <option key={b.code || b.id} value={b.code || b.id}>{b.name}</option>
               ))}
             </select>
           </Box>

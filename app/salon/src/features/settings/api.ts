@@ -21,4 +21,6 @@ export const settingsApi = {
       "/paystack/resolve-account",
       { params: { account_number, bank_code } },
     ),
+  listPaystackBanks: () =>
+    apiClient.get<Array<{ id: number; name: string; code: string; slug: string }>>("/paystack/banks"),
 };

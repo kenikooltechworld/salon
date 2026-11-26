@@ -135,6 +135,17 @@ export function useResolvePaystackAccount() {
   });
 }
 
+export function usePaystackBanks() {
+  return useQuery({
+    queryKey: ["paystack-banks"],
+    queryFn: async () => {
+      const res = await settingsApi.listPaystackBanks();
+      return res.data;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useOperationalSettings() {
   return useQuery({
     queryKey: OPERATIONAL_SETTINGS_KEY,
