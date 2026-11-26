@@ -46,10 +46,10 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
   - Legacy: `KenikoolSalon/backend/app/routes/registration.py` verify returns tokens; sets auth cookies incl. session/csrf-related values via auth service; sends welcome email async.
   - App: `app/server/app/api/v1/routes/registration.py`, `app/server/app/services/registration_service.py`, `app/server/app/services/auth_service.py`, `app/server/app/controllers/auth_controller.py`, `app/server/app/lib/cookies.py`, `app/server/app/lib/security.py`, `app/server/app/models/session.py`, migration `i3j4k5l6m7n8_add_sessions_table.py`.
 
-- [~] **Register endpoint duplication/ambiguity**. App exposes two `/auth/register` implementations.
-  - `app/server/app/api/v1/routes/registration.py`: two-phase temp registration (`RegisterResponse` with `data`).
-  - `app/server/app/api/v1/routes/auth.py`: direct register (`RegisterResponse` with `tenant/user`).
-  - `app/server/app/api/v1/router.py` includes `registration_routes` before `auth_routes`; contract should be clarified to avoid client ambiguity.
+- [x] **Register endpoint duplication/ambiguity**. `/auth/register` now accepts both contracts in `registration_routes` (included first): two-phase `{salon_name,...}` returns temp-registration response; legacy `{tenant,user}` returns legacy `{tenant,user}` 201 response for backward compatibility. Duplicate auth-router register is hidden from schema.
+  - `app/server/app/api/v1/routes/registration.py`: unified contract handling.
+  - `app/server/app/api/v1/routes/auth.py`: legacy duplicate hidden (`deprecated`, `include_in_schema=False`).
+  - `app/server/app/api/v1/router.py` still includes `registration_routes` before `auth_routes`.
 
 - [~] **Email delivery/error behavior differs**.
   - Legacy: sends verification email async/background; route saves temp reg after background send call.
