@@ -15,6 +15,7 @@ from .service_addon import ServiceAddon
 from .service_category import ServiceCategory
 from .service_commission import ServiceCommission
 from .service_package import ServicePackage
+from .session import Session
 from .shift import Shift
 from .staff import Staff
 from .staff_settings import StaffSettings
@@ -41,7 +42,7 @@ __all__ = [
     "ServiceAddon",
     "ServiceCategory",
     "ServiceCommission",
-    "ServicePackage","Shift",
+    "ServicePackage","Session","Shift",
     "Staff","StaffSettings",
     "Subscription",
     "TempRegistration",

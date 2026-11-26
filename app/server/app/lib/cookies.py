@@ -39,22 +39,18 @@ def set_auth_cookies(
     refresh_token: str,
     access_max_age: int,
     refresh_max_age: int,
+    *,
+    csrf_token: str | None = None,
+    session_id: str | None = None,
+    tenant_id: str | None = None,
+    user_id: str | None = None,
 ) -> None:
-    """Set access_token and refresh_token httpOnly cookies."""
+    """Set auth cookies. Includes legacy-compatible session/tenant/user cookies when provided."""
     kwargs = cookie_kwargs(request)
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        max_age=access_max_age,
-        **kwargs,
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        max_age=refresh_max_age,
-        **kwargs,
-    )
-    csrf = request.cookies.get("csrf_token")
+    response.set_cookie(key="access_token", value=access_token, max_age=access_max_age, **kwargs)
+    response.set_cookie(key="refresh_token", value=refresh_token, max_age=refresh_max_age, **kwargs)
+
+    csrf = csrf_token or request.cookies.get("csrf_token")
     if not csrf:
         from app.lib.security import generate_csrf_token
 
@@ -70,10 +66,14 @@ def set_auth_cookies(
         domain=kwargs.get("domain"),
     )
 
+    for key, value in (("session_id", session_id), ("tenant_id", tenant_id), ("user_id", user_id)):
+        if value:
+            response.set_cookie(key=key, value=str(value), max_age=access_max_age, **kwargs)
+
 
 def clear_auth_cookies(response: Response, request: Request) -> None:
     """Delete auth cookies."""
     kwargs = cookie_kwargs(request)
-    for name in ("access_token", "refresh_token"):
+    for name in ("access_token", "refresh_token", "session_id", "tenant_id", "user_id"):
         response.delete_cookie(key=name, **kwargs)
     response.delete_cookie(key="csrf_token", path="/", domain=kwargs.get("domain"))

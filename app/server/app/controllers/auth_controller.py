@@ -63,15 +63,7 @@ class AuthController:
             await self.session.rollback()
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Unable to send verification email. Please try again.") from exc
 
-        access, refresh, _ = self._issue(user)
-        set_auth_cookies(
-            response,
-            request,
-            access_token=access,
-            refresh_token=refresh,
-            access_max_age=settings.jwt_access_token_expire_minutes * 60,
-            refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
-        )
+        await self._issue(user, request=request, response=response)
 
         return RegisterResponse(
             tenant=TenantRead.model_validate(tenant),
@@ -122,15 +114,7 @@ class AuthController:
             )
             return {"mfa_required": True, "message": "MFA required"}
 
-        access, refresh, expires_in = self._issue(user)
-        set_auth_cookies(
-            response,
-            request,
-            access_token=access,
-            refresh_token=refresh,
-            access_max_age=settings.jwt_access_token_expire_minutes * 60,
-            refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
-        )
+        access, refresh, expires_in = await self._issue(user, request=request, response=response)
         return {
             "message": "Logged in successfully",
             "expires_in": expires_in,
@@ -308,15 +292,7 @@ class AuthController:
         kwargs = cookie_kwargs(request)
         response.delete_cookie(key="mfa_pending", **kwargs)
 
-        access, refresh, expires_in = self._issue(user)
-        set_auth_cookies(
-            response,
-            request,
-            access_token=access,
-            refresh_token=refresh,
-            access_max_age=settings.jwt_access_token_expire_minutes * 60,
-            refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
-        )
+        access, refresh, expires_in = await self._issue(user, request=request, response=response)
         return {"message": "Logged in successfully", "expires_in": expires_in}
 
     async def mfa_disable(self, user: User, data: "MfaDisableRequest") -> dict:
@@ -337,12 +313,34 @@ class AuthController:
             tenant=TenantRead.model_validate(tenant),
         )
 
-    def _issue(self, user: User) -> tuple[str, str, int]:
+    async def _issue(self, user: User, *, request: Request | None = None, response: Response | None = None) -> tuple[str, str, int]:
+        permissions = await self.auth_service.get_user_permissions(user)
+        role_ids = [str(r) for r in (user.role_ids or []) if r]
         access = create_access_token(
             user_id=str(user.id),
             tenant_id=str(user.tenant_id),
             email=user.email,
             role=user.role,
+            role_ids=role_ids,
+            permissions=permissions,
         )
         refresh = create_refresh_token(user_id=str(user.id), tenant_id=str(user.tenant_id))
-        return access, refresh, settings.jwt_access_token_expire_minutes * 60
+        expires_in = settings.jwt_access_token_expire_minutes * 60
+        if request is not None and response is not None:
+            from app.lib.security import generate_csrf_token
+            csrf = generate_csrf_token()
+            session = await self.auth_service.create_session(user, request, access_token=access, refresh_token=refresh, csrf_token=csrf)
+            await self.session.commit()
+            set_auth_cookies(
+                response,
+                request,
+                access_token=access,
+                refresh_token=refresh,
+                access_max_age=expires_in,
+                refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
+                csrf_token=csrf,
+                session_id=str(session.id),
+                tenant_id=str(user.tenant_id),
+                user_id=str(user.id),
+            )
+        return access, refresh, expires_in

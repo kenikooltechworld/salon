@@ -66,9 +66,7 @@ async def verify_code(
     user = await auth.get_user_by_id(uuid.UUID(result["user_id"]))
     if user:
         controller = AuthController(session)
-        access, refresh, _ = controller._issue(user)
-        set_auth_cookies(response, request, access, refresh,
-                         access_max_age=60 * 60 * 24, refresh_max_age=60 * 60 * 24 * 30)
+        access, refresh, _ = await controller._issue(user, request=request, response=response)
         result["access_token"] = access
         result["refresh_token"] = refresh
         result["token_type"] = "bearer"

@@ -31,6 +31,8 @@ def create_access_token(
     tenant_id: str,
     email: str,
     role: str = "",
+    role_ids: list[str] | None = None,
+    permissions: list[str] | None = None,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     if expires_delta is None:
@@ -42,6 +44,8 @@ def create_access_token(
         "tenant_id": str(tenant_id),
         "email": email,
         "role": role,
+        "role_ids": [str(r) for r in (role_ids or [])],
+        "permissions": permissions or [],
         "type": "access",
         "iat": now,
         "exp": now + expires_delta,

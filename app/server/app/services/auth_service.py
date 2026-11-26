@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import uuid
-from typing import Optional
+from fastapi import Request
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -264,11 +264,58 @@ class AuthService:
             tenant_id=str(user.tenant_id),
             email=user.email,
             role=user.role,
+            role_ids=[str(r) for r in (user.role_ids or [])],
+            permissions=[],
         )
         refresh = create_refresh_token(user_id=str(user.id), tenant_id=str(user.tenant_id))
         from app.config import settings
 
         return access, refresh, settings.jwt_access_token_expire_minutes * 60
+
+    async def get_user_permissions(self, user: User) -> list[str]:
+        from app.models.role import Role
+        role_ids = [r for r in (user.role_ids or []) if r]
+        if not role_ids:
+            return []
+        rows = (await self.session.execute(select(Role).where(Role.tenant_id == user.tenant_id, Role.id.in_(role_ids)))).scalars().all()
+        perms: list[str] = []
+        for role in rows:
+            for p in (role.permissions or []):
+                if p and p not in perms:
+                    perms.append(str(p))
+        return perms
+
+    async def create_session(
+        self,
+        user: User,
+        request: "Request | None",
+        *,
+        access_token: str,
+        refresh_token: str,
+        csrf_token: str,
+    ):
+        from app.lib.security import hash_token
+        from app.models.session import Session
+
+        ua = (request.headers.get("user-agent") if request else None) or ""
+        ip = (request.client.host if request and request.client else None) or ""
+        fingerprint = hashlib.sha256(f"{ua}:{ip}".encode()).hexdigest()
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        session = Session(
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            token_hash=hash_token(access_token),
+            refresh_token_hash=hash_token(refresh_token),
+            csrf_token_hash=hash_token(csrf_token),
+            expires_at=expires_at,
+            ip_address=ip[:64] or None,
+            user_agent=ua[:512] or None,
+            browser_fingerprint=fingerprint,
+            status="active",
+        )
+        self.session.add(session)
+        await self.session.flush()
+        return session
 
     async def change_password(
         self, user: "User", current_password: str, new_password: str
