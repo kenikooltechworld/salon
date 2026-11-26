@@ -100,17 +100,10 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
   const [form, setForm] = useState({ business_name: "", settlement_bank: "", account_number: "" });
   const [resolving, setResolving] = useState(false);
   const [resolvedAccountName, setResolvedAccountName] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState("");
 
   const normalized = normalizePaystackSubaccount(data);
   const subaccountCode = normalized.subaccount_code;
-
-  if (isLoading) return <Stack gap="4"><Skeleton h="10" /><Skeleton h="64" /></Stack>;
-  if (isError) return (
-    <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
-      <Text color="fg.error">Failed to load account details.</Text>
-      <Button variant="outline" size="sm" mt="3" onClick={() => { void registerSubaccount.mutateAsync(form as never).catch(() => {}); }}>Retry</Button>
-    </Box>
-  );
 
   // Paystack returns the bank NAME in settlement_bank; map it back to the code used by the dropdown.
   const bankCodeFor = (nameOrCode: string | null) => {
@@ -152,18 +145,6 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
     }
   };
 
-  // Resolve the account holder name for the saved account (view mode only).
-  // useEffect(() => {
-  //   if (!subaccountCode || editing || accountHolderName) return;
-  //   const bankCode = bankCodeFor(normalized.settlement_bank_name || normalized.settlement_bank_code);
-  //   if (bankCode && normalized.account_number && normalized.account_number.length === 10) {
-  //     resolveNow(normalized.account_number, bankCode).then((name) => {
-  //       if (name) setAccountHolderName(name);
-  //     });
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [subaccountCode, editing, normalized.settlement_bank_name, normalized.account_number, banks.length]);
-
   const handleSave = async () => {
     if (!form.business_name.trim() || !form.account_number.trim() || !form.settlement_bank.trim()) {
       toaster.create({ title: "Incomplete details", description: "Business name, account number, and bank are required.", type: "error" });
@@ -183,6 +164,26 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
     }
   };
 
+  // Resolve the account holder name for the saved account (view mode only).
+  useEffect(() => {
+    if (!subaccountCode || editing || accountHolderName) return;
+    const bankCode = bankCodeFor(normalized.settlement_bank_name || normalized.settlement_bank_code);
+    if (bankCode && normalized.account_number && normalized.account_number.length === 10) {
+      resolveNow(normalized.account_number, bankCode).then((name) => {
+        if (name) setAccountHolderName(name);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subaccountCode, editing, normalized.settlement_bank_name, normalized.account_number, banks.length]);
+
+  if (isLoading) return <Stack gap="4"><Skeleton h="10" /><Skeleton h="64" /></Stack>;
+  if (isError) return (
+    <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
+      <Text color="fg.error">Failed to load account details.</Text>
+      <Button variant="outline" size="sm" mt="3" onClick={() => { void registerSubaccount.mutateAsync(form as never).catch(() => {}); }}>Retry</Button>
+    </Box>
+  );
+
   const showForm = !subaccountCode || editing;
 
   return (
@@ -194,7 +195,7 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
             <Button size="sm" variant="outline" onClick={startEdit}><LuPencil /> Edit</Button>
           </Flex>
           <Text fontSize="sm">Business Name: <Text as="span" fontWeight="semibold" color="fg">{normalized.business_name || "—"}</Text></Text>
-          <Text fontSize="sm">Account Name: <Text as="span" fontWeight="semibold" color="fg">{resolvedAccountName || "—"}</Text></Text>
+          <Text fontSize="sm">Account Name: <Text as="span" fontWeight="semibold" color="fg">{accountHolderName || resolvedAccountName || "—"}</Text></Text>
           <Text fontSize="sm">Account Number: <Text as="span" fontWeight="semibold" color="fg">{normalized.account_number || "—"}</Text></Text>
           <Text fontSize="sm">Bank: <Text as="span" fontWeight="semibold" color="fg">{normalized.settlement_bank_name || normalized.settlement_bank_code || "—"}</Text></Text>
           <Text fontSize="xs" color="fg.muted">Subaccount: {subaccountCode}</Text>
