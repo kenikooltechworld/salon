@@ -1,0 +1,164 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: bank-verification.spec.ts >> Account setup bank verification >> resolves account name after entering account number and bank
+- Location: tests\bank-verification.spec.ts:17:3
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=f1e1]:
+  - generic [ref=f1e5]:
+    - generic [ref=f1e8]:
+      - link [ref=f1e10] [cursor=pointer]:
+        - /url: /dashboard
+        - img "Kenikool" [ref=f1e11]
+        - paragraph [ref=f1e12]: Kenikool
+      - paragraph [ref=f1e13]: Prince Chaawa
+      - generic [ref=f1e14]:
+        - link [ref=f1e15] [cursor=pointer]:
+          - /url: /dashboard
+          - paragraph [ref=f1e22]: Dashboard
+        - link [ref=f1e23] [cursor=pointer]:
+          - /url: /bookings
+          - paragraph [ref=f1e27]: Bookings
+        - link [ref=f1e28] [cursor=pointer]:
+          - /url: /services
+          - paragraph [ref=f1e36]: Services
+        - link [ref=f1e37] [cursor=pointer]:
+          - /url: /customers
+          - paragraph [ref=f1e44]: Customers
+        - link [ref=f1e45] [cursor=pointer]:
+          - /url: /staff
+          - paragraph [ref=f1e59]: Staff
+        - link [ref=f1e60] [cursor=pointer]:
+          - /url: /profile
+          - paragraph [ref=f1e65]: Profile
+        - link [ref=f1e66] [cursor=pointer]:
+          - /url: /settings
+          - paragraph [ref=f1e71]: Settings
+      - button "Logout" [ref=f1e72] [cursor=pointer]
+    - separator "Resize" [ref=f1e76]
+    - generic [ref=f1e80]:
+      - generic [ref=f1e81]:
+        - generic [ref=f1e82]:
+          - link [ref=f1e83] [cursor=pointer]:
+            - /url: /dashboard
+            - img "Kenikool" [ref=f1e84]
+          - paragraph [ref=f1e85]: Dashboard
+        - generic [ref=f1e86]:
+          - button "Toggle color mode" [ref=f1e87] [cursor=pointer]
+          - generic [ref=f1e94]:
+            - button "Open notifications" [ref=f1e95] [cursor=pointer]
+            - generic: "50"
+          - button "PC Prince Chaawa princechaawa@gmail.com" [ref=f1e99]:
+            - generic [ref=f1e100]: PC
+            - generic [ref=f1e102]:
+              - paragraph [ref=f1e103]: Prince Chaawa
+              - paragraph [ref=f1e104]: princechaawa@gmail.com
+      - generic [ref=f1e107]:
+        - generic [ref=f1e108]:
+          - button "Back" [ref=f1e109] [cursor=pointer]
+          - generic [ref=f1e112]:
+            - heading "Financial Settings" [level=2] [ref=f1e113]
+            - paragraph [ref=f1e114]: "Global financial policies: customer balance, refunds, commission defaults, and invoices."
+        - generic [ref=f1e117]:
+          - generic [ref=f1e118]:
+            - heading "Balance Enforcement" [level=2] [ref=f1e119]
+            - generic [ref=f1e120]:
+              - generic [ref=f1e121]:
+                - generic [ref=f1e122]:
+                  - paragraph [ref=f1e123]: Enable Balance Enforcement
+                  - generic "Balance enforcement info" [ref=f1e124]
+                - paragraph [ref=f1e127]: Applies to customer balance/transactions.
+              - generic [ref=f1e128]:
+                - checkbox [checked] [ref=f1e129]
+                - generic [aria-hidden] [ref=f1e130] [cursor=pointer]
+            - generic [ref=f1e132]:
+              - generic [ref=f1e133]:
+                - paragraph [ref=f1e134]: Minimum Balance Threshold
+                - generic "Customers cannot make transactions below this balance." [ref=f1e135]
+              - spinbutton [ref=f1e138]: "0"
+              - paragraph [ref=f1e139]: Customers cannot make transactions below this balance.
+          - generic [ref=f1e140]:
+            - heading "Refund Policy" [level=2] [ref=f1e141]
+            - generic [ref=f1e142]:
+              - generic [ref=f1e144]:
+                - paragraph [ref=f1e145]: Enable Refund Policy
+                - generic "Refund policy info" [ref=f1e146]
+              - generic [ref=f1e149]:
+                - checkbox [checked] [ref=f1e150]
+                - generic [aria-hidden] [ref=f1e151] [cursor=pointer]
+            - generic [ref=f1e153]:
+              - generic [ref=f1e154]:
+                - paragraph [ref=f1e155]: Refund Window (days)
+                - generic "Number of days after a transaction when refunds are allowed." [ref=f1e156]
+              - spinbutton [ref=f1e159]: "30"
+              - paragraph [ref=f1e160]: Number of days after transaction when refunds are allowed.
+          - generic [ref=f1e161]:
+            - heading "Commission Configuration" [level=2] [ref=f1e162]
+            - generic [ref=f1e163]:
+              - generic [ref=f1e165]:
+                - paragraph [ref=f1e166]: Enable Commission Tracking
+                - generic "Commission tracking info" [ref=f1e167]
+              - generic [ref=f1e170]:
+                - checkbox [checked] [ref=f1e171]
+                - generic [aria-hidden] [ref=f1e172] [cursor=pointer]
+            - generic [ref=f1e174]:
+              - generic [ref=f1e175]:
+                - generic [ref=f1e176]:
+                  - paragraph [ref=f1e177]: Staff Commission (%)
+                  - generic "Default staff commission percentage used for tracking/calculations." [ref=f1e178]
+                - spinbutton [ref=f1e181]: "10"
+              - generic [ref=f1e182]:
+                - generic [ref=f1e183]:
+                  - paragraph [ref=f1e184]: Service Commission (%)
+                  - generic "Default service commission percentage used for tracking/calculations." [ref=f1e185]
+                - spinbutton [ref=f1e188]: "5"
+          - generic [ref=f1e189]:
+            - heading "Account Setup" [level=2] [ref=f1e190]
+            - generic [ref=f1e192]:
+              - generic [ref=f1e193]:
+                - paragraph [ref=f1e194]: Account Number
+                - textbox "Enter 10-digit account number" [active] [ref=f1e195]: "2131955215"
+              - generic [ref=f1e196]:
+                - paragraph [ref=f1e197]: Bank
+                - combobox [ref=f1e198]:
+                  - option "Select your bank" [selected]
+              - generic [ref=f1e199]:
+                - paragraph [ref=f1e200]: Account Name
+                - textbox "Auto-filled from your account" [ref=f1e201]
+              - generic [ref=f1e202]:
+                - paragraph [ref=f1e203]: Business Name
+                - textbox "Displayed on receipts" [ref=f1e204]
+              - button "Save Account" [disabled] [ref=f1e205]
+          - generic [ref=f1e206]:
+            - heading "Invoice Configuration" [level=2] [ref=f1e207]
+            - generic [ref=f1e208]:
+              - generic [ref=f1e209]:
+                - generic [ref=f1e210]:
+                  - paragraph [ref=f1e211]: Invoice Number Prefix
+                  - generic "Prefix prepended to generated invoice numbers, e.g. INV-1001." [ref=f1e212]
+                - textbox "e.g., INV" [ref=f1e215]: INV
+              - generic [ref=f1e216]:
+                - generic [ref=f1e217]:
+                  - paragraph [ref=f1e218]: Starting Invoice Number
+                  - generic "Next invoice sequence number baseline." [ref=f1e219]
+                - spinbutton [ref=f1e222]: "1000"
+            - paragraph [ref=f1e224]:
+              - text: "Example invoice number:"
+              - generic [ref=f1e225]: INV-1000
+          - button "Save Changes" [ref=f1e227] [cursor=pointer]
+  - region "Notifications, bottom-end (alt+T)"
+```

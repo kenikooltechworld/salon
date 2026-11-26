@@ -222,7 +222,7 @@ class PaystackService:
     async def list_banks(self, country: str = "nigeria") -> list[dict[str, Any]]:
         """List all banks supported by Paystack for a country."""
         data = await self._request("GET", f"/bank?country={country}")
-        return data.get("data", [])
+        return data if isinstance(data, list) else []
 
     # ── Customers ─────────────────────────────────────────────────
 
