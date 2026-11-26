@@ -96,6 +96,11 @@ class UserRead(BaseModel):
     last_login: datetime | None = None
     created_at: datetime
 
+    @field_validator("role_ids", mode="before")
+    @classmethod
+    def _role_ids(cls, v):
+        return v or []
+
     model_config = {"from_attributes": True}
 
 
