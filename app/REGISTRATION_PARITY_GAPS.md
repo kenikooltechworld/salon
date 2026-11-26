@@ -42,9 +42,9 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 ## 3. Registration Flow / API Contract
 
-- [~] **Verify response contract differs**. App now sends a non-blocking welcome email and includes `access_token`, `refresh_token`, `token_type` in verify response body while also setting auth cookies. Legacy still has richer session/CSRF/session-cookie behavior.
+- [~] **Verify response contract differs**. App now sends a non-blocking welcome email, includes `access_token`, `refresh_token`, `token_type` in verify response body, sets auth cookies, and sets legacy-compatible `session_id`/`tenant_id`/`user_id` cookies; server-side session records are created and access tokens include `role_ids`/`permissions`. Legacy still has richer session lifecycle/CSRF-hash-per-session validation behavior.
   - Legacy: `KenikoolSalon/backend/app/routes/registration.py` verify returns tokens; sets auth cookies incl. session/csrf-related values via auth service; sends welcome email async.
-  - App: `app/server/app/api/v1/routes/registration.py`, `app/server/app/services/registration_service.py`, `app/server/app/services/email_service.py`. Still no server-side session creation/cookie parity.
+  - App: `app/server/app/api/v1/routes/registration.py`, `app/server/app/services/registration_service.py`, `app/server/app/services/auth_service.py`, `app/server/app/controllers/auth_controller.py`, `app/server/app/lib/cookies.py`, `app/server/app/lib/security.py`, `app/server/app/models/session.py`, migration `i3j4k5l6m7n8_add_sessions_table.py`.
 
 - [~] **Register endpoint duplication/ambiguity**. App exposes two `/auth/register` implementations.
   - `app/server/app/api/v1/routes/registration.py`: two-phase temp registration (`RegisterResponse` with `data`).
@@ -61,11 +61,11 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 ## 4. Security / Auth Integration
 
-- [ ] **Server-side session + CSRF cookie parity on verify**. Legacy verify creates session and sets session-related cookies. App verify issues JWT cookies only; no session record/cookie in inspected verify flow.
+- [~] **Server-side session + CSRF cookie parity on verify**. App now creates `sessions` records and sets `session_id`, `tenant_id`, `user_id` cookies on login/register/verify/MFA flows. CSRF cookie exists and is validated by middleware for cookie-auth state-changing requests, but CSRF is not yet bound to the session record hash as in legacy.
   - Legacy: `KenikoolSalon/backend/app/routes/registration.py` uses `AuthenticationService.create_session`, `_set_auth_cookies`.
-  - App: `app/server/app/api/v1/routes/registration.py` sets JWT cookies via `AuthController._issue`/`set_auth_cookies`.
+  - App: `app/server/app/models/session.py`, `app/server/app/services/auth_service.py#create_session`, `app/server/app/lib/cookies.py`, `app/server/app/lib/csrf.py`.
 
-- [ ] **RBAC permissions in auth token/session**. Legacy computes user permissions from roles and includes role/permission context in token creation. App token includes role string only.
+- [x] **RBAC permissions in auth token/session**. Access tokens now include `role_ids` and `permissions` (resolved from tenant roles) for issued auth sessions.
 
 ## 5. Referral / Bank Account Business Logic
 
