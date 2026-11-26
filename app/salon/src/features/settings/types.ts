@@ -116,9 +116,17 @@ export interface PaystackSubaccountResponse {
     subaccount_code?: string | null;
     percentage_charge?: number | null;
     tenant_id?: string | null;
+    business_name?: string | null;
+    account_number?: string | null;
+    settlement_bank_code?: string | null;
+    settlement_bank_name?: string | null;
   } | null;
   subaccount_code?: string | null;
   percentage_charge?: number | null;
+  business_name?: string | null;
+  account_number?: string | null;
+  settlement_bank_code?: string | null;
+  settlement_bank_name?: string | null;
   message?: string;
 }
 

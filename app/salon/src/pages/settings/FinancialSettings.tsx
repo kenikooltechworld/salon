@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { Box, Button, Card, Container, Flex, Grid, Heading, HStack, Icon, Input, Skeleton, Stack, Switch, Text } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { LuArrowLeft, LuCheck, LuInfo } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuInfo, LuPencil } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -96,6 +96,7 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
   const registerSubaccount = useRegisterPaystackSubaccount();
   const resolveAccount = useResolvePaystackAccount();
 
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ business_name: "", settlement_bank: "", account_number: "" });
   const [resolving, setResolving] = useState(false);
   const [resolvedAccountName, setResolvedAccountName] = useState("");
@@ -110,6 +111,13 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
       <Button variant="outline" size="sm" mt="3" onClick={() => { void registerSubaccount.mutateAsync(form as never).catch(() => {}); }}>Retry</Button>
     </Box>
   );
+
+  // Paystack returns the bank NAME in settlement_bank; map it back to the code used by the dropdown.
+  const bankCodeFor = (nameOrCode: string | null) => {
+    if (!nameOrCode) return "";
+    const match = banks.find((b) => b.name === nameOrCode || b.code === nameOrCode || b.slug === nameOrCode);
+    return match?.code || match?.id || nameOrCode;
+  };
 
   const resolveNow = async (accountNumber: string, bankCode: string) => {
     if (accountNumber.trim().length !== 10 || !bankCode) {
@@ -127,6 +135,20 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
     }
   };
 
+  const startEdit = () => {
+    const bankCode = bankCodeFor(normalized.settlement_bank_name || normalized.settlement_bank_code);
+    setForm({
+      business_name: normalized.business_name || "",
+      settlement_bank: bankCode,
+      account_number: normalized.account_number || "",
+    });
+    setResolvedAccountName("");
+    setEditing(true);
+    if ((normalized.account_number || "").length === 10 && bankCode) {
+      void resolveNow(normalized.account_number!, bankCode);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.business_name.trim() || !form.account_number.trim() || !form.settlement_bank.trim()) {
       toaster.create({ title: "Incomplete details", description: "Business name, account number, and bank are required.", type: "error" });
@@ -140,20 +162,35 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
         percentage_charge: 0,
       });
       toaster.create({ title: "Account saved", type: "success" });
+      setEditing(false);
     } catch (e: any) {
       toaster.create({ title: "Could not save account", description: getErrorMessage(e, "Failed to save account"), type: "error" });
     }
   };
 
+  const showForm = !subaccountCode || editing;
+
   return (
     <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
-      {subaccountCode ? (
-        <Stack gap="1">
-          <Text fontSize="sm" color="fg.muted">Account setup complete.</Text>
-          <Text fontSize="sm" color="fg.muted">Account Name: <Text as="span" fontWeight="semibold" color="fg">{form.business_name || "—"}</Text></Text>
+      {!showForm && subaccountCode ? (
+        <Stack gap="2">
+          <Flex justify="space-between" align="center">
+            <Text fontSize="sm" color="fg.muted">Account setup complete.</Text>
+            <Button size="sm" variant="outline" onClick={startEdit}><LuPencil /> Edit</Button>
+          </Flex>
+          <Text fontSize="sm">Business Name: <Text as="span" fontWeight="semibold" color="fg">{normalized.business_name || "—"}</Text></Text>
+          <Text fontSize="sm">Account Number: <Text as="span" fontWeight="semibold" color="fg">{normalized.account_number || "—"}</Text></Text>
+          <Text fontSize="sm">Bank: <Text as="span" fontWeight="semibold" color="fg">{normalized.settlement_bank_name || normalized.settlement_bank_code || "—"}</Text></Text>
+          <Text fontSize="xs" color="fg.muted">Subaccount: {subaccountCode}</Text>
         </Stack>
       ) : (
         <Stack gap="3" pt="3">
+          {editing && (
+            <Flex justify="space-between" align="center">
+              <Text fontSize="sm" fontWeight="medium">Edit Account Details</Text>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            </Flex>
+          )}
           <Box>
             <Text fontSize="sm" fontWeight="medium" mb="1">Account Number</Text>
             <Input
@@ -194,8 +231,8 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
             <Text fontSize="sm" fontWeight="medium" mb="1">Business Name</Text>
             <Input placeholder="Displayed on receipts" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} />
           </Box>
-          <Button onClick={handleSave} loading={registerSubaccount.isPending} disabled={!resolvedAccountName}>
-            Save Account
+          <Button onClick={handleSave} loading={registerSubaccount.isPending} disabled={!form.business_name.trim() || !form.account_number.trim() || !form.settlement_bank.trim()}>
+            {editing ? "Update Account" : "Save Account"}
           </Button>
         </Stack>
       )}

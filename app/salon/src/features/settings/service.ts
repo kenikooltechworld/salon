@@ -132,10 +132,19 @@ export function normalizeOperationalSettings(data?: Partial<OperationalSettingsD
 export function normalizePaystackSubaccount(data?: Partial<PaystackSubaccountResponse> | null): {
   subaccount_code: string | null;
   percentage_charge: number | null;
+  business_name: string | null;
+  account_number: string | null;
+  settlement_bank_code: string | null;
+  settlement_bank_name: string | null;
 } {
+  const d = data?.data || data || {};
   return {
-    subaccount_code: data?.data?.subaccount_code ?? data?.subaccount_code ?? null,
-    percentage_charge: data?.data?.percentage_charge ?? data?.percentage_charge ?? null,
+    subaccount_code: d?.subaccount_code ?? null,
+    percentage_charge: d?.percentage_charge ?? null,
+    business_name: d?.business_name ?? null,
+    account_number: d?.account_number ?? null,
+    settlement_bank_code: d?.settlement_bank_code ?? null,
+    settlement_bank_name: d?.settlement_bank_name ?? null,
   };
 }
 
