@@ -77,6 +77,21 @@ async def register_subaccount(
     )
 
 
+@router.get("/subaccount", response_model=SubaccountRegisterResponse)
+async def get_subaccount(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    tenant_id = current_user.tenant_id
+    tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return SubaccountRegisterResponse(
+        subaccount_code=tenant.paystack_subaccount_code or "",
+        percentage_charge=tenant.paystack_percentage_charge or 0.0,
+    )
+
+
 class InitializePaymentRequest(BaseModel):
     amount: Decimal
     customer_email: str

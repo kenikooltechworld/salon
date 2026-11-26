@@ -13,7 +13,7 @@ export const settingsApi = {
   updateFinancial: (payload: FinancialSettingsData) => apiClient.put<FinancialSettingsResponse>("/settings/financial", payload),
   getOperational: () => apiClient.get<OperationalSettingsResponse>("/settings/operational"),
   updateOperational: (payload: OperationalSettingsData) => apiClient.put<OperationalSettingsResponse>("/settings/operational", payload),
-  getPaystackSubaccount: () => apiClient.get<PaystackSubaccountResponse>("/settings/paystack/subaccount"),
+  getPaystackSubaccount: () => apiClient.get<PaystackSubaccountResponse>("/paystack/subaccount"),
   registerPaystackSubaccount: (payload: { business_name: string; settlement_bank: string; account_number: string; percentage_charge: number }) =>
-    apiClient.post<PaystackSubaccountResponse>("/settings/paystack/subaccount", payload),
+    apiClient.post<PaystackSubaccountResponse>("/paystack/subaccount", payload),
 };
