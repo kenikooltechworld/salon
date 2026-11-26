@@ -209,6 +209,16 @@ class PaystackService:
     async def get_subaccount(self, code: str) -> dict[str, Any]:
         return await self._request("GET", f"/subaccount/{code}")
 
+    async def resolve_account_number(self, *, account_number: str, bank_code: str) -> dict[str, Any]:
+        """Resolve an account number on Paystack — returns { account_name }."""
+        if not account_number or not bank_code:
+            raise ValueError("account_number and bank_code are required")
+        data = await self._request(
+            "GET",
+            f"/bank/resolve?account_number={account_number}&bank_code={bank_code}",
+        )
+        return data
+
     # ── Customers ─────────────────────────────────────────────────
 
     async def create_customer(

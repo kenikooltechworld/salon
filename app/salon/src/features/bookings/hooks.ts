@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { bookingsApi } from "./api";
 import type { BookingCreate, BookingUpdate } from "./types";
+import { toaster } from "@/components/ui/toaster";
 export const bookingKeys = { all: ["bookings"] as const, list: (params: Record<string, unknown>) => [...bookingKeys.all, "list", params] as const, detail: (id: string) => [...bookingKeys.all, "detail", id] as const };
 export function useBookings(params: Record<string, unknown> = {}) { return useQuery({ queryKey: bookingKeys.list(params), queryFn: async () => (await bookingsApi.list(params)).data }); }
 export function useBookingDetail(id?: string) { return useQuery({ queryKey: bookingKeys.detail(id || ""), queryFn: async () => (await bookingsApi.detail(id!)).data, enabled: !!id }); }
@@ -14,3 +15,4 @@ export function useStartBooking() { const qc = useQueryClient(); return useMutat
 export function useCancelBooking() { return useBookingAction(bookingsApi.cancel); }
 export function useNoShowBooking() { return useBookingAction(bookingsApi.noShow); }
 export function useCollectBookingPayment() { const qc = useQueryClient(); return useMutation({ mutationFn: ({ id, payload }: { id: string; payload: { payment_method: string; amount: number; notes?: string } }) => bookingsApi.collectPayment(id, payload), onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: bookingKeys.all }); qc.invalidateQueries({ queryKey: bookingKeys.detail(v.id) }); } }); }
+export function useInitializePayment() { return useMutation({ mutationFn: (payload: { amount: number; customer_email: string; customer_name?: string; booking_id: string; user_type: "subscriber" | "free" }) => bookingsApi.initializePayment(payload), onSuccess: (res) => { toaster.create({ title: "Payment initialized", description: "Redirecting to Paystack…", type: "info" }); window.location.href = res.data.authorization_url; }, onError: (e: any) => { toaster.create({ title: "Payment init failed", description: e?.response?.data?.detail || e?.message, type: "error" }); } }); }

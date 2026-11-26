@@ -16,4 +16,9 @@ export const settingsApi = {
   getPaystackSubaccount: () => apiClient.get<PaystackSubaccountResponse>("/paystack/subaccount"),
   registerPaystackSubaccount: (payload: { business_name: string; settlement_bank: string; account_number: string; percentage_charge: number }) =>
     apiClient.post<PaystackSubaccountResponse>("/paystack/subaccount", payload),
+  resolveAccountNumber: (account_number: string, bank_code: string) =>
+    apiClient.get<{ account_number: string; account_name: string; bank_code: string | null; bank_name: string | null }>(
+      "/paystack/resolve-account",
+      { params: { account_number, bank_code } },
+    ),
 };

@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import {
-  useBookingDetail, useCancelBooking, useCollectBookingPayment, useCompleteBooking, useConfirmBooking, useDeleteBooking, useNoShowBooking, useStartBooking,
+  useBookingDetail, useCancelBooking, useCollectBookingPayment, useCompleteBooking, useConfirmBooking, useDeleteBooking, useNoShowBooking, useStartBooking, useInitializePayment,
 } from "@/features/bookings";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
@@ -29,6 +29,7 @@ export default function BookingDetailPage() {
   const confirm = useConfirmBooking(); const complete = useCompleteBooking(); const cancel = useCancelBooking();
   const noShow = useNoShowBooking(); const start = useStartBooking();
   const collectPayment = useCollectBookingPayment();
+  const initializePayment = useInitializePayment();
   const deleteBooking = useDeleteBooking();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -128,6 +129,7 @@ export default function BookingDetailPage() {
             {canCancel && <Button colorPalette="red" variant="outline" loading={cancel.isPending} onClick={() => act(() => cancel.mutateAsync({ id: b.id, reason: "Cancelled by staff" }), "Booking cancelled")}>Cancel</Button>}
             {canNoShow && <Button variant="outline" loading={noShow.isPending} onClick={() => act(() => noShow.mutateAsync({ id: b.id, reason: "Marked as no-show" }), "Marked as no-show")}>No-Show</Button>}
             {b.status === "completed" && b.payment_status !== "completed" && b.payment_option === "later" && Number(b.price ?? b.service?.price ?? 0) > 0 && <Button colorPalette="green" variant="outline" loading={collectPayment.isPending} onClick={() => act(() => collectPayment.mutateAsync({ id: b.id, payload: { payment_method: "cash", amount: Number(b.price ?? b.service?.price ?? 0) } }), "Payment collected")}>Collect Payment</Button>}
+            {b.payment_option === "now" && !(b.payment_status === "paid" || b.payment_status === "success" || b.payment_status === "completed") && Number(b.price ?? b.service?.price ?? 0) > 0 && <Button colorPalette="green" loading={initializePayment.isPending} onClick={() => act(() => initializePayment.mutateAsync({ amount: Number(b.price ?? b.service?.price ?? 0), customer_email: b.guest_email ?? b.customer?.email ?? "", customer_name: b.is_guest ? (b.guest_name ?? undefined) : (b.customer?.first_name ?? undefined), booking_id: b.id, user_type: "free" }), "Pay now")}>Pay Now</Button>}
             {canManage && <Button colorPalette="red" variant="outline" onClick={() => setDeleteOpen(true)}><LuTrash2 /> Delete booking</Button>}
             <Button variant="ghost" onClick={() => navigate("/bookings")}>Close</Button>
           </Stack>

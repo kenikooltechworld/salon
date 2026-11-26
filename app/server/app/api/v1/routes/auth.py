@@ -27,6 +27,10 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     VerifyEmailResponse,
 )
+from app.schemas.registration import (
+    RegisterRequest as RegistrationRegisterRequest,
+    RegisterResponse as RegistrationRegisterResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -38,6 +42,23 @@ async def register(
     response: Response,
     session: AsyncSession = Depends(db_session),
 ):
+    """
+    Legacy/direct registration contract. The two-phase registration flow is also available
+    at POST /auth/register with {salon_name,owner_name,email,phone,password,address,...}
+    and is handled by registration_routes (included first in the v1 router).
+    """
+    controller = AuthController(session)
+    return await controller.register(data, request, response)
+
+
+@router.post("/register/direct", response_model=RegisterResponse, status_code=201)
+async def register_direct(
+    data: RegisterRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(db_session),
+):
+    """Explicit direct registration endpoint (legacy contract)."""
     controller = AuthController(session)
     return await controller.register(data, request, response)
 

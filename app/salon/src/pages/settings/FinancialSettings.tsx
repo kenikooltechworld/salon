@@ -1,10 +1,35 @@
 ﻿import { useEffect, useState } from "react";
 import { Box, Button, Card, Container, Flex, Grid, Heading, HStack, Icon, Input, Skeleton, Stack, Switch, Text } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { LuArrowLeft, LuCheck, LuCreditCard, LuInfo } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuInfo } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import { DEFAULT_FINANCIAL_SETTINGS, getErrorMessage, normalizeFinancialSettings, useFinancialSettings, useUpdateFinancialSettings, type FinancialSettingsData } from "@/features/settings";
+import { DEFAULT_FINANCIAL_SETTINGS, getErrorMessage, normalizeFinancialSettings, normalizePaystackSubaccount, useFinancialSettings, usePaystackSubaccount, useRegisterPaystackSubaccount, useResolvePaystackAccount, useUpdateFinancialSettings, type FinancialSettingsData } from "@/features/settings";
+
+const BANKS = [
+  { code: "044", name: "Access Bank" },
+  { code: "045", name: "Fidelity Bank" },
+  { code: "046", name: "Keystone Bank" },
+  { code: "047", name: "Zenith Bank" },
+  { code: "050", name: "Moniepoint MFB" },
+  { code: "053", name: "Wema Bank" },
+  { code: "057", name: "Guaranty Trust Bank" },
+  { code: "058", name: "First City Monument Bank" },
+  { code: "059", name: "First Bank of Nigeria" },
+  { code: "060", name: "Polaris Bank" },
+  { code: "063", name: "United Bank for Africa" },
+  { code: "070", name: "FCMB" },
+  { code: "071", name: "Unity Bank" },
+  { code: "072", name: "Sterling Bank" },
+  { code: "076", name: "Globus Bank" },
+  { code: "079", name: "Prime Bank" },
+  { code: "084", name: "Providus Bank" },
+  { code: "087", name: "Ecobank Nigeria" },
+  { code: "092", name: "Coronation Merchant Bank" },
+  { code: "093", name: "Premium Merchant Bank" },
+  { code: "094", name: "NPF Microfinance Bank" },
+  { code: "095", name: "OPay" },
+];
 
 const num = (v: string, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
 const LabelTip = ({ label, tip }: { label: string; tip: string }) => (
@@ -57,11 +82,8 @@ export default function FinancialSettings() {
         </Stack>
 
         <Stack gap="4" pt="6" borderTopWidth="1px">
-          <Heading size="md">Paystack Gateway</Heading>
-          <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
-            <Text fontSize="sm" color="fg.muted">Manage your Paystack subaccount and payment settings.</Text>
-            <Button variant="outline" size="sm" mt="3" onClick={() => navigate("/settings/paystack")}><LuCreditCard /> Paystack Settings</Button>
-          </Box>
+          <Heading size="md">Account Setup</Heading>
+          <PaystackSubaccountSection />
         </Stack>
         <Stack gap="4" pt="6" borderTopWidth="1px">
           <Heading size="md">Invoice Configuration</Heading>
@@ -75,5 +97,117 @@ export default function FinancialSettings() {
         <Flex justify="end" pt="6" borderTopWidth="1px"><Button onClick={save} loading={update.isPending}><LuCheck /> Save Changes</Button></Flex>
       </Stack></Card.Body></Card.Root>
     </Stack></Container>
+  );
+};
+
+function PaystackSubaccountSection() {
+  const { data, isLoading, isError } = usePaystackSubaccount();
+  const registerSubaccount = useRegisterPaystackSubaccount();
+  const resolveAccount = useResolvePaystackAccount();
+
+  const [form, setForm] = useState({ business_name: "", settlement_bank: "", account_number: "" });
+  const [resolving, setResolving] = useState(false);
+  const [resolvedAccountName, setResolvedAccountName] = useState("");
+
+  const normalized = normalizePaystackSubaccount(data);
+  const subaccountCode = normalized.subaccount_code;
+
+  if (isLoading) return <Stack gap="4"><Skeleton h="10" /><Skeleton h="64" /></Stack>;
+  if (isError) return (
+    <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
+      <Text color="fg.error">Failed to load account details.</Text>
+      <Button variant="outline" size="sm" mt="3" onClick={() => { void registerSubaccount.mutateAsync(form as never).catch(() => {}); }}>Retry</Button>
+    </Box>
+  );
+
+  const resolveNow = async (accountNumber: string, bankCode: string) => {
+    if (accountNumber.trim().length !== 10 || !bankCode) {
+      setResolvedAccountName("");
+      return;
+    }
+    setResolving(true);
+    try {
+      const res = await resolveAccount.mutateAsync({ account_number: accountNumber.trim(), bank_code: bankCode });
+      setResolvedAccountName(res.account_name || "");
+    } catch {
+      setResolvedAccountName("");
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!form.business_name.trim() || !form.account_number.trim() || !form.settlement_bank.trim()) {
+      toaster.create({ title: "Incomplete details", description: "Business name, account number, and bank are required.", type: "error" });
+      return;
+    }
+    try {
+      await registerSubaccount.mutateAsync({
+        business_name: form.business_name.trim(),
+        settlement_bank: form.settlement_bank.trim(),
+        account_number: form.account_number.trim(),
+        percentage_charge: 0,
+      });
+      toaster.create({ title: "Account saved", type: "success" });
+    } catch (e: any) {
+      toaster.create({ title: "Could not save account", description: getErrorMessage(e, "Failed to save account"), type: "error" });
+    }
+  };
+
+  return (
+    <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
+      {subaccountCode ? (
+        <Stack gap="1">
+          <Text fontSize="sm" color="fg.muted">Account setup complete.</Text>
+          <Text fontSize="sm" color="fg.muted">Account Name: <Text as="span" fontWeight="semibold" color="fg">{form.business_name || "—"}</Text></Text>
+        </Stack>
+      ) : (
+        <Stack gap="3" pt="3">
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb="1">Account Number</Text>
+            <Input
+              placeholder="Enter 10-digit account number"
+              value={form.account_number}
+              inputMode="numeric"
+              maxLength={10}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setForm((p) => ({ ...p, account_number: value }));
+                if (value.length === 10) void resolveNow(value, form.settlement_bank);
+                else setResolvedAccountName("");
+              }}
+            />
+          </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb="1">Bank</Text>
+            <select
+              value={form.settlement_bank}
+              onChange={(e) => {
+                const bank = e.target.value;
+                setForm((p) => ({ ...p, settlement_bank: bank }));
+                void resolveNow(form.account_number, bank);
+              }}
+              style={{ width: "100%", padding: 8 }}
+            >
+              <option value="">Select your bank</option>
+              {BANKS.map((b) => (
+                <option key={b.code} value={b.code}>{b.name}</option>
+              ))}
+            </select>
+          </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb="1">Account Name</Text>
+            <Input placeholder={resolving ? "Resolving..." : "Auto-filled from your account"} value={resolvedAccountName} readOnly bg="bg.muted" />
+          </Box>
+          <Box>
+            <Text fontSize="sm" fontWeight="medium" mb="1">Business Name</Text>
+            <Input placeholder="Displayed on receipts" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} />
+          </Box>
+          <Button onClick={handleSave} loading={registerSubaccount.isPending} disabled={!resolvedAccountName}>
+            Save Account
+          </Button>
+        </Stack>
+      )}
+    </Box>
   );
 }

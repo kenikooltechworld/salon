@@ -120,7 +120,7 @@ Paystack fees (local NGN transactions): **1.5% + ₦100**, capped at **₦2,000*
 
 | Prefix | Example reference | Webhook target |
 |---|---|---|
-| `salon_` | `salon_<booking_id>_<hex>` | `https://api.kenikool.com/api/v1/webhooks/paystack` |
+| `salon_` | `salon_<booking_id>_<hex>` | `https://api.kenikoolsalon.com/api/v1/webhooks/paystack` |
 | `pp_` | `pp_wallet_<user_id>_<hex>` | `https://pagepay-fff6.onrender.com/api/v1/payouts/webhook` |
 
 All projects use **one Paystack webhook URL** → the Cloudflare Worker router (`KenikoolSalon/paystack-router`) inspects the reference prefix and forwards the raw payload + signature to the correct project backend.

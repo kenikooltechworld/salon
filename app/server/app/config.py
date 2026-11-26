@@ -89,6 +89,7 @@ class Settings(BaseSettings):
     paystack_public_key: str = Field(default="", alias="PAYSTACK_LIVE_PUBLIC_KEY")
     paystack_webhook_secret: str = Field(default="", alias="PAYSTACK_WEBHOOK_SECRET")
     paystack_base_url: str = Field(default="https://api.paystack.co", alias="PAYSTACK_BASE_URL")
+    paystack_callback_url: str = Field(default="https://kenikoolsalon.com/paystack/callback", alias="PAYSTACK_CALLBACK_URL")
     platform_fee_percentage: float = Field(default=15.0, alias="PLATFORM_FEE_PERCENTAGE")
 
     model_config = SettingsConfigDict(

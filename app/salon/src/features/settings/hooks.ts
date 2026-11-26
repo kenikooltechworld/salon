@@ -126,6 +126,15 @@ export function useRegisterPaystackSubaccount() {
   });
 }
 
+export function useResolvePaystackAccount() {
+  return useMutation({
+    mutationFn: async ({ account_number, bank_code }: { account_number: string; bank_code: string }) => {
+      const res = await settingsApi.resolveAccountNumber(account_number, bank_code);
+      return res.data;
+    },
+  });
+}
+
 export function useOperationalSettings() {
   return useQuery({
     queryKey: OPERATIONAL_SETTINGS_KEY,

@@ -93,6 +93,34 @@ async def get_subaccount(
     )
 
 
+class ResolvedAccount(BaseModel):
+    account_number: str
+    account_name: str
+    bank_code: str | None = None
+    bank_name: str | None = None
+
+
+@router.get("/resolve-account", response_model=ResolvedAccount)
+async def resolve_account(
+    account_number: str = "",
+    bank_code: str = "",
+):
+    """Resolve bank account details via Paystack."""
+    if not account_number or not bank_code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="account_number and bank_code are required")
+    pss = PaystackService()
+    try:
+        data = await pss.resolve_account_number(account_number=account_number, bank_code=bank_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    return ResolvedAccount(
+        account_number=account_number,
+        account_name=data.get("account_name") or "",
+        bank_code=bank_code,
+        bank_name=data.get("bank_name") or bank_code,
+    )
+
+
 class InitializePaymentRequest(BaseModel):
     amount: Decimal
     customer_email: str
@@ -133,6 +161,9 @@ async def initialize_payment(
     percentage_charge = tenant.paystack_percentage_charge or 0.0
 
     reference = f"salon_{data.booking_id or uuid.uuid4().hex[:12]}_{uuid.uuid4().hex[:8]}"
+
+    # Default callback_url to configured Paystack callback URL.
+    callback_url = data.callback_url or settings.paystack_callback_url
 
     # Determine bearer: platform pays for subscribers, subaccount pays for free users.
     # Free users: tenant's percentage_charge handles platform fee split.
