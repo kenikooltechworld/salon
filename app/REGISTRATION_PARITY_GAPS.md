@@ -71,7 +71,7 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 - [~] **Fields accepted and stored, business effect incomplete**.
   - Legacy: accepts `bank_account`, `referral_code`; stores referral info in temp registration and tenant/user onboarding context.
-  - App: accepts/stores `bank_account`, `referral_code`; `referral_tenant_id` column exists but is not populated/used in inspected registration service. No referral reward/linking side effects observed.
+  - App: accepts/stores `bank_account`, `referral_code`; `referral_tenant_id` is now resolved when `referral_code` matches an existing tenant subdomain and persisted to temp registration and tenant settings on verify. No referral reward/credit/commission side effects yet.
 
 ## Priority Order
 
