@@ -15,6 +15,7 @@ from app.models.temp_registration import TempRegistration
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.email_service import send_email, verification_email_html
+from app.services.role_service import RoleService
 from app.services.subscription_service import SubscriptionService
 
 TEMP_TTL_HOURS = 24
@@ -174,6 +175,7 @@ class RegistrationService:
         await self.session.flush()
 
         await SubscriptionService.create_trial_subscription(self.session, tenant.id, trial_days=30)
+        owner_role = await RoleService(self.session).get_owner_role(tenant.id)
 
         user = User(
             tenant_id=tenant.id,
@@ -183,6 +185,7 @@ class RegistrationService:
             last_name=last,
             phone=temp.phone,
             role="owner",
+            role_ids=[owner_role.id] if owner_role else [],
             email_verified=True,
             status="active",
         )

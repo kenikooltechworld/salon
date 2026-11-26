@@ -28,6 +28,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="owner")
+    role_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True, default=list)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", index=True)
     mfa_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
     mfa_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
