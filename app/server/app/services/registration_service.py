@@ -75,6 +75,14 @@ class RegistrationService:
         code_expires = now + timedelta(minutes=CODE_TTL_MINUTES)
         first, last = _split_name(data["owner_name"])
 
+        referral_code = (data.get("referral_code") or None)
+        referral_tenant_id = None
+        if referral_code:
+            ref = await self.session.execute(
+                select(Tenant.id).where(Tenant.subdomain == str(referral_code).strip().lower())
+            )
+            referral_tenant_id = ref.scalar_one_or_none()
+
         if temp is None:
             temp = TempRegistration(
                 email=email,
@@ -87,7 +95,8 @@ class RegistrationService:
                 subdomain=subdomain,
                 verification_code_hash=code_hash,
                 verification_code_expires=code_expires,
-                referral_code=(data.get("referral_code") or None),
+                referral_code=referral_code,
+                referral_tenant_id=referral_tenant_id,
                 expires_at=expires,
                 attempt_count=0,
                 locked_until=None,
@@ -105,7 +114,8 @@ class RegistrationService:
             temp.subdomain = subdomain
             temp.verification_code_hash = code_hash
             temp.verification_code_expires = code_expires
-            temp.referral_code = data.get("referral_code") or None
+            temp.referral_code = referral_code
+            temp.referral_tenant_id = referral_tenant_id
             temp.expires_at = expires
             temp.attempt_count = 0
             temp.locked_until = None
@@ -169,6 +179,8 @@ class RegistrationService:
                 "trial_end_date": trial_end.isoformat(),
                 "owner_phone": temp.phone,
                 "owner_email": temp.email,
+                "referral_code": temp.referral_code,
+                "referral_tenant_id": str(temp.referral_tenant_id) if temp.referral_tenant_id else None,
             },
         )
         self.session.add(tenant)
