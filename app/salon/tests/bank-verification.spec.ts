@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 const OWNER_EMAIL = process.env.E2E_OWNER_EMAIL || "princechaawa@gmail.com";
 const OWNER_PASSWORD = process.env.E2E_OWNER_PASSWORD || "Newpassword123!";
 const TEST_ACCOUNT = "2131955215";
-const TEST_BANK_NAME = "United Bank for Africa";
+const TEST_BANK_NAME = "United Bank For Africa";
 
 test.describe("Account setup bank verification", () => {
   test.beforeEach(async ({ page }) => {
@@ -26,8 +26,8 @@ test.describe("Account setup bank verification", () => {
     const bankSelect = page.locator("select").first();
     await bankSelect.selectOption({ label: TEST_BANK_NAME });
 
-    // Wait for account name to resolve
-    const accountName = page.getByRole("textbox").last();
+    // Wait for account name to resolve (readonly input, unique on page)
+    const accountName = page.locator("input[readonly]");
     await expect(accountName).toHaveValue(/luka/i, { timeout: 30000 });
     const value = await accountName.inputValue();
     console.log(`Resolved account name: ${value}`);
