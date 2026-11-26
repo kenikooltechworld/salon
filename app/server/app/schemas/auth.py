@@ -56,6 +56,8 @@ class TenantRead(BaseModel):
     address: Optional[str] = None
     region: str = "us-east-1"
     is_published: bool = True
+    deleted_at: datetime | None = None
+    deletion_status: str = "active"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -90,10 +92,13 @@ class UserRead(BaseModel):
     phone: Optional[str] = None
     role: str
     role_ids: list[uuid.UUID] = Field(default_factory=list)
+    specialty: str | None = None
     status: str
     email_verified: bool = False
     mfa_enabled: bool = False
     last_login: datetime | None = None
+    last_failed_login: datetime | None = None
+    locked_until: datetime | None = None
     created_at: datetime
 
     @field_validator("role_ids", mode="before")
