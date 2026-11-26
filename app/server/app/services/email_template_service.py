@@ -58,3 +58,26 @@ def render_customer_welcome_email(tenant: object, context: dict) -> str:
         return Template(template_str).render(**safe_context)
     except TemplateSyntaxError:
         return Template(DEFAULT_CUSTOMER_WELCOME_TEMPLATE).render(**safe_context)
+
+
+def render_staff_welcome_email(*, business_name: str, logo_url: str | None, first_name: str, email: str, temp_password: str, role_names: list[str], login_url: str) -> str:
+    logo_html = (
+        f'<div style="text-align:center;margin-bottom:20px"><img src="{escape(logo_url)}" alt="{escape(business_name)}" style="max-width:150px;height:auto;display:inline-block" /></div>'
+        if logo_url
+        else ""
+    )
+    roles = ", ".join(role_names) if role_names else "Staff"
+    return f"""
+    <div style="font-family:Arial,sans-serif;background:#f6f7fb;padding:24px">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:24px">
+        {logo_html}
+        <h2 style="margin:0 0 16px;color:#111827">Welcome to {escape(business_name)}</h2>
+        <p style="color:#374151">Hello {escape(first_name or "there")},</p>
+        <p style="color:#374151">Your staff account has been created.</p>
+        <p style="color:#374151"><strong>Email:</strong> {escape(email)}<br><strong>Temporary password:</strong> {escape(temp_password)}</p>
+        <p style="color:#374151"><strong>Roles:</strong> {escape(roles)}</p>
+        <p><a href="{escape(login_url)}" style="display:inline-block;padding:12px 18px;background:#0b6cfb;color:#fff;text-decoration:none;border-radius:8px">Log in to your account</a></p>
+        <p style="color:#6b7280;font-size:13px">Please change your password after logging in.</p>
+      </div>
+    </div>
+    """

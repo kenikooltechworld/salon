@@ -89,22 +89,22 @@ class StaffService:
     async def _send_welcome_email(self, tenant_id: uuid.UUID, user: User, temp_password: str) -> None:
         from app.config import settings
         from app.services.email_service import send_email
+        from app.services.email_template_service import render_staff_welcome_email
 
         tenant = await TenantService.get_tenant(self.session, tenant_id)
         salon_name = tenant.name if tenant else "your salon"
         salon_subdomain = tenant.subdomain if tenant else None
         login_url = f"https://{salon_subdomain}.{settings.platform_domain}/login" if salon_subdomain else f"{settings.frontend_url}/login"
         role_names = [user.role] if user.role else []
-        html = f"""
-        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-          <h2>Welcome to {salon_name}</h2>
-          <p>Hello {user.first_name},</p>
-          <p>Your staff account has been created.</p>
-          <p><strong>Email:</strong> {user.email}<br><strong>Temporary password:</strong> {temp_password}</p>
-          <p><strong>Roles:</strong> {', '.join(role_names) if role_names else 'Staff'}</p>
-          <p><a href="{login_url}">Log in to your account</a> and change your password.</p>
-        </div>
-        """
+        html = render_staff_welcome_email(
+            business_name=salon_name,
+            logo_url=(tenant.logo_url if tenant else None),
+            first_name=user.first_name,
+            email=user.email,
+            temp_password=temp_password,
+            role_names=role_names,
+            login_url=login_url,
+        )
         await send_email(user.email, f"Welcome to {salon_name} - Staff Account Created", html, required=False)
 
     async def create(self, tenant_id: uuid.UUID, data: StaffCreate) -> dict:
