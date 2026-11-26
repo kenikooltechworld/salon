@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { Box, Button, Card, Container, Flex, Grid, Heading, HStack, Icon, Input, Skeleton, Stack, Switch, Text } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { LuArrowLeft, LuCheck, LuInfo } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuCreditCard, LuInfo } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_FINANCIAL_SETTINGS, getErrorMessage, normalizeFinancialSettings, useFinancialSettings, useUpdateFinancialSettings, type FinancialSettingsData } from "@/features/settings";
@@ -13,8 +13,9 @@ const LabelTip = ({ label, tip }: { label: string; tip: string }) => (
 
 export default function FinancialSettings() {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useFinancialSettings();
+  const { data, isLoading: isFinancialLoading, isError } = useFinancialSettings();
   const update = useUpdateFinancialSettings();
+
   const [config, setConfig] = useState<FinancialSettingsData>(DEFAULT_FINANCIAL_SETTINGS);
 
   useEffect(() => { if (data) setConfig(normalizeFinancialSettings(data)); }, [data]);
@@ -29,7 +30,7 @@ export default function FinancialSettings() {
     }
   };
 
-  if (isLoading) return <Container maxW="6xl" py="6"><Stack gap="4"><Skeleton h="10" /><Skeleton h="24" /><Skeleton h="24" /><Skeleton h="24" /></Stack></Container>;
+  if (isFinancialLoading) return <Container maxW="6xl" py="6"><Stack gap="4"><Skeleton h="10" /><Skeleton h="24" /><Skeleton h="24" /><Skeleton h="24" /></Stack></Container>;
   if (isError) return <Container maxW="6xl" py="6"><Card.Root><Card.Body><Stack gap="3"><Text color="fg.error">Failed to load financial settings.</Text><Button variant="outline" onClick={() => navigate("/settings")}>Back to Settings</Button></Stack></Card.Body></Card.Root></Container>;
 
   return (
@@ -55,6 +56,13 @@ export default function FinancialSettings() {
           {config.commission_tracking_enabled && <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4" pl="4" borderLeftWidth="2px" borderColor="border.emphasized"><Box><LabelTip label="Staff Commission (%)" tip="Default staff commission percentage used for tracking/calculations." /><Input type="number" min={0} max={100} step={0.1} value={config.staff_commission_percentage} onChange={(e) => setConfig({ ...config, staff_commission_percentage: num(e.target.value) })} /></Box><Box><LabelTip label="Service Commission (%)" tip="Default service commission percentage used for tracking/calculations." /><Input type="number" min={0} max={100} step={0.1} value={config.service_commission_percentage} onChange={(e) => setConfig({ ...config, service_commission_percentage: num(e.target.value) })} /></Box></Grid>}
         </Stack>
 
+        <Stack gap="4" pt="6" borderTopWidth="1px">
+          <Heading size="md">Paystack Gateway</Heading>
+          <Box pl="4" borderLeftWidth="2px" borderColor="border.emphasized" maxW="sm">
+            <Text fontSize="sm" color="fg.muted">Manage your Paystack subaccount and payment settings.</Text>
+            <Button variant="outline" size="sm" mt="3" onClick={() => navigate("/settings/paystack")}><LuCreditCard /> Paystack Settings</Button>
+          </Box>
+        </Stack>
         <Stack gap="4" pt="6" borderTopWidth="1px">
           <Heading size="md">Invoice Configuration</Heading>
           <Grid templateColumns={{ base: "1fr", md: "repeat(2,1fr)" }} gap="4">

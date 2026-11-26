@@ -1,14 +1,15 @@
 ﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/store";
 import { settingsApi } from "./api";
-import { getErrorMessage, normalizeCommissionSettings, normalizeFinancialSettings, normalizeOperationalSettings, normalizeTenantSettings } from "./service";
+import { getErrorMessage, normalizeCommissionSettings, normalizeFinancialSettings, normalizeOperationalSettings, normalizePaystackSubaccount, normalizeTenantSettings } from "./service";
 import { useSettingsStore } from "./store";
-import type { CommissionSettingsData, FinancialSettingsData, OperationalSettingsData, TenantSettingsData } from "./types";
+import type { CommissionSettingsData, FinancialSettingsData, OperationalSettingsData, PaystackSubaccountRegisterPayload, TenantSettingsData } from "./types";
 
 export const SETTINGS_KEY = ["tenant-settings"] as const;
 export const COMMISSION_SETTINGS_KEY = ["commission-settings"] as const;
 export const FINANCIAL_SETTINGS_KEY = ["financial-settings"] as const;
 export const OPERATIONAL_SETTINGS_KEY = ["operational-settings"] as const;
+export const PAYSTACK_SUBACCOUNT_KEY = ["paystack-subaccount"] as const;
 
 function syncAuthTenant(data: TenantSettingsData) {
   const { tenant, user, setSession } = useAuthStore.getState();
@@ -97,6 +98,30 @@ export function useUpdateFinancialSettings() {
     mutationFn: async (payload: FinancialSettingsData) => normalizeFinancialSettings((await settingsApi.updateFinancial(payload)).data.data),
     onSuccess: (data) => {
       qc.setQueryData(FINANCIAL_SETTINGS_KEY, data);
+    },
+  });
+}
+
+export function usePaystackSubaccount() {
+  return useQuery({
+    queryKey: PAYSTACK_SUBACCOUNT_KEY,
+    queryFn: async () => {
+      const res = await settingsApi.getPaystackSubaccount();
+      return normalizePaystackSubaccount(res.data);
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useRegisterPaystackSubaccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: PaystackSubaccountRegisterPayload) => {
+      const res = await settingsApi.registerPaystackSubaccount(payload);
+      return normalizePaystackSubaccount(res.data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PAYSTACK_SUBACCOUNT_KEY });
     },
   });
 }

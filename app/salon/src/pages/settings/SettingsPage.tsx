@@ -7,6 +7,7 @@ const cards = [
   { id: "commission", title: "Commission Settings", description: "Staff commission rules and financial settings", icon: LuDollarSign, path: "/settings/commission" },
   { id: "financial", title: "Financial Settings", description: "Balance enforcement, refunds, and payment policies", icon: LuTrendingUp, path: "/settings/financial" },
   { id: "operational", title: "Operational Settings", description: "Resources, inventory, and operational management", icon: LuPackage, path: "/settings/operational" },
+  { id: "paystack", title: "Paystack Gateway", description: "Register subaccount, initialize payments, and view transaction references", icon: LuCreditCard, path: "/settings/paystack" },
   { id: "billing", title: "Billing & Subscription", description: "Plans, subscriptions, and billing management", icon: LuCreditCard, path: "/settings/billing" },
   { id: "notifications", title: "Notification Preferences", description: "Email, SMS, and push notification settings", icon: LuBell, path: "/settings/notifications" },
   { id: "email-templates", title: "Email Templates", description: "Customize customer welcome and notification emails", icon: LuMail, path: "/settings/email-templates" },

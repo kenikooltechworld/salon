@@ -105,3 +105,21 @@ export interface OperationalSettingsData {
 export interface OperationalSettingsResponse {
   data: OperationalSettingsData;
 }
+
+export interface PaystackSubaccountResponse {
+  data?: {
+    subaccount_code?: string | null;
+    percentage_charge?: number | null;
+    tenant_id?: string | null;
+  } | null;
+  subaccount_code?: string | null;
+  percentage_charge?: number | null;
+  message?: string;
+}
+
+export interface PaystackSubaccountRegisterPayload {
+  business_name: string;
+  settlement_bank: string;
+  account_number: string;
+  percentage_charge: number;
+}

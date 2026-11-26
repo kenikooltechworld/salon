@@ -50,6 +50,7 @@ import BillingSettings from "@/pages/settings/BillingSettings";
 import NotificationSettings from "@/pages/settings/NotificationSettings";
 import EmailTemplatesSettings from "@/pages/settings/EmailTemplatesSettings";
 import LocationsSettings from "@/pages/settings/LocationsSettings";
+import PaystackSettings from "@/pages/settings/PaystackSettings";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -153,6 +154,7 @@ export default function App() {
             <Route path="/settings/general" element={<RoleRoute roles={["owner","admin"]}><GeneralSettings /></RoleRoute>} />
             <Route path="/settings/commission" element={<RoleRoute roles={["owner","admin"]}><CommissionSettings /></RoleRoute>} />
             <Route path="/settings/financial" element={<RoleRoute roles={["owner","admin"]}><FinancialSettings /></RoleRoute>} />
+            <Route path="/settings/paystack" element={<RoleRoute roles={["owner","admin"]}><PaystackSettings /></RoleRoute>} />
             <Route path="/settings/operational" element={<RoleRoute roles={["owner","admin"]}><OperationalSettings /></RoleRoute>} />
             <Route path="/settings/billing" element={<RoleRoute roles={["owner","admin"]}><BillingSettings /></RoleRoute>} />
             <Route path="/settings/notifications" element={<RoleRoute roles={["owner","admin"]}><NotificationSettings /></RoleRoute>} />

@@ -1,4 +1,4 @@
-﻿import type { CommissionSettingsData, FinancialSettingsData, OperationalSettingsData, TenantSettingsData } from "./types";
+﻿import type { CommissionSettingsData, FinancialSettingsData, OperationalSettingsData, PaystackSubaccountResponse, TenantSettingsData } from "./types";
 
 export const SETTINGS_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -126,6 +126,16 @@ export function normalizeOperationalSettings(data?: Partial<OperationalSettingsD
     backup_frequency: freq.includes(data?.backup_frequency as any) ? data!.backup_frequency! : "daily",
     cache_optimization_enabled: data?.cache_optimization_enabled ?? DEFAULT_OPERATIONAL_SETTINGS.cache_optimization_enabled,
     cache_ttl_minutes: Math.max(1, Math.floor(Number(data?.cache_ttl_minutes ?? 60))),
+  };
+}
+
+export function normalizePaystackSubaccount(data?: Partial<PaystackSubaccountResponse> | null): {
+  subaccount_code: string | null;
+  percentage_charge: number | null;
+} {
+  return {
+    subaccount_code: data?.data?.subaccount_code ?? data?.subaccount_code ?? null,
+    percentage_charge: data?.data?.percentage_charge ?? data?.percentage_charge ?? null,
   };
 }
 
