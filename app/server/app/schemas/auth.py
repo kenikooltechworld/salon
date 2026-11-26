@@ -89,6 +89,7 @@ class UserRead(BaseModel):
     last_name: str
     phone: Optional[str] = None
     role: str
+    role_ids: list[uuid.UUID] = Field(default_factory=list)
     status: str
     email_verified: bool = False
     mfa_enabled: bool = False
