@@ -122,6 +122,9 @@ class AuthController:
         }
 
     async def logout(self, request: Request, response: Response) -> dict:
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            await self.auth_service.revoke_session(session_id)
         clear_auth_cookies(response, request)
         return {"message": "Logged out successfully"}
 
@@ -129,6 +132,7 @@ class AuthController:
         enforce_rate_limit(request, "auth:refresh", limit=30, window_seconds=300)
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
+            clear_auth_cookies(response, request)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found")
 
         payload = verify_token(refresh_token)
@@ -143,22 +147,41 @@ class AuthController:
             clear_auth_cookies(response, request)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
 
+        session = await self.auth_service.get_active_session_by_refresh(refresh_token, tenant_id=tenant_id)
+        if session is None:
+            clear_auth_cookies(response, request)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+
         user = await self.auth_service.get_user_by_id(user_id)
-        if user is None or user.tenant_id != tenant_id or user.status != "active":
+        if user is None or user.tenant_id != tenant_id or user.status != "active" or session.user_id != user.id:
             clear_auth_cookies(response, request)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+        permissions = await self.auth_service.get_user_permissions(user)
+        role_ids = [str(r) for r in (user.role_ids or []) if r]
         access = create_access_token(
             user_id=str(user.id),
             tenant_id=str(user.tenant_id),
             email=user.email,
             role=user.role,
+            role_ids=role_ids,
+            permissions=permissions,
         )
-        response.set_cookie(
-            key="access_token",
-            value=access,
-            max_age=settings.jwt_access_token_expire_minutes * 60,
-            **cookie_kwargs(request),
+        from app.lib.security import generate_csrf_token
+        csrf = generate_csrf_token()
+        await self.auth_service.rotate_session(session, access_token=access, csrf_token=csrf)
+        await self.session.commit()
+        set_auth_cookies(
+            response,
+            request,
+            access_token=access,
+            refresh_token=refresh_token,
+            access_max_age=settings.jwt_access_token_expire_minutes * 60,
+            refresh_max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
+            csrf_token=csrf,
+            session_id=str(session.id),
+            tenant_id=str(user.tenant_id),
+            user_id=str(user.id),
         )
         return {"message": "Token refreshed", "expires_in": settings.jwt_access_token_expire_minutes * 60}
 

@@ -120,9 +120,43 @@ class AuthService:
         await self.session.refresh(user)
         return user
 
-    async def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
-        result = await self.session.execute(select(User).where(User.id == user_id))
-        return result.scalar_one_or_none()
+    async def get_active_session_by_refresh(self, refresh_token: str, *, tenant_id: uuid.UUID | None = None):
+        from app.lib.security import hash_token
+        from app.models.session import Session
+        stmt = select(Session).where(Session.refresh_token_hash == hash_token(refresh_token), Session.status == "active")
+        if tenant_id:
+            stmt = stmt.where(Session.tenant_id == tenant_id)
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            return None
+        if row.expires_at < datetime.now(timezone.utc):
+            row.status = "revoked"
+            row.revoked_at = datetime.now(timezone.utc)
+            await self.session.flush()
+            return None
+        return row
+
+    async def rotate_session(self, session, *, access_token: str, csrf_token: str) -> None:
+        from app.lib.security import hash_token
+        session.token_hash = hash_token(access_token)
+        session.csrf_token_hash = hash_token(csrf_token)
+        session.expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        await self.session.flush()
+
+    async def revoke_session(self, session_id: str) -> bool:
+        from app.models.session import Session
+        try:
+            sid = uuid.UUID(str(session_id))
+        except Exception:
+            return False
+        row = (await self.session.execute(select(Session).where(Session.id == sid))).scalar_one_or_none()
+        if row is None:
+            return False
+        row.status = "revoked"
+        row.revoked_at = datetime.now(timezone.utc)
+        await self.session.flush()
+        await self.session.commit()
+        return True
 
 
     async def create_email_verification_code(self, user: "User", *, required: bool = False) -> str:
