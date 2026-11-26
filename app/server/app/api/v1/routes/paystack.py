@@ -32,6 +32,10 @@ class SubaccountRegisterResponse(BaseModel):
     subaccount_code: str
     percentage_charge: float
     message: str
+    business_name: str | None = None
+    account_number: str | None = None
+    settlement_bank_code: str | None = None
+    settlement_bank_name: str | None = None
 
 
 @router.post("/subaccount", response_model=SubaccountRegisterResponse)
@@ -74,6 +78,10 @@ async def register_subaccount(
         subaccount_code=subaccount_code,
         percentage_charge=data.percentage_charge,
         message="Paystack subaccount registered successfully",
+        business_name=result.get("business_name") or data.business_name,
+        account_number=result.get("account_number") or data.account_number,
+        settlement_bank_code=result.get("settlement_bank") or data.settlement_bank,
+        settlement_bank_name=None,
     )
 
 
@@ -86,11 +94,35 @@ async def get_subaccount(
     tenant = (await session.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
-    return SubaccountRegisterResponse(
-        subaccount_code=tenant.paystack_subaccount_code or "",
-        percentage_charge=tenant.paystack_percentage_charge or 0.0,
-        message="Subaccount details retrieved successfully",
-    )
+
+    subaccount_code = tenant.paystack_subaccount_code
+    if not subaccount_code:
+        return SubaccountRegisterResponse(
+            subaccount_code="",
+            percentage_charge=tenant.paystack_percentage_charge or 0.0,
+            message="No subaccount registered",
+        )
+
+    # Fetch full subaccount details from Paystack
+    pss = PaystackService()
+    try:
+        paystack_data = await pss.get_subaccount(subaccount_code)
+        return SubaccountRegisterResponse(
+            subaccount_code=paystack_data.get("subaccount_code") or subaccount_code,
+            percentage_charge=paystack_data.get("percentage_charge") or tenant.paystack_percentage_charge or 0.0,
+            message="Subaccount details retrieved successfully",
+            business_name=paystack_data.get("business_name"),
+            account_number=paystack_data.get("account_number"),
+            settlement_bank_code=paystack_data.get("settlement_bank"),  # Paystack returns bank NAME here
+            settlement_bank_name=paystack_data.get("settlement_bank"),
+        )
+    except ValueError:
+        # Fallback to stored values if Paystack call fails
+        return SubaccountRegisterResponse(
+            subaccount_code=subaccount_code,
+            percentage_charge=tenant.paystack_percentage_charge or 0.0,
+            message="Subaccount details retrieved (Paystack fetch failed)",
+        )
 
 
 class ResolvedAccount(BaseModel):
