@@ -42,9 +42,9 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 ## 3. Registration Flow / API Contract
 
-- [~] **Verify response contract differs**. Legacy returns account data plus tokens and sets auth/session cookies; sends welcome email.
-  - Legacy: `KenikoolSalon/backend/app/routes/registration.py` verify returns `access_token`, `refresh_token`, `token_type`; sets auth cookies incl. session/csrf-related values via auth service; sends welcome email async.
-  - App: `app/server/app/api/v1/routes/registration.py` verify returns `success/message/data` with `tenant_id/subdomain/full_url/user_id`; sets `access_token`/`refresh_token` cookies; no body tokens, no session creation, no welcome email.
+- [~] **Verify response contract differs**. App now sends a non-blocking welcome email and includes `access_token`, `refresh_token`, `token_type` in verify response body while also setting auth cookies. Legacy still has richer session/CSRF/session-cookie behavior.
+  - Legacy: `KenikoolSalon/backend/app/routes/registration.py` verify returns tokens; sets auth cookies incl. session/csrf-related values via auth service; sends welcome email async.
+  - App: `app/server/app/api/v1/routes/registration.py`, `app/server/app/services/registration_service.py`, `app/server/app/services/email_service.py`. Still no server-side session creation/cookie parity.
 
 - [~] **Register endpoint duplication/ambiguity**. App exposes two `/auth/register` implementations.
   - `app/server/app/api/v1/routes/registration.py`: two-phase temp registration (`RegisterResponse` with `data`).
