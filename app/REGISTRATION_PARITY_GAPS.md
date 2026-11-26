@@ -61,9 +61,9 @@ Comparison: `KenikoolSalon/backend` (legacy) vs `app/server` (rebuild). Focus: t
 
 ## 4. Security / Auth Integration
 
-- [~] **Server-side session + CSRF cookie parity on verify**. App now creates `sessions` records and sets `session_id`, `tenant_id`, `user_id` cookies on login/register/verify/MFA flows. CSRF cookie exists and is validated by middleware for cookie-auth state-changing requests, but CSRF is not yet bound to the session record hash as in legacy.
+- [x] **Server-side session + CSRF cookie parity on verify**. App creates `sessions` records and sets `session_id`, `tenant_id`, `user_id` cookies on login/register/verify/MFA flows. CSRF is validated against cookie/header and active session `csrf_token_hash`; refresh rotates session token/CSRF; logout revokes session.
   - Legacy: `KenikoolSalon/backend/app/routes/registration.py` uses `AuthenticationService.create_session`, `_set_auth_cookies`.
-  - App: `app/server/app/models/session.py`, `app/server/app/services/auth_service.py#create_session`, `app/server/app/lib/cookies.py`, `app/server/app/lib/csrf.py`.
+  - App: `app/server/app/models/session.py`, `app/server/app/services/auth_service.py`, `app/server/app/controllers/auth_controller.py`, `app/server/app/lib/cookies.py`, `app/server/app/lib/csrf.py`, `app/server/app/main.py`.
 
 - [x] **RBAC permissions in auth token/session**. Access tokens now include `role_ids` and `permissions` (resolved from tenant roles) for issued auth sessions.
 
