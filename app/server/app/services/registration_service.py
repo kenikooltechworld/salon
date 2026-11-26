@@ -14,7 +14,7 @@ from app.lib.subdomain import generate_unique_subdomain
 from app.models.temp_registration import TempRegistration
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.services.email_service import send_email, verification_email_html
+from app.services.email_service import send_email, verification_email_html, welcome_email_html
 from app.services.role_service import RoleService
 from app.services.subscription_service import SubscriptionService
 
@@ -194,6 +194,21 @@ class RegistrationService:
         await self.session.commit()
         await self.session.refresh(user)
         await self.session.refresh(tenant)
+
+        try:
+            from app.config import settings
+            domain = settings.platform_domain.strip().strip("/") or "kenikoolsalon.com"
+            env = settings.environment.lower()
+            login_url = f"http://{tenant.subdomain}.{domain}:3000/login" if env == "development" else f"https://{tenant.subdomain}.{domain}/login"
+            await send_email(
+                temp.email,
+                f"Welcome to Kenikool - {tenant.name}",
+                welcome_email_html(temp.owner_name, tenant.name, login_url),
+                required=False,
+            )
+        except Exception:
+            # Do not fail verified registration if welcome email cannot be delivered.
+            pass
 
         return {
             "tenant_id": str(tenant.id),

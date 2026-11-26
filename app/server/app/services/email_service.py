@@ -76,7 +76,18 @@ def password_reset_email_html(code: str) -> str:
     """
 
 
-def account_recovery_email_html(link: str, ttl_hours: int) -> str:
+def welcome_email_html(owner_name: str, salon_name: str, login_url: str) -> str:
+    safe_owner = owner_name or "there"
+    safe_salon = salon_name or "your salon"
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+      <h2>Welcome to Kenikool, {safe_owner}!</h2>
+      <p>Your salon <strong>{safe_salon}</strong> is ready.</p>
+      <p>You can log in and start setting up staff, services, and bookings.</p>
+      <p><a href="{login_url}" style="display:inline-block;padding:12px 18px;background:#0b6cfb;color:#fff;text-decoration:none;border-radius:8px">Go to Dashboard</a></p>
+      <p style="color:#555;font-size:14px">If you did not create this account, please contact support.</p>
+    </div>
+    """
     return f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <h2>Recover your salon account</h2>

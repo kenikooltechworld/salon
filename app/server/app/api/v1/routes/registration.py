@@ -69,6 +69,9 @@ async def verify_code(
         access, refresh, _ = controller._issue(user)
         set_auth_cookies(response, request, access, refresh,
                          access_max_age=60 * 60 * 24, refresh_max_age=60 * 60 * 24 * 30)
+        result["access_token"] = access
+        result["refresh_token"] = refresh
+        result["token_type"] = "bearer"
     return VerifyCodeResponse(success=True, message="Registration verified successfully", data=result)
 
 
