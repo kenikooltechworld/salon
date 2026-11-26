@@ -71,7 +71,12 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def csrf_middleware(request: Request, call_next):
-        await enforce_csrf(request)
+        from fastapi import HTTPException
+        from fastapi.responses import JSONResponse
+        try:
+            await enforce_csrf(request)
+        except HTTPException as e:
+            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
         return await call_next(request)
 
     app.include_router(root_router)
