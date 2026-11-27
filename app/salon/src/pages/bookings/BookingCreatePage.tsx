@@ -17,16 +17,12 @@ const steps = [
   { title: "Customer" },
   { title: "Service" },
   { title: "Staff" },
-  { title: "Add-ons" },
-  { title: "Packages" },
   { title: "Date & Time" },
   { title: "Confirm" },
 ];
 const STAFF_STEP = 2;
-const ADDONS_STEP = 3;
-const PACKAGES_STEP = 4;
-const TIME_STEP = 5;
-const CONFIRM_STEP = 6;
+const TIME_STEP = 3;
+const CONFIRM_STEP = 4;
 
 const toIso = (d: string, t: string) => new Date(`${d}T${t}:00`).toISOString();
 const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -251,43 +247,41 @@ export default function BookingCreatePage() {
       </Stack>}
 
       {step === 1 && <Stack gap="4">
-        <Box><Heading size="md">Select Service</Heading><Text fontSize="sm" color="fg.muted">Choose the service for this booking. Add-ons and packages are selected in the next steps.</Text></Box>
+        <Box><Heading size="md">Select Service</Heading><Text fontSize="sm" color="fg.muted">Choose the service for this booking. Add-ons and packages for the selected service are shown below.</Text></Box>
         {servicesQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="28" />)}</SimpleGrid>
         : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{services.map((s: any) => { const selected = String(form.service_id) === String(s.id); return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, service_id: s.id, slot: "" })}><Card.Body gap="2"><Flex align="start" gap="3"><Box w="16" h="16" rounded="md" overflow="hidden" flexShrink="0" bg="bg.muted">{s.public_image_url ? <Image src={s.public_image_url} alt={s.name} w="full" h="full" objectFit="cover" /> : <Flex w="full" h="full" align="center" justify="center" color="fg.muted"><LuUser /></Flex>}</Box><Box flex="1" minW="0"><Flex justify="space-between" gap="3"><Box minW="0"><Text fontWeight="semibold" lineClamp="1">{s.name}</Text><Text fontSize="xs" color="fg.muted">{s.category}</Text></Box>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex><Text fontSize="sm" color="fg.muted" lineClamp="2" mt="1">{s.description || "No description"}</Text></Box></Flex><HStack justify="space-between" fontSize="sm" borderTopWidth="1px" pt="2"><Text>{s.duration_minutes} min</Text><Text fontWeight="semibold">{formatNaira(s.price)}</Text></HStack></Card.Body></Card.Root>; })}</SimpleGrid>}
+
+        {selectedService && <>
+          <Box borderTopWidth="1px" pt="4"><Heading size="sm">Add-ons</Heading><Text fontSize="xs" color="fg.muted" mb="2">Optional extras for {selectedService.name}. Select as many as you like.</Text></Box>
+          {addonsQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(2)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
+          : applicableAddons.length === 0 ? <Card.Root variant="subtle"><Card.Body><Text color="fg.muted">No add-ons available for this service.</Text></Card.Body></Card.Root>
+          : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{applicableAddons.map((a: any) => {
+              const selected = form.addon_ids.includes(String(a.id));
+              return <Card.Root key={a.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => toggleAddon(String(a.id))}>
+                <Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm" rounded="md"><Avatar.Image src={a.image_url || undefined} /><Avatar.Fallback name={a.name} /></Avatar.Root><Box><HStack gap="2"><Text fontWeight="medium" fontSize="sm">{a.name}</Text><Badge size="sm" colorPalette={a.category==="product"?"blue":a.category==="upgrade"?"purple":"green"}>{a.category}</Badge></HStack><Text fontSize="xs" color="fg.muted" lineClamp="2">{a.description}</Text><Text fontSize="xs" color="fg.muted">+{a.duration_minutes} min</Text></Box></HStack><Box textAlign="right"><Text fontWeight="semibold" fontSize="sm">{formatNaira(a.price)}</Text>{selected && <Box color="brand.fg" mt="1"><LuCheck /></Box>}</Box></Flex></Card.Body>
+              </Card.Root>;
+            })}</SimpleGrid>}
+          {selectedAddons.length > 0 && <HStack justify="space-between" borderTopWidth="1px" pt="3"><Text fontSize="sm" color="fg.muted">{selectedAddons.length} add-on(s) selected</Text><Text fontWeight="semibold">+{formatNaira(addonsTotal)}</Text></HStack>}
+
+          <Box borderTopWidth="1px" pt="4"><Heading size="sm">Packages</Heading><Text fontSize="xs" color="fg.muted" mb="2">Optional value bundle for {selectedService.name}. Applies to the whole booking.</Text></Box>
+          {packagesQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(2)].map((_, i) => <Skeleton key={i} h="24" />)}</SimpleGrid>
+          : packages.length === 0 ? <Card.Root variant="subtle"><Card.Body><Text color="fg.muted">No packages available.</Text></Card.Body></Card.Root>
+          : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
+              {packages.map((p: any) => {
+                const selected = String(form.package_id) === String(p.id);
+                return <Card.Root key={p.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm((prev) => ({ ...prev, package_id: selected ? "" : String(p.id) }))}>
+                  <Card.Body gap="2"><Flex justify="space-between" gap="3"><Heading size="sm" lineClamp="1">{p.name}</Heading>{selected ? <Box color="brand.fg"><LuCheck /></Box> : p.is_featured && <Badge colorPalette="purple">Featured</Badge>}</Flex><Text fontSize="sm" color="fg.muted" lineClamp="2">{p.description || "Value bundle."}</Text><HStack justify="space-between" fontSize="sm" borderTopWidth="1px" pt="2"><Text fontWeight="semibold">{formatNaira(p.package_price)}</Text><Text color="fg.muted">Save {formatNaira(p.discount_amount)}</Text></HStack><Text fontSize="xs" color="fg.muted">{p.total_duration_minutes || 0} min · {p.services?.length || 0} services</Text></Card.Body>
+                </Card.Root>;
+              })}
+            </SimpleGrid>}
+          {selectedPackage && <HStack justify="space-between" borderTopWidth="1px" pt="3"><HStack gap="2"><LuPackage /><Text fontSize="sm">Package selected: {selectedPackage.name}</Text></HStack><Button size="xs" variant="ghost" onClick={() => setForm((p) => ({ ...p, package_id: "" }))}>Remove</Button></HStack>}
+        </>}
       </Stack>}
 
       {step === STAFF_STEP && <Stack gap="4">
         <Box><Heading size="md">Select Staff</Heading><Text fontSize="sm" color="fg.muted">Choose who will provide the service.</Text></Box>
         {staffQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
         : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{staffForService.map((s: any) => { const selected = String(form.staff_id) === String(s.id); const name = getStaffDisplayName(s); return <Card.Root key={s.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm({ ...form, staff_id: s.id, slot: "" })}><Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm"><Avatar.Image src={getStaffImageUrl(s)} /><Avatar.Fallback name={name} /></Avatar.Root><Box><Text fontWeight="medium" fontSize="sm">{name}</Text><Text fontSize="xs" color="fg.muted">{(s.specialties || []).join(", ") || "Staff member"}</Text></Box></HStack>{selected && <Box color="brand.fg"><LuCheck /></Box>}</Flex></Card.Body></Card.Root>; })}{staffForService.length === 0 && <Text color="fg.muted">No staff assigned to this service.</Text>}</SimpleGrid>}
-      </Stack>}
-
-      {step === ADDONS_STEP && <Stack gap="4">
-        <Box><Heading size="md">Add-ons</Heading><Text fontSize="sm" color="fg.muted">Optional extras for {selectedService?.name || "this service"}. Select as many as you like.</Text></Box>
-        {addonsQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="20" />)}</SimpleGrid>
-        : applicableAddons.length === 0 ? <Card.Root variant="subtle"><Card.Body><Text color="fg.muted">No add-ons available for this service. Continue to the next step.</Text></Card.Body></Card.Root>
-        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{applicableAddons.map((a: any) => {
-            const selected = form.addon_ids.includes(String(a.id));
-            return <Card.Root key={a.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => toggleAddon(String(a.id))}>
-              <Card.Body py="3"><Flex justify="space-between" gap="3"><HStack gap="3"><Avatar.Root size="sm" rounded="md"><Avatar.Image src={a.image_url || undefined} /><Avatar.Fallback name={a.name} /></Avatar.Root><Box><HStack gap="2"><Text fontWeight="medium" fontSize="sm">{a.name}</Text><Badge size="sm" colorPalette={a.category==="product"?"blue":a.category==="upgrade"?"purple":"green"}>{a.category}</Badge></HStack><Text fontSize="xs" color="fg.muted" lineClamp="2">{a.description}</Text><Text fontSize="xs" color="fg.muted">+{a.duration_minutes} min</Text></Box></HStack><Box textAlign="right"><Text fontWeight="semibold" fontSize="sm">{formatNaira(a.price)}</Text>{selected && <Box color="brand.fg" mt="1"><LuCheck /></Box>}</Box></Flex></Card.Body>
-            </Card.Root>;
-          })}</SimpleGrid>}
-        {selectedAddons.length > 0 && <HStack justify="space-between" borderTopWidth="1px" pt="3"><Text fontSize="sm" color="fg.muted">{selectedAddons.length} add-on(s) selected</Text><Text fontWeight="semibold">+{formatNaira(addonsTotal)}</Text></HStack>}
-      </Stack>}
-
-      {step === PACKAGES_STEP && <Stack gap="4">
-        <Box><Heading size="md">Packages</Heading><Text fontSize="sm" color="fg.muted">Optional: apply a value package instead of {selectedService?.name || "the service"}. Packages are separate from add-ons.</Text></Box>
-        {packagesQ.isLoading ? <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">{[...Array(4)].map((_, i) => <Skeleton key={i} h="24" />)}</SimpleGrid>
-        : packages.length === 0 ? <Card.Root variant="subtle"><Card.Body><Text color="fg.muted">No packages available. Continue to the next step.</Text></Card.Body></Card.Root>
-        : <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
-            {packages.map((p: any) => {
-              const selected = String(form.package_id) === String(p.id);
-              return <Card.Root key={p.id} variant="outline" cursor="pointer" borderColor={selected?"brand.solid":undefined} bg={selected?"brand.subtle":undefined} onClick={() => setForm((prev) => ({ ...prev, package_id: selected ? "" : String(p.id) }))}>
-                <Card.Body gap="2"><Flex justify="space-between" gap="3"><Heading size="sm" lineClamp="1">{p.name}</Heading>{selected ? <Box color="brand.fg"><LuCheck /></Box> : p.is_featured && <Badge colorPalette="purple">Featured</Badge>}</Flex><Text fontSize="sm" color="fg.muted" lineClamp="2">{p.description || "Value bundle."}</Text><HStack justify="space-between" fontSize="sm" borderTopWidth="1px" pt="2"><Text fontWeight="semibold">{formatNaira(p.package_price)}</Text><Text color="fg.muted">Save {formatNaira(p.discount_amount)}</Text></HStack><Text fontSize="xs" color="fg.muted">{p.total_duration_minutes || 0} min · {p.services?.length || 0} services</Text></Card.Body>
-              </Card.Root>;
-            })}
-          </SimpleGrid>}
-        {selectedPackage && <HStack justify="space-between" borderTopWidth="1px" pt="3"><HStack gap="2"><LuPackage /><Text fontSize="sm">Package selected: {selectedPackage.name}</Text></HStack><Button size="xs" variant="ghost" onClick={() => setForm((p) => ({ ...p, package_id: "" }))}>Remove</Button></HStack>}
       </Stack>}
 
       {step === TIME_STEP && <Stack gap="4">
