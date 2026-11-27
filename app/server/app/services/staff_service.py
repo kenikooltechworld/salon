@@ -83,7 +83,9 @@ class StaffService:
         await self.session.flush()
 
     async def _create_default_availability(self, tenant_id: uuid.UUID, staff_id: uuid.UUID) -> None:
-        self.session.add_all(build_default_staff_availability(tenant_id, str(staff_id)))
+        tenant = await TenantService.get_tenant(self.session, tenant_id)
+        business_hours = tenant.settings.get("business_hours", {}) if tenant and tenant.settings else {}
+        self.session.add_all(build_default_staff_availability(tenant_id, str(staff_id), business_hours=business_hours or {}))
         await self.session.flush()
 
     async def _send_welcome_email(self, tenant_id: uuid.UUID, user: User, temp_password: str) -> None:

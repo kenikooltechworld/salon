@@ -149,6 +149,8 @@ async def update_operational_settings(session: AsyncSession, tenant: Tenant, upd
 async def update_tenant_settings(session: AsyncSession, tenant: Tenant, updates: dict[str, Any]) -> dict[str, Any]:
     schema = TenantSettingsSchema(**updates)
     data = schema.model_dump()
+    old_business_hours = (tenant.settings or {}).get("business_hours")
+
     tenant.name = data["salon_name"]
     tenant.email = data["email"] or None
     tenant.phone = data["phone"] or None
@@ -163,9 +165,81 @@ async def update_tenant_settings(session: AsyncSession, tenant: Tenant, updates:
     current.update(preserved)
     tenant.settings = current
 
+    if data.get("business_hours") != old_business_hours:
+        await _sync_staff_availability_to_business_hours(session, tenant.id, data["business_hours"])
+
     await session.commit()
     await session.refresh(tenant)
     return tenant_settings_payload(tenant)
+
+
+async def _sync_staff_availability_to_business_hours(
+    session: AsyncSession, tenant_id, business_hours: dict
+) -> None:
+    """Propagate tenant business hours to all staff recurring availability.
+
+    Updates existing recurring availability to match the tenant's open/close times,
+    creates records for newly-opened days, and deactivates records for closed days.
+    """
+    from datetime import date
+
+    from app.models.availability import Availability
+    from app.models.staff import Staff
+
+    day_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    business_hours = business_hours or {}
+
+    staff_rows = (
+        await session.execute(select(Staff).where(Staff.tenant_id == tenant_id))
+    ).scalars().all()
+
+    for staff in staff_rows:
+        existing = (
+            await session.execute(
+                select(Availability).where(
+                    Availability.tenant_id == tenant_id,
+                    Availability.staff_id == str(staff.id),
+                    Availability.is_recurring.is_(True),
+                )
+            )
+        ).scalars().all()
+        existing_by_day = {a.day_of_week: a for a in existing}
+
+        for day_of_week in range(7):
+            day_settings = business_hours.get(day_names[day_of_week]) or {}
+            is_closed = bool(day_settings.get("is_closed", False))
+            open_time = day_settings.get("open_time", "09:00")
+            close_time = day_settings.get("close_time", "17:00")
+
+            if day_of_week in existing_by_day:
+                avail = existing_by_day[day_of_week]
+                if is_closed:
+                    avail.is_active = False
+                else:
+                    avail.start_time = f"{open_time}:00"
+                    avail.end_time = f"{close_time}:00"
+                    avail.is_active = True
+            elif not is_closed:
+                session.add(
+                    Availability(
+                        tenant_id=tenant_id,
+                        staff_id=str(staff.id),
+                        day_of_week=day_of_week,
+                        start_time=f"{open_time}:00",
+                        end_time=f"{close_time}:00",
+                        is_recurring=True,
+                        effective_from=date.today(),
+                        effective_to=None,
+                        breaks=[{"start_time": "12:00:00", "end_time": "13:00:00"}],
+                        slot_interval_minutes=30,
+                        buffer_time_minutes=15,
+                        concurrent_bookings_allowed=1,
+                        is_active=True,
+                        notes="Derived from tenant business hours",
+                    )
+                )
+
+    await session.flush()
 
 
 async def reset_tenant_settings(session: AsyncSession, tenant: Tenant) -> dict[str, Any]:

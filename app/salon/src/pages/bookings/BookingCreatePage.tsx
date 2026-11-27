@@ -41,6 +41,8 @@ export default function BookingCreatePage() {
   const [createdCustomer, setCreatedCustomer] = useState<{ id: string; first_name: string; last_name: string; email: string; phone: string } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [pendingPay, setPendingPay] = useState<ModalBooking | null>(null);
+  const [pendingBooking, setPendingBooking] = useState<any>(null);
+  const [pendingDetail, setPendingDetail] = useState<any>(null);
   const [form, setForm] = useState({
     customer_id: "", first_name: "", last_name: "", email: "", phone: "",
     guest_name: "", guest_email: "", guest_phone: "",
@@ -190,6 +192,8 @@ export default function BookingCreatePage() {
       const booking = (res as any)?.data ?? res;
 
       if (form.payment_option === "now") {
+        setPendingBooking(booking);
+        setPendingDetail(detail);
         setPendingPay({
           id: booking.id,
           amount: Number(totalPrice),
@@ -331,6 +335,16 @@ export default function BookingCreatePage() {
       <PaymentMethodsModal
         open={payOpen}
         onClose={() => { setPayOpen(false); setPendingPay(null); }}
+        onCollected={() => {
+          if (pendingBooking) {
+            toaster.create({ title: "Booking created & payment recorded", type: "success" });
+            navigate("/bookings/confirmation", { state: { booking: pendingBooking, detail: pendingDetail } });
+          }
+          setPayOpen(false);
+          setPendingPay(null);
+          setPendingBooking(null);
+          setPendingDetail(null);
+        }}
         booking={pendingPay}
       />
     )}

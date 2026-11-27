@@ -29,8 +29,8 @@ async def test_staff_default_availability_matches_legacy_seed():
 
     await StaffService(session)._create_default_availability(tenant_id, staff_id)
 
-    assert len(session.added) == 5
-    assert [schedule.day_of_week for schedule in session.added] == [0, 1, 2, 3, 4]
+    assert len(session.added) == 7
+    assert [schedule.day_of_week for schedule in session.added] == [0, 1, 2, 3, 4, 5, 6]
     assert all(schedule.tenant_id == tenant_id for schedule in session.added)
     assert all(schedule.staff_id == str(staff_id) for schedule in session.added)
     assert all(schedule.start_time == "09:00:00" for schedule in session.added)
@@ -53,7 +53,7 @@ def test_seed_schedule_builder_matches_legacy_weekday_values():
 
     schedules = build_default_staff_availability(tenant_id, staff_id, effective_from)
 
-    assert [schedule.day_of_week for schedule in schedules] == [0, 1, 2, 3, 4]
+    assert [schedule.day_of_week for schedule in schedules] == [0, 1, 2, 3, 4, 5, 6]
     assert all(schedule.tenant_id == tenant_id for schedule in schedules)
     assert all(schedule.staff_id == staff_id for schedule in schedules)
     assert all(schedule.start_time == "09:00:00" for schedule in schedules)
