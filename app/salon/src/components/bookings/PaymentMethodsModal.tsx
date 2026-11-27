@@ -21,7 +21,7 @@ import { toaster } from "@/components/ui/toaster";
 import { bookingsApi } from "@/features/bookings";
 import { useCollectBookingPayment, useInitializePayment } from "@/features/bookings";
 
-interface ModalBooking {
+export interface ModalBooking {
   id: string;
   amount: number;
   status: string;

@@ -9,7 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
-import { useCreateBooking, useInitializePayment } from "@/features/bookings";
+import { useCreateBooking } from "@/features/bookings";
+import PaymentMethodsModal, { type ModalBooking } from "@/components/bookings/PaymentMethodsModal";
 import { useCreateCustomer } from "@/features/customers/hooks";
 import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
@@ -33,12 +34,13 @@ function addMinutes(hhmm: string, mins: number) { const [h, m] = hhmm.split(":")
 export default function BookingCreatePage() {
   const navigate = useNavigate();
   const create = useCreateBooking();
-  const initializePayment = useInitializePayment();
   const createCustomer = useCreateCustomer();
   const [step, setStep] = useState(0);
   const [customerMode, setCustomerMode] = useState<"existing" | "new" | "guest">("existing");
   const [search, setSearch] = useState("");
   const [createdCustomer, setCreatedCustomer] = useState<{ id: string; first_name: string; last_name: string; email: string; phone: string } | null>(null);
+  const [payOpen, setPayOpen] = useState(false);
+  const [pendingPay, setPendingPay] = useState<ModalBooking | null>(null);
   const [form, setForm] = useState({
     customer_id: "", first_name: "", last_name: "", email: "", phone: "",
     guest_name: "", guest_email: "", guest_phone: "",
@@ -188,17 +190,25 @@ export default function BookingCreatePage() {
       const booking = (res as any)?.data ?? res;
 
       if (form.payment_option === "now") {
-        const customerEmail = customerMode === "guest" ? (form.guest_email || "") : (selectedCustomer?.email || form.email || "");
-        const customerName = customerMode === "guest"
-          ? (form.guest_name || undefined)
-          : (selectedCustomer ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() || undefined : `${form.first_name} ${form.last_name}`.trim() || undefined);
-        await initializePayment.mutateAsync({
+        setPendingPay({
+          id: booking.id,
           amount: Number(totalPrice),
-          customer_email: customerEmail,
-          customer_name: customerName,
-          booking_id: booking.id,
-          user_type: "free",
+          status: booking.status ?? "scheduled",
+          payment_option: "now",
+          payment_status: booking.payment_status ?? "pending",
+          is_guest: customerMode === "guest",
+          guest_email: customerMode === "guest" ? (form.guest_email || null) : null,
+          guest_name: customerMode === "guest" ? (form.guest_name || null) : null,
+          customer: customerMode !== "guest"
+            ? {
+                id: customerId ?? "",
+                first_name: customerMode === "existing" ? (selectedCustomer?.first_name ?? "") : form.first_name.trim(),
+                last_name: customerMode === "existing" ? (selectedCustomer?.last_name ?? "") : form.last_name.trim(),
+                email: customerMode === "existing" ? (selectedCustomer?.email ?? "") : form.email.trim(),
+              }
+            : null,
         });
+        setPayOpen(true);
         return;
       }
 
@@ -317,5 +327,12 @@ export default function BookingCreatePage() {
       {step < steps.length - 1 ? <Button colorPalette="brand" onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>Continue</Button>
       : <Button colorPalette="brand" loading={create.isPending || createCustomer.isPending} onClick={submit} disabled={!canNext()}><LuCheck /> Create Booking</Button>}
     </Flex>
+    {pendingPay && (
+      <PaymentMethodsModal
+        open={payOpen}
+        onClose={() => { setPayOpen(false); setPendingPay(null); }}
+        booking={pendingPay}
+      />
+    )}
   </Stack>;
 }
