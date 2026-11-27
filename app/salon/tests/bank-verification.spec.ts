@@ -14,22 +14,22 @@ test.describe("Account setup bank verification", () => {
     await page.waitForURL(/dashboard/, { timeout: 60000 });
   });
 
-  test("resolves account name after entering account number and bank", async ({ page }) => {
+  test("shows saved account details with edit button and pre-filled edit form", async ({ page }) => {
     await page.goto("/settings/financial", { waitUntil: "domcontentloaded" });
 
-    // Enter 10-digit account number
+    // View mode: saved account details + Edit button
+    await expect(page.getByText(/Account setup complete/i)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole("button", { name: /Edit/i }).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/Business Name:/i)).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/Account Number:/i)).toBeVisible({ timeout: 30000 });
+
+    // Click Edit -> form pre-filled with saved values
+    await page.getByRole("button", { name: /Edit/i }).first().click();
     const accountNumber = page.getByPlaceholder("Enter 10-digit account number");
     await expect(accountNumber).toBeVisible({ timeout: 30000 });
-    await accountNumber.fill(TEST_ACCOUNT);
-
-    // Select bank from dropdown
-    const bankSelect = page.locator("select").first();
-    await bankSelect.selectOption({ label: TEST_BANK_NAME });
-
-    // Wait for account name to resolve (readonly input, unique on page)
-    const accountName = page.locator("input[readonly]");
-    await expect(accountName).toHaveValue(/luka/i, { timeout: 30000 });
-    const value = await accountName.inputValue();
-    console.log(`Resolved account name: ${value}`);
+    await expect(accountNumber).toHaveValue(TEST_ACCOUNT);
+    const businessName = page.getByPlaceholder("Displayed on receipts");
+    await expect(businessName).toBeVisible({ timeout: 30000 });
+    await expect(businessName).toHaveValue(/prince/i);
   });
 });

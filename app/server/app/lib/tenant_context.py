@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.lib.domain_config import extract_tenant_subdomain, is_non_public_host
+from app.lib.subdomain import is_valid_subdomain
 from app.models.tenant import Tenant
 
 
@@ -39,6 +40,10 @@ def host_is_tenant_candidate(request: Request) -> bool:
 async def resolve_tenant_from_request(request: Request, session: AsyncSession) -> TenantContext | None:
     host = request_host(request)
     subdomain = extract_tenant_subdomain(host, settings.platform_domain)
+    if not subdomain:
+        header_subdomain = (request.headers.get("x-tenant-subdomain") or "").strip().lower()
+        if header_subdomain and is_valid_subdomain(header_subdomain):
+            subdomain = header_subdomain
     if not subdomain:
         return None
 

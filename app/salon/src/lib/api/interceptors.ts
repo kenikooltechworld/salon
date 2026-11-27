@@ -1,4 +1,5 @@
 ﻿import { apiClient, toApiError } from "./client";
+import { getCurrentTenantSubdomain } from "@/lib/domainConfig";
 
 let csrfPromise: Promise<void> | null = null;
 async function ensureCsrf() {
@@ -19,6 +20,11 @@ apiClient.interceptors.request.use(async (config) => {
       config.headers = config.headers ?? {};
       (config.headers as any)["X-CSRF-Token"] = csrf;
     }
+  }
+  const subdomain = getCurrentTenantSubdomain();
+  if (subdomain) {
+    config.headers = config.headers ?? {};
+    (config.headers as any)["X-Tenant-Subdomain"] = subdomain;
   }
   return config;
 });
