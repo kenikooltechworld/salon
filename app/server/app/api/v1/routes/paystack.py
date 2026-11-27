@@ -219,7 +219,7 @@ async def initialize_payment(
         status="pending",
         reference=reference,
         gateway="paystack",
-        payment_method="paystack",
+        payment_method="card",
         metadata_={
             "appointment_id": data.booking_id,
             "user_type": data.user_type,
@@ -332,6 +332,8 @@ async def create_bank_transfer_charge(
     """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
 
     Returns account details for the customer to transfer the exact amount.
+    A pending Payment row is created so the webhook can locate it by reference
+    and mark the appointment paid on successful transfer.
     """
     pss = PaystackService()
     try:
@@ -340,6 +342,19 @@ async def create_bank_transfer_charge(
         tx = await pss.create_bank_transfer_charge(email=data.email, amount_kobo=amount_kobo, reference=reference)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    # Persist a pending Payment row so the webhook can locate it by reference.
+    payment = PaymentModel(
+        tenant_id=current_user.tenant_id,
+        amount=data.amount,
+        status="pending",
+        reference=reference,
+        gateway="paystack",
+        payment_method="transfer",
+        metadata_={"appointment_id": data.booking_id},
+    )
+    session.add(payment)
+    await session.flush()
 
     bank = tx.get("bank") or {}
     return {
