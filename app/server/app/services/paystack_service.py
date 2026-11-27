@@ -107,48 +107,10 @@ class PaystackService:
             body["metadata"] = json.dumps(metadata)
         return await self._request("POST", "/transaction/initialize", json_body=body)
 
-    async def create_bank_transfer_charge(self, *, email: str, amount_kobo: int, reference: str | None = None) -> dict[str, Any]:
-        """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
-
-        Returns account details the customer should fund (account_number, account_name, bank, amount, expiry).
-        """
-        if not email:
-            raise ValueError("email is required")
-        if amount_kobo <= 0:
-            raise ValueError("amount must be greater than 0")
-        body: dict[str, Any] = {
-            "email": email,
-            "amount": amount_kobo,
-            "currency": "NGN",
-            "bank_transfer": {"account_expires_at": None},
-        }
-        if reference:
-            body["reference"] = reference
-        return await self._request("POST", "/charge", json_body=body)
-
     async def verify_transaction(self, reference: str) -> dict[str, Any]:
         if not reference:
             raise ValueError("reference is required")
         return await self._request("GET", f"/transaction/verify/{reference}")
-
-    async def check_pending_charge(self, reference: str) -> dict[str, Any]:
-        """Check Pending Charge — Paystack's recommended endpoint for pending bank_transfer charges.
-
-        Use this to poll the status of a bank transfer that hasn't completed yet.
-        Returns status: pending | success | failed | abandoned.
-        """
-        if not reference:
-            raise ValueError("reference is required")
-        return await self._request("GET", f"/charge/{reference}")
-
-    @staticmethod
-    def calculate_local_fee(amount_naira: float) -> float:
-        """Paystack Nigeria local transaction fee (1.5% + NGN 100, capped at 2000; 100 waived under 2500)."""
-        if amount_naira <= 0:
-            return 0.0
-        if amount_naira < 2500:
-            return round(amount_naira * 0.015, 2)
-        return round(min(amount_naira * 0.015 + 100.0, 2000.0), 2)
 
     async def get_transaction(self, transaction_id: int | str) -> dict[str, Any]:
         return await self._request("GET", f"/transaction/{transaction_id}")

@@ -173,6 +173,7 @@ class InitializePaymentRequest(BaseModel):
     callback_url: str | None = None
     booking_id: str | None = None
     user_type: str = "free"  # "subscriber" or "free"
+    method: str = "card"  # "card" or "transfer"
 
 
 class InitializePaymentResponse(BaseModel):
@@ -180,12 +181,6 @@ class InitializePaymentResponse(BaseModel):
     reference: str
     access_code: str | None = None
     message: str
-
-
-class BankTransferChargeRequest(BaseModel):
-    email: str
-    amount: Decimal
-    booking_id: str | None = None  # optional tie to the appointment/booking reference
 
 @router.post("/initialize", response_model=InitializePaymentResponse)
 async def initialize_payment(
@@ -212,6 +207,14 @@ async def initialize_payment(
 
     reference = f"salon_{data.booking_id or uuid.uuid4().hex[:12]}_{uuid.uuid4().hex[:8]}"
 
+    # Determine payment method and channels based on selected method
+    if data.method == "transfer":
+        payment_method = "transfer"
+        channels = ["bank_transfer"]
+    else:
+        payment_method = "card"
+        channels = ["card"]
+
     # Persist a pending Payment row so the webhook can locate it by reference.
     payment = PaymentModel(
         tenant_id=tenant_id,
@@ -219,12 +222,13 @@ async def initialize_payment(
         status="pending",
         reference=reference,
         gateway="paystack",
-        payment_method="card",
+        payment_method=payment_method,
         metadata_={
             "appointment_id": data.booking_id,
             "user_type": data.user_type,
             "customer_email": data.customer_email,
             "customer_name": data.customer_name,
+            "payment_method": data.method,
         },
     )
     session.add(payment)
@@ -244,6 +248,7 @@ async def initialize_payment(
         "user_type": data.user_type,
         "customer_name": data.customer_name,
         "booking_id": data.booking_id,
+        "payment_method": data.method,
         "platform_fee_percentage": percentage_charge,
     }
 
@@ -256,6 +261,7 @@ async def initialize_payment(
             subaccount=subaccount_code,
             bearer=bearer,
             currency="NGN",
+            channels=channels,
             metadata=metadata,
         )
     except ValueError as exc:
@@ -321,120 +327,3 @@ async def verify_payment(
 
     await session.commit()
     return tx
-
-
-@router.get("/charge/{reference}")
-async def check_pending_charge(
-    reference: str,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(db_session),
-):
-    """Check Pending Charge — Paystack's recommended endpoint for bank_transfer charges.
-
-    Returns the current status (pending | success | failed | abandoned) of a
-    Pay with Transfer charge and updates local Payment/Appointment status.
-    """
-    pss = PaystackService()
-    try:
-        tx = await pss.check_pending_charge(reference)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    paystack_status = (tx.get("status") or "").lower()
-    if paystack_status == "success":
-        result = await session.execute(
-            select(PaymentModel).where(PaymentModel.reference == reference, PaymentModel.tenant_id == current_user.tenant_id)
-        )
-        payment = result.scalar_one_or_none()
-        if payment:
-            payment.status = "success"
-            payment.metadata_ = {
-                **(payment.metadata_ or {}),
-                "paystack_transaction_id": tx.get("id") or tx.get("transaction_id"),
-                "paystack_authorization": tx.get("authorization") or tx.get("authorization_url"),
-                "verified_at": str(tx.get("paid_at") or tx.get("transaction_date")),
-            }
-            metadata = payment.metadata_ or {}
-            appointment_id = metadata.get("appointment_id") or metadata.get("booking_meta", {}).get("appointment_id")
-            if appointment_id:
-                try:
-                    appt_id = uuid.UUID(str(appointment_id))
-                except (ValueError, TypeError):
-                    appt_id = None
-                if appt_id is not None:
-                    appt = (await session.execute(select(Appointment).where(Appointment.id == appt_id))).scalar_one_or_none()
-                    if appt:
-                        appt.payment_status = "paid"
-            await session.commit()
-    elif paystack_status in ("failed", "abandoned", "cancelled") or paystack_status == "pending_bank_transfer":
-        result = await session.execute(
-            select(PaymentModel).where(PaymentModel.reference == reference, PaymentModel.tenant_id == current_user.tenant_id)
-        )
-        payment = result.scalar_one_or_none()
-        if payment and paystack_status in ("failed", "abandoned", "cancelled"):
-            payment.status = paystack_status
-
-    return tx
-
-
-@router.post("/bank-transfer")
-async def create_bank_transfer_charge(
-    data: BankTransferChargeRequest,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(db_session),
-):
-    """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
-
-    The amount charged includes the Paystack local transaction fee so the tenant
-    receives 100% of the booking amount. Fee breakdown is shown to the customer.
-    """
-    pss = PaystackService()
-    try:
-        base_amount = float(data.amount)
-        fee = pss.calculate_local_fee(base_amount)
-        total_amount = round(base_amount + fee, 2)
-        amount_kobo = int(total_amount * 100)
-        reference = f"bt_{data.booking_id}" if data.booking_id else f"bt_{uuid.uuid4().hex[:12]}"
-        tx = await pss.create_bank_transfer_charge(email=data.email, amount_kobo=amount_kobo, reference=reference)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-
-    # Persist a pending Payment row so the webhook can locate it by reference.
-    payment = PaymentModel(
-        tenant_id=current_user.tenant_id,
-        amount=base_amount,
-        status="pending",
-        reference=reference,
-        gateway="paystack",
-        payment_method="transfer",
-        metadata_={
-            "appointment_id": data.booking_id,
-            "paystack_fee": fee,
-            "paystack_total": total_amount,
-            "paystack_fee_percent": "1.5%",
-            "paystack_fee_fixed": 100.0 if base_amount >= 2500 else 0.0,
-        },
-    )
-    session.add(payment)
-    await session.flush()
-
-    bank = tx.get("bank") or {}
-    return {
-        "status": tx.get("status"),
-        "reference": tx.get("reference"),
-        "display_text": tx.get("display_text"),
-        "account_name": tx.get("account_name"),
-        "account_number": tx.get("account_number"),
-        "bank_name": bank.get("name") if isinstance(bank, dict) else None,
-        "amount_kobo": amount_kobo,
-        "amount": total_amount,
-        "base_amount": base_amount,
-        "fee": fee,
-        "account_expires_at": tx.get("account_expires_at"),
-        "message": tx.get("message"),
-        "fee_breakdown": {
-            "base": base_amount,
-            "paystack_fee": fee,
-            "total": total_amount,
-        },
-    }
