@@ -175,6 +175,8 @@ class RegistrationService:
             status="active",
             subscription_tier="trial",
             is_published=True,
+            primary_color="#000000",
+            secondary_color="#FFFFFF",
             settings={
                 "trial_end_date": trial_end.isoformat(),
                 "owner_phone": temp.phone,
@@ -215,7 +217,13 @@ class RegistrationService:
             await send_email(
                 temp.email,
                 f"Welcome to Kenikool - {tenant.name}",
-                welcome_email_html(temp.owner_name, tenant.name, login_url),
+                welcome_email_html(
+                    temp.owner_name,
+                    tenant.name,
+                    login_url,
+                    primary_color=tenant.primary_color or "#000000",
+                    secondary_color=tenant.secondary_color or "#FFFFFF",
+                ),
                 required=False,
             )
         except Exception:

@@ -311,10 +311,6 @@ class AppointmentService:
         appt = await self.get(tenant_id, appointment_id)
         if appt is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
-        if appt.payment_option != "later":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This appointment is not a pay-later booking")
-        if appt.status != "completed":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment can only be collected for completed appointments")
         if appt.payment_status == "completed":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment has already been collected for this appointment")
 

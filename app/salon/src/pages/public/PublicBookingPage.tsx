@@ -15,6 +15,7 @@ export default function PublicBookingPage() {
   const packagesQ = usePublicServicePackages();
   const addonsQ = usePublicServiceAddons();
   const tenant = tenantQ.data;
+  const primaryColor = tenant?.primary_color || "#000000";
   const services = (servicesQ.data?.services || []).filter((s: any) => s.is_active && s.is_published);
   const packages = (packagesQ.data?.packages || []).filter((p: any) => p.is_active);
   const addons = (addonsQ.data?.addons || []).filter((a: any) => a.is_active);
@@ -40,7 +41,7 @@ export default function PublicBookingPage() {
         <Container maxW="7xl" py="4">
           <Flex justify="space-between" align="center" gap="4">
             <HStack gap="3">
-              {tenant.logo_url ? <Image src={tenant.logo_url} alt={tenant.name} boxSize="10" rounded="lg" objectFit="cover" /> : <Box boxSize="10" rounded="lg" bg="brand.500" />}
+              {tenant.logo_url ? <Image src={tenant.logo_url} alt={tenant.name} boxSize="10" rounded="lg" objectFit="cover" /> : <Box boxSize="10" rounded="lg" bg={primaryColor} />}
               <Box>
                 <Heading size="md" lineClamp="1">{tenant.name}</Heading>
                 <Text fontSize="xs" color="fg.muted">{tenant.subdomain}.kenikoolsalon.com</Text>
@@ -48,7 +49,7 @@ export default function PublicBookingPage() {
             </HStack>
             <HStack>
               <Button asChild variant="outline"><Link to="/public/login">Sign in</Link></Button>
-              <Button asChild colorPalette="brand"><a href="#services">Book now</a></Button>
+              <Button asChild bg={primaryColor} color="#fff"><a href="#services">Book now</a></Button>
             </HStack>
           </Flex>
         </Container>
@@ -57,11 +58,11 @@ export default function PublicBookingPage() {
       <Container maxW="7xl" py={{ base: "10", md: "16" }}>
         <Grid templateColumns={{ base: "1fr", lg: "1.1fr 0.9fr" }} gap="10" alignItems="center">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}><Stack gap="6">
-            <Badge w="fit" colorPalette="brand" variant="subtle"><HStack gap="1"><LuSparkles /><Text>Online booking</Text></HStack></Badge>
+            <Badge w="fit" bg={primaryColor} color="#fff" variant="subtle"><HStack gap="1"><LuSparkles /><Text>Online booking</Text></HStack></Badge>
             <Heading size={{ base: "2xl", md: "4xl" }} lineHeight="1.1">{tenant.description || `Book your next appointment at ${tenant.name}`}</Heading>
             <Text color="fg.muted" fontSize="lg">Browse services, packages, and add-ons. Fast booking, clear pricing, and professional service.</Text>
             <HStack gap="3" flexWrap="wrap">
-              <Button asChild size="lg" colorPalette="brand"><a href="#services">Explore services</a></Button>
+              <Button asChild size="lg" bg={primaryColor} color="#fff"><a href="#services">Explore services</a></Button>
               {tenant.phone && <Button asChild size="lg" variant="outline"><a href={`tel:${tenant.phone}`}><LuPhone /> Call</a></Button>}
             </HStack>
             <SimpleGrid columns={{ base: 1, sm: 3 }} gap="3">
@@ -96,7 +97,7 @@ export default function PublicBookingPage() {
                   <Flex justify="space-between" gap="3"><Heading size="md" lineClamp="1">{s.name}</Heading><Badge colorPalette="green">{money(s.price)}</Badge></Flex>
                   <Text color="fg.muted" fontSize="sm" lineClamp="3">{s.public_description || s.description || "Professional salon service."}</Text>
                   <HStack fontSize="sm" color="fg.muted"><LuClock /><Text>{s.duration_minutes} min</Text></HStack>
-                  <Button colorPalette="brand" variant="outline" disabled={!s.allow_public_booking}>{s.allow_public_booking ? "Book this service" : "Booking unavailable"}</Button>
+                  <Button bg={primaryColor} color="#fff" variant="outline" disabled={!s.allow_public_booking}>{s.allow_public_booking ? "Book this service" : "Booking unavailable"}</Button>
                 </Stack></Card.Body>
               </Card.Root></motion.div>
             ))}

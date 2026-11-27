@@ -115,7 +115,7 @@ def password_reset_email_html(code: str) -> str:
     )
 
 
-def welcome_email_html(owner_name: str, salon_name: str, login_url: str) -> str:
+def welcome_email_html(owner_name: str, salon_name: str, login_url: str, primary_color: str = "#0b6cfb", secondary_color: str = "#FFFFFF") -> str:
     safe_owner = owner_name or "there"
     safe_salon = salon_name or "your salon"
     return wrap_email_html(
@@ -123,9 +123,9 @@ def welcome_email_html(owner_name: str, salon_name: str, login_url: str) -> str:
         f"""
       <p>Your salon <strong>{safe_salon}</strong> is ready.</p>
       <p>You can log in and start setting up staff, services, and bookings.</p>
-      <p><a href="{login_url}" style="display:inline-block;padding:12px 18px;background:#0b6cfb;color:#fff;text-decoration:none;border-radius:8px">Go to Dashboard</a></p>
+      <p><a href="{login_url}" style="display:inline-block;padding:12px 18px;background:{primary_color};color:#fff;text-decoration:none;border-radius:8px">Go to Dashboard</a></p>
       <p style="color:#555;font-size:14px">If you did not create this account, please contact support.</p>
-    """,
+      """,
         preheader=f"Your salon {safe_salon} is ready",
     )
 def account_recovery_email_html(link: str, ttl_hours: int) -> str:
