@@ -31,6 +31,7 @@ export const bookingsApi = {
     customer_name?: string;
     booking_id: string;
     user_type: "subscriber" | "free";
+    method: "card" | "transfer";
   }) =>
     apiClient.post<{
       authorization_url: string;
@@ -55,21 +56,6 @@ export const bookingsApi = {
       account_expires_at?: string;
       message?: string;
     }>(`/paystack/charge/${encodeURIComponent(reference)}`),
-  createBankTransferCharge: (payload: { email: string; amount: number; booking_id?: string }) =>
-    apiClient.post<{
-      status: string;
-      reference: string;
-      display_text?: string;
-      account_name?: string;
-      account_number?: string;
-      bank_name?: string;
-      amount_kobo: number;
-      amount: number;
-      base_amount?: number;
-      fee?: number;
-      account_expires_at?: string;
-      message?: string;
-    }>("/paystack/bank-transfer", payload),
   availableSlots: (params: { staff_id: string; service_id: string; date: string; time_zone?: string }) =>
     apiClient.get<{ date: string; slots: { start_time: string; end_time: string; staff_id: string; duration_minutes: number; isAvailable: boolean }[] }>("/appointments/available-slots", { params }),
 };

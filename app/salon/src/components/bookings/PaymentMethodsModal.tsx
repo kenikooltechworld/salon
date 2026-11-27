@@ -1,24 +1,20 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import {
   Portal,
   Dialog,
   CloseButton,
   Flex,
   Box,
-  Heading,
   Text,
   Button,
-  Stack,
   HStack,
   VStack,
   Card,
   Spinner,
 } from "@chakra-ui/react";
-import { LuCreditCard, LuBanknote, LuArrowRight, LuX } from "react-icons/lu";
+import { LuCreditCard, LuBanknote, LuArrowRight } from "react-icons/lu";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
-import { bookingsApi } from "@/features/bookings";
 import { useCollectBookingPayment, useInitializePayment } from "@/features/bookings";
 
 export interface ModalBooking {
@@ -74,73 +70,6 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
   const collectM = useCollectBookingPayment();
   const initM = useInitializePayment();
   const [method, setMethod] = useState<Method>("cash");
-  const [transferDetails, setTransferDetails] = useState<{
-    reference: string;
-    display_text?: string;
-    account_name?: string;
-    account_number?: string;
-    bank_name?: string;
-    amount: number;
-    base_amount?: number;
-    fee?: number;
-    account_expires_at?: string;
-  } | null>(null);
-
-  const transferM = useMutation({
-    mutationFn: (payload: { email: string; amount: number; booking_id?: string }) =>
-      bookingsApi.createBankTransferCharge(payload),
-    onSuccess: (res) => {
-      setTransferDetails(res.data);
-      toaster.create({
-        title: "Transfer details generated",
-        description: `Show the customer the account below. Amount: ${formatNaira(res.data.amount)}`,
-        type: "success",
-      });
-    },
-    onError: (e: any) => {
-      const detail = e?.response?.data?.detail;
-      const message =
-        typeof detail === "string"
-          ? detail
-          : Array.isArray(detail)
-            ? detail.map((d: any) => d?.msg || d?.detail || JSON.stringify(d)).join("; ")
-            : detail?.message || e?.message || "Unknown error";
-      setTransferDetails(null);
-      toaster.create({
-        title: "Transfer failed",
-        description: message,
-        type: "error",
-      });
-    },
-  });
-
-  const verifyM = useMutation({
-    mutationFn: (reference: string) => bookingsApi.checkBankTransferStatus(reference),
-    onSuccess: (res) => {
-      const status = (res.data?.status || "").toLowerCase();
-      if (status === "success") {
-        toaster.create({ title: "Transfer confirmed!", description: "Payment received successfully.", type: "success" });
-        setTransferDetails(null);
-        onCollected?.();
-        onClose();
-      } else {
-        toaster.create({
-          title: `Transfer status: ${status || "unknown"}`,
-          description: `The transfer is not yet confirmed. Please contact support with reference ${transferDetails?.reference}.`,
-          type: "warning",
-        });
-      }
-    },
-    onError: (e: any) => {
-      const detail = e?.response?.data?.detail;
-      const message = typeof detail === "string" ? detail : detail?.message || e?.message || "Verification failed";
-      toaster.create({
-        title: "Transfer check failed",
-        description: message,
-        type: "error",
-      });
-    },
-  });
 
   const handleCollectCash = async () => {
     try {
@@ -153,16 +82,19 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
     }
   };
 
-  const handleGenerateTransfer = () => {
-    if (booking.amount < 100) {
-      toaster.create({
-        title: "Amount too low for bank transfer",
-        description: `Bank transfer requires a minimum of ₦100. This booking is ${formatNaira(booking.amount)}. Please use Cash or Card instead.`,
-        type: "warning",
+  const handleTransferRedirect = async () => {
+    try {
+      await initM.mutateAsync({
+        amount: booking.amount,
+        customer_email: customerEmail,
+        customer_name: customerName,
+        booking_id: booking.id,
+        user_type: "free",
+        method: "transfer",
       });
-      return;
+    } catch (e: any) {
+      toaster.create({ title: "Payment init failed", description: e?.response?.data?.detail || e?.message, type: "error" });
     }
-    transferM.mutate({ email: customerEmail, amount: booking.amount, booking_id: booking.id });
   };
 
   const handleCardRedirect = async () => {
@@ -173,15 +105,11 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
         customer_name: customerName,
         booking_id: booking.id,
         user_type: "free",
+        method: "card",
       });
     } catch (e: any) {
       toaster.create({ title: "Card payment failed", description: e?.response?.data?.detail || e?.message, type: "error" });
     }
-  };
-
-  const formatExpiry = (ts?: string) => {
-    if (!ts) return "8 hours from now";
-    return new Date(ts).toLocaleString();
   };
 
   if (!open) return null;
@@ -199,73 +127,44 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
             <Dialog.Body>
               <Text fontWeight="bold" fontSize="xl" mb="4">{formatNaira(booking.amount)}</Text>
 
-              {transferDetails ? (
-                <VStack gap="4" align="stretch">
-                  <Card.Root variant="outline" p="4">
-                    <Stack gap="3">
-                      <Heading size="sm" color="green.600">Transfer Account Ready</Heading>
-                      <Text fontSize="sm" color="fg.muted">{transferDetails.display_text ?? "Transfer the exact amount shown below."}</Text>
-                      <Box h="1px" bg="border" />
-                      <VStack gap="2" align="stretch">
-                        <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Account Name</Text><Text fontWeight="semibold" fontFamily="mono" fontSize="sm">{transferDetails.account_name}</Text></HStack>
-                        <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Account Number</Text><Text fontWeight="semibold" fontFamily="mono" fontSize="sm">{transferDetails.account_number}</Text></HStack>
-                        <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Bank</Text><Text fontWeight="semibold" fontSize="sm">{transferDetails.bank_name}</Text></HStack>
-                        <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Amount</Text><Text fontWeight="semibold" fontSize="lg">{formatNaira(transferDetails.amount)}</Text></HStack>
-                        {transferDetails.base_amount && transferDetails.fee && (
-                          <Box h="1px" bg="border" marginY="2" />
-                        )}
-                        {transferDetails.base_amount && transferDetails.fee && (
-                          <Text fontSize="sm" color="fg.muted">
-                            Fee: {formatNaira(transferDetails.fee)} ({transferDetails.base_amount} + {transferDetails.fee})
-                          </Text>
-                        )}
-                        <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Expires</Text><Text fontSize="sm">{formatExpiry(transferDetails.account_expires_at)}</Text></HStack>
-                      </VStack>
-                      <Text fontSize="xs" color="fg.muted">
-                        Instruct the customer to transfer <strong>exactly {formatNaira(transferDetails.amount)}</strong>. The tenant receives {formatNaira(transferDetails.base_amount)} and the Paystack fee of {formatNaira(transferDetails.fee)} is retained by Paystack.
-                      </Text>
-                    </Stack>
-                  </Card.Root>
-                  <Flex justify="end" gap="2">
-                    <Button variant="ghost" onClick={() => setTransferDetails(null)}><LuX /> Back to Methods</Button>
-                    <Button colorPalette="blue" variant="outline" onClick={() => verifyM.mutate(transferDetails.reference)} loading={verifyM.isPending}>Check Status</Button>
-                    <Button colorPalette="green" onClick={onClose}>Close</Button>
-                  </Flex>
-                </VStack>
-              ) : (
-                <VStack gap="4" align="stretch">
-                  <Text fontSize="sm" color="fg.muted">Select how the customer will pay:</Text>
-                  <VStack align="stretch" gap="3">
-                    <MethodCard value="cash" title="Cash" desc="Record the full amount as cash payment immediately." icon={<LuBanknote />} color="green.500" selected={method === "cash"} onSelect={setMethod} />
-                    <MethodCard value="transfer" title="Bank Transfer" desc="Generate a one-time virtual account for the exact amount." icon={<LuBanknote />} color="blue.500" selected={method === "transfer"} onSelect={setMethod} />
-                    <MethodCard value="card" title="Card (Paystack)" desc="Redirect to Paystack checkout to pay with card." icon={<LuCreditCard />} color="purple.500" selected={method === "card"} onSelect={setMethod} />
-                  </VStack>
-
-                  <Box h="1px" bg="border" />
-
-                  {method === "cash" && (
-                    <Flex justify="end" gap="2">
-                      <Button colorPalette="green" onClick={handleCollectCash} loading={collectM.isPending}>
-                        {collectM.isPending ? <Spinner size="sm" /> : <>Confirm Cash Payment <LuArrowRight /></>}
-                      </Button>
-                    </Flex>
-                  )}
-                  {method === "transfer" && (
-                    <Flex justify="end" gap="2">
-                      <Button colorPalette="blue" onClick={handleGenerateTransfer} loading={transferM.isPending}>
-                        {transferM.isPending ? <Spinner size="sm" /> : <>Generate Transfer Details <LuArrowRight /></>}
-                      </Button>
-                    </Flex>
-                  )}
-                  {method === "card" && (
-                    <Flex justify="end" gap="2">
-                      <Button colorPalette="purple" onClick={handleCardRedirect} loading={initM.isPending}>
-                        {initM.isPending ? <Spinner size="sm" /> : <>Pay with Card <LuArrowRight /></>}
-                      </Button>
-                    </Flex>
-                  )}
-                </VStack>
+              {method === "transfer" && (
+                <Text fontSize="xs" color="fg.muted">
+                  The customer will be redirected to Paystack to complete the bank transfer. The booking stays pending until Paystack confirms the transfer.
+                </Text>
               )}
+
+              <VStack gap="4" align="stretch">
+                <Text fontSize="sm" color="fg.muted">Select how the customer will pay:</Text>
+                <VStack align="stretch" gap="3">
+                  <MethodCard value="cash" title="Cash" desc="Record the full amount as cash payment immediately." icon={<LuBanknote />} color="green.500" selected={method === "cash"} onSelect={setMethod} />
+                  <MethodCard value="transfer" title="Bank Transfer" desc="Redirect to Paystack to pay via bank transfer." icon={<LuBanknote />} color="blue.500" selected={method === "transfer"} onSelect={setMethod} />
+                  <MethodCard value="card" title="Card (Paystack)" desc="Redirect to Paystack checkout to pay with card." icon={<LuCreditCard />} color="purple.500" selected={method === "card"} onSelect={setMethod} />
+                </VStack>
+
+                <Box h="1px" bg="border" />
+
+                {method === "cash" && (
+                  <Flex justify="end" gap="2">
+                    <Button colorPalette="green" onClick={handleCollectCash} loading={collectM.isPending}>
+                      {collectM.isPending ? <Spinner size="sm" /> : <>Confirm Cash Payment <LuArrowRight /></>}
+                    </Button>
+                  </Flex>
+                )}
+                {method === "transfer" && (
+                  <Flex justify="end" gap="2">
+                    <Button colorPalette="blue" onClick={handleTransferRedirect} loading={initM.isPending}>
+                      {initM.isPending ? <Spinner size="sm" /> : <>Pay via Bank Transfer <LuArrowRight /></>}
+                    </Button>
+                  </Flex>
+                )}
+                {method === "card" && (
+                  <Flex justify="end" gap="2">
+                    <Button colorPalette="purple" onClick={handleCardRedirect} loading={initM.isPending}>
+                      {initM.isPending ? <Spinner size="sm" /> : <>Pay with Card <LuArrowRight /></>}
+                    </Button>
+                  </Flex>
+                )}
+              </VStack>
             </Dialog.Body>
           </Dialog.Content>
         </Dialog.Positioner>
