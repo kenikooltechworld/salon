@@ -52,7 +52,7 @@ export default function BookingCreatePage() {
   });
 
   const staffQ = useQuery({ queryKey: ["staff", "all"], queryFn: async () => (await apiClient.get("/staff")).data });
-  const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services?page=1&page_size=100&active_only=true")).data });
+  const servicesQ = useQuery({ queryKey: ["services", "all"], queryFn: async () => (await apiClient.get("/services?page=1&page_size=100&active_only=true&published_only=true")).data });
   const customersQ = useQuery({ queryKey: ["customers", "all"], queryFn: async () => (await apiClient.get("/customers?page=1&page_size=100")).data });
   const addonsQ = useQuery({ queryKey: ["service-addons", "all"], queryFn: async () => (await apiClient.get("/service-addons")).data });
   const packagesQ = useQuery({ queryKey: ["service-packages", "all"], queryFn: async () => (await apiClient.get("/service-packages?page=1&page_size=100&active_only=true")).data });
