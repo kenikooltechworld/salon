@@ -323,6 +323,60 @@ async def verify_payment(
     return tx
 
 
+@router.get("/charge/{reference}")
+async def check_pending_charge(
+    reference: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    """Check Pending Charge — Paystack's recommended endpoint for bank_transfer charges.
+
+    Returns the current status (pending | success | failed | abandoned) of a
+    Pay with Transfer charge and updates local Payment/Appointment status.
+    """
+    pss = PaystackService()
+    try:
+        tx = await pss.check_pending_charge(reference)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    paystack_status = (tx.get("status") or "").lower()
+    if paystack_status == "success":
+        result = await session.execute(
+            select(PaymentModel).where(PaymentModel.reference == reference, PaymentModel.tenant_id == current_user.tenant_id)
+        )
+        payment = result.scalar_one_or_none()
+        if payment:
+            payment.status = "success"
+            payment.metadata_ = {
+                **(payment.metadata_ or {}),
+                "paystack_transaction_id": tx.get("id") or tx.get("transaction_id"),
+                "paystack_authorization": tx.get("authorization") or tx.get("authorization_url"),
+                "verified_at": str(tx.get("paid_at") or tx.get("transaction_date")),
+            }
+            metadata = payment.metadata_ or {}
+            appointment_id = metadata.get("appointment_id") or metadata.get("booking_meta", {}).get("appointment_id")
+            if appointment_id:
+                try:
+                    appt_id = uuid.UUID(str(appointment_id))
+                except (ValueError, TypeError):
+                    appt_id = None
+                if appt_id is not None:
+                    appt = (await session.execute(select(Appointment).where(Appointment.id == appt_id))).scalar_one_or_none()
+                    if appt:
+                        appt.payment_status = "paid"
+            await session.commit()
+    elif paystack_status in ("failed", "abandoned", "cancelled") or paystack_status == "pending_bank_transfer":
+        result = await session.execute(
+            select(PaymentModel).where(PaymentModel.reference == reference, PaymentModel.tenant_id == current_user.tenant_id)
+        )
+        payment = result.scalar_one_or_none()
+        if payment and paystack_status in ("failed", "abandoned", "cancelled"):
+            payment.status = paystack_status
+
+    return tx
+
+
 @router.post("/bank-transfer")
 async def create_bank_transfer_charge(
     data: BankTransferChargeRequest,

@@ -25,7 +25,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 def _get_paystack_service() -> Any:
     from app.services.paystack_service import PaystackService
 
-    return PaystackService()
+    return PaystackService
 
 
 # ── Paystack webhook receiver ────────────────────────────────────
@@ -35,7 +35,8 @@ async def handle_paystack_webhook(request: Request):
     """Handle Paystack webhook events.
 
     Verifies signature, processes charge.success / charge.failed /
-    charge.cancelled, updates payment, invoice and appointment status.
+    charge.cancelled, bank.transfer.rejected, updates payment, invoice
+    and appointment status.
     """
     body_bytes = await request.body()
     body_str = body_bytes.decode("utf-8")
@@ -47,7 +48,7 @@ async def handle_paystack_webhook(request: Request):
             detail="Missing X-Paystack-Signature header",
         )
 
-    pss = _get_paystack_service()
+    pss = _get_paystack_service()()
     if not pss.verify_webhook_signature(body_str, signature):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,6 +87,8 @@ async def handle_paystack_webhook(request: Request):
 
         if event == "charge.success":
             await _handle_charge_success(payment, extracted, session)
+        elif event == "bank.transfer.rejected":
+            await _handle_transfer_rejected(payment, extracted, session)
         elif event == "charge.failed":
             await _handle_charge_failed(payment, extracted, session)
         elif event in ("charge.cancelled", "charge.abandoned"):
@@ -151,6 +154,23 @@ async def _handle_charge_success(
                 appt.payment_id = str(payment.id)
                 logger.info(f"Appointment {appt.id} marked as paid")
 
+    await session.commit()
+
+
+async def _handle_transfer_rejected(
+    payment: PaymentModel,
+    extracted: dict[str, Any],
+    session,
+) -> None:
+    """Handle bank.transfer.rejected — wrong amount or fraud-rejected transfer."""
+    logger.info(f"Processing bank.transfer.rejected for payment {payment.id}")
+    payment.status = "failed"
+    payment.metadata_ = {
+        **(payment.metadata_ or {}),
+        "failure_reason": extracted.get("gateway_response") or "Transfer rejected (wrong amount or fraud check)",
+        "paystack_transaction_id": extracted.get("transaction_id"),
+        "webhook_processed_at": str(extracted.get("paid_at")),
+    }
     await session.commit()
 
 

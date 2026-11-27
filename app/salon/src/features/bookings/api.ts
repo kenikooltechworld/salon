@@ -42,6 +42,19 @@ export const bookingsApi = {
     apiClient.get<{ status: string; reference: string; gateway: string; amount: number }>("/paystack/verify", {
       params: { reference },
     }),
+  checkBankTransferStatus: (reference: string) =>
+    apiClient.get<{
+      status: string;
+      reference: string;
+      gateway?: string;
+      amount: number;
+      account_number?: string;
+      account_name?: string;
+      bank?: { name?: string };
+      display_text?: string;
+      account_expires_at?: string;
+      message?: string;
+    }>(`/paystack/charge/${encodeURIComponent(reference)}`),
   createBankTransferCharge: (payload: { email: string; amount: number; booking_id?: string }) =>
     apiClient.post<{
       status: string;

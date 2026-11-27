@@ -131,6 +131,16 @@ class PaystackService:
             raise ValueError("reference is required")
         return await self._request("GET", f"/transaction/verify/{reference}")
 
+    async def check_pending_charge(self, reference: str) -> dict[str, Any]:
+        """Check Pending Charge — Paystack's recommended endpoint for pending bank_transfer charges.
+
+        Use this to poll the status of a bank transfer that hasn't completed yet.
+        Returns status: pending | success | failed | abandoned.
+        """
+        if not reference:
+            raise ValueError("reference is required")
+        return await self._request("GET", f"/charge/{reference}")
+
     async def get_transaction(self, transaction_id: int | str) -> dict[str, Any]:
         return await self._request("GET", f"/transaction/{transaction_id}")
 

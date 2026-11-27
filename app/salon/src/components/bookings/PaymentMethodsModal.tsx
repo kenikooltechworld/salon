@@ -113,7 +113,7 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
   });
 
   const verifyM = useMutation({
-    mutationFn: (reference: string) => bookingsApi.verifyPayment(reference),
+    mutationFn: (reference: string) => bookingsApi.checkBankTransferStatus(reference),
     onSuccess: (res) => {
       const status = (res.data?.status || "").toLowerCase();
       if (status === "success") {
