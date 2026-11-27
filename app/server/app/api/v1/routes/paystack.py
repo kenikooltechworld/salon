@@ -223,7 +223,8 @@ async def initialize_payment(
         },
     )
     session.add(payment)
-    await session.flush()
+    await session.commit()
+    await session.refresh(payment)
 
     # Default callback_url to configured Paystack callback URL.
     callback_url = data.callback_url or settings.paystack_callback_url
