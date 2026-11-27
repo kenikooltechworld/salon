@@ -112,6 +112,34 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
     },
   });
 
+  const verifyM = useMutation({
+    mutationFn: (reference: string) => bookingsApi.verifyPayment(reference),
+    onSuccess: (res) => {
+      const status = (res.data?.status || "").toLowerCase();
+      if (status === "success") {
+        toaster.create({ title: "Transfer confirmed!", description: "Payment received successfully.", type: "success" });
+        setTransferDetails(null);
+        onCollected?.();
+        onClose();
+      } else {
+        toaster.create({
+          title: `Transfer status: ${status || "unknown"}`,
+          description: `The transfer is not yet confirmed. Please contact support with reference ${transferDetails?.reference}.`,
+          type: "warning",
+        });
+      }
+    },
+    onError: (e: any) => {
+      const detail = e?.response?.data?.detail;
+      const message = typeof detail === "string" ? detail : detail?.message || e?.message || "Verification failed";
+      toaster.create({
+        title: "Transfer check failed",
+        description: message,
+        type: "error",
+      });
+    },
+  });
+
   const handleCollectCash = async () => {
     try {
       await collectM.mutateAsync({ id: booking.id, payload: { payment_method: "cash", amount: booking.amount } });
@@ -190,6 +218,7 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
                   </Card.Root>
                   <Flex justify="end" gap="2">
                     <Button variant="ghost" onClick={() => setTransferDetails(null)}><LuX /> Back to Methods</Button>
+                    <Button colorPalette="blue" variant="outline" onClick={() => verifyM.mutate(transferDetails.reference)} loading={verifyM.isPending}>Check Status</Button>
                     <Button colorPalette="green" onClick={onClose}>Close</Button>
                   </Flex>
                 </VStack>
