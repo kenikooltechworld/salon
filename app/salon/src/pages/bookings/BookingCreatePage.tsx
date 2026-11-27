@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
-import { useCreateBooking } from "@/features/bookings";
+import { useCreateBooking, useInitializePayment } from "@/features/bookings";
 import { useCreateCustomer } from "@/features/customers/hooks";
 import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 
@@ -37,6 +37,7 @@ function addMinutes(hhmm: string, mins: number) { const [h, m] = hhmm.split(":")
 export default function BookingCreatePage() {
   const navigate = useNavigate();
   const create = useCreateBooking();
+  const initializePayment = useInitializePayment();
   const createCustomer = useCreateCustomer();
   const [step, setStep] = useState(0);
   const [customerMode, setCustomerMode] = useState<"existing" | "new" | "guest">("existing");
@@ -189,6 +190,22 @@ export default function BookingCreatePage() {
         payment_status: form.payment_status,
       });
       const booking = (res as any)?.data ?? res;
+
+      if (form.payment_option === "now") {
+        const customerEmail = customerMode === "guest" ? (form.guest_email || "") : (selectedCustomer?.email || form.email || "");
+        const customerName = customerMode === "guest"
+          ? (form.guest_name || undefined)
+          : (selectedCustomer ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim() || undefined : `${form.first_name} ${form.last_name}`.trim() || undefined);
+        await initializePayment.mutateAsync({
+          amount: Number(totalPrice),
+          customer_email: customerEmail,
+          customer_name: customerName,
+          booking_id: booking.id,
+          user_type: "free",
+        });
+        return;
+      }
+
       toaster.create({ title: "Booking created", type: "success" });
       navigate("/bookings/confirmation", { state: { booking, detail } });
     } catch (e: any) {
