@@ -96,7 +96,19 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
       });
     },
     onError: (e: any) => {
-      toaster.create({ title: "Failed to generate transfer account", description: e?.response?.data?.detail || e?.message, type: "error" });
+      const detail = e?.response?.data?.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((d: any) => d?.msg || d?.detail || JSON.stringify(d)).join("; ")
+            : detail?.message || e?.message || "Unknown error";
+      setTransferDetails(null);
+      toaster.create({
+        title: "Transfer failed",
+        description: message,
+        type: "error",
+      });
     },
   });
 
