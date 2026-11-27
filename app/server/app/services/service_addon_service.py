@@ -83,9 +83,8 @@ class ServiceAddonService:
         addon = await self.get(tenant_id, addon_id)
         if addon is None:
             return False
-        addon.is_active = False
+        await self.session.delete(addon)
         await self.session.flush()
-        await self.session.refresh(addon)
         return True
 
     async def _validate_services(self, tenant_id: uuid.UUID, service_ids: list[uuid.UUID]) -> None:
