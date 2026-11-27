@@ -112,6 +112,14 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
   };
 
   const handleGenerateTransfer = () => {
+    if (booking.amount < 100) {
+      toaster.create({
+        title: "Amount too low for bank transfer",
+        description: `Bank transfer requires a minimum of ₦100. This booking is ${formatNaira(booking.amount)}. Please use Cash or Card instead.`,
+        type: "warning",
+      });
+      return;
+    }
     transferM.mutate({ email: customerEmail, amount: booking.amount, booking_id: booking.id });
   };
 

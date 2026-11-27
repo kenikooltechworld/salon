@@ -20,6 +20,12 @@ class AvailabilitySession:
     async def flush(self):
         pass
 
+    async def execute(self, *args, **kwargs):
+        class FakeResult:
+            def scalar_one_or_none(self):
+                return None
+        return FakeResult()
+
 
 @pytest.mark.asyncio
 async def test_staff_default_availability_matches_legacy_seed():
