@@ -187,11 +187,13 @@ export default function BookingCreatePage() {
         guest_email: customerMode === "guest" ? form.guest_email || null : null,
         guest_phone: customerMode === "guest" ? form.guest_phone || null : null,
         payment_option: form.payment_option,
-        payment_status: form.payment_status,
+        payment_status: form.payment_option === "now" ? "pending" : form.payment_status,
       });
       const booking = (res as any)?.data ?? res;
 
       if (form.payment_option === "now") {
+        // Appointment created as pending-payment anchor (required for payment endpoints).
+        // Nothing is "booked" until payment completes.
         setPendingBooking(booking);
         setPendingDetail(detail);
         setPendingPay({
@@ -199,7 +201,7 @@ export default function BookingCreatePage() {
           amount: Number(totalPrice),
           status: booking.status ?? "scheduled",
           payment_option: "now",
-          payment_status: booking.payment_status ?? "pending",
+          payment_status: "pending",
           is_guest: customerMode === "guest",
           guest_email: customerMode === "guest" ? (form.guest_email || null) : null,
           guest_name: customerMode === "guest" ? (form.guest_name || null) : null,
@@ -216,6 +218,7 @@ export default function BookingCreatePage() {
         return;
       }
 
+      // pay-later: confirmed immediately
       toaster.create({ title: "Booking created", type: "success" });
       navigate("/bookings/confirmation", { state: { booking, detail } });
     } catch (e: any) {
