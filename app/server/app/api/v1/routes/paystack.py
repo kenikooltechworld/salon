@@ -182,6 +182,11 @@ class InitializePaymentResponse(BaseModel):
     message: str
 
 
+class BankTransferChargeRequest(BaseModel):
+    email: str
+    amount: Decimal
+    booking_id: str | None = None  # optional tie to the appointment/booking reference
+
 @router.post("/initialize", response_model=InitializePaymentResponse)
 async def initialize_payment(
     data: InitializePaymentRequest,
@@ -316,3 +321,36 @@ async def verify_payment(
 
     await session.commit()
     return tx
+
+
+@router.post("/bank-transfer")
+async def create_bank_transfer_charge(
+    data: BankTransferChargeRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
+
+    Returns account details for the customer to transfer the exact amount.
+    """
+    pss = PaystackService()
+    try:
+        amount_kobo = int(data.amount * 100)
+        reference = f"bt_{data.booking_id}" if data.booking_id else f"bt_{uuid.uuid4().hex[:12]}"
+        tx = await pss.create_bank_transfer_charge(email=data.email, amount_kobo=amount_kobo, reference=reference)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    bank = tx.get("bank") or {}
+    return {
+        "status": tx.get("status"),
+        "reference": tx.get("reference"),
+        "display_text": tx.get("display_text"),
+        "account_name": tx.get("account_name"),
+        "account_number": tx.get("account_number"),
+        "bank_name": bank.get("name") if isinstance(bank, dict) else None,
+        "amount_kobo": amount_kobo,
+        "amount": float(data.amount),
+        "account_expires_at": tx.get("account_expires_at"),
+        "message": tx.get("message"),
+    }

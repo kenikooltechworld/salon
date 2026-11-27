@@ -107,6 +107,25 @@ class PaystackService:
             body["metadata"] = json.dumps(metadata)
         return await self._request("POST", "/transaction/initialize", json_body=body)
 
+    async def create_bank_transfer_charge(self, *, email: str, amount_kobo: int, reference: str | None = None) -> dict[str, Any]:
+        """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
+
+        Returns account details the customer should fund (account_number, account_name, bank, amount, expiry).
+        """
+        if not email:
+            raise ValueError("email is required")
+        if amount_kobo <= 0:
+            raise ValueError("amount must be greater than 0")
+        body: dict[str, Any] = {
+            "email": email,
+            "amount": amount_kobo,
+            "currency": "NGN",
+            "bank_transfer": {"account_expires_at": None},
+        }
+        if reference:
+            body["reference"] = reference
+        return await self._request("POST", "/charge", json_body=body)
+
     async def verify_transaction(self, reference: str) -> dict[str, Any]:
         if not reference:
             raise ValueError("reference is required")

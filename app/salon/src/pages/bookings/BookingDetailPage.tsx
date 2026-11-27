@@ -3,16 +3,17 @@ import {
   Avatar, Badge, Box, Button, Card, Dialog, Flex, Grid, Heading, HStack, Image, Portal, Skeleton, Stack, Text,
 } from "@chakra-ui/react";
 import { useState } from "react";
-import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
+import { LuArrowLeft, LuCreditCard, LuPencil, LuTrash2 } from "react-icons/lu";
 import { useQuery } from "@tanstack/react-query";
 import { formatNaira } from "@/components/ui/naira";
 import { toaster } from "@/components/ui/toaster";
 import {
-  useBookingDetail, useCancelBooking, useCollectBookingPayment, useCompleteBooking, useConfirmBooking, useDeleteBooking, useNoShowBooking, useStartBooking, useInitializePayment,
+  useBookingDetail, useCancelBooking, useCompleteBooking, useConfirmBooking, useDeleteBooking, useNoShowBooking, useStartBooking,
 } from "@/features/bookings";
 import { BookingStatusBadge } from "./BookingStatusBadge";
 import { getStaffDisplayName, getStaffImageUrl } from "@/features/staff";
 import { BookingFormDialog } from "./BookingFormDialog";
+import PaymentMethodsModal from "@/components/bookings/PaymentMethodsModal";
 import { useAuthStore } from "@/features/auth";
 import { apiClient } from "@/lib/api";
 
@@ -28,11 +29,10 @@ export default function BookingDetailPage() {
   const { data: b, isLoading, isError } = useBookingDetail(id);
   const confirm = useConfirmBooking(); const complete = useCompleteBooking(); const cancel = useCancelBooking();
   const noShow = useNoShowBooking(); const start = useStartBooking();
-  const collectPayment = useCollectBookingPayment();
-  const initializePayment = useInitializePayment();
   const deleteBooking = useDeleteBooking();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const staffQ = useQuery({
     queryKey: ["staff", "booking-edit"],
     queryFn: async () => (await apiClient.get("/staff?page=1&page_size=100")).data,
@@ -58,6 +58,11 @@ export default function BookingDetailPage() {
   const serviceOptions = [...(Array.isArray(servicesQ.data?.services) ? servicesQ.data.services : [])];
   if (b.staff && !staffOptions.some((item: any) => item.id === b.staff?.id)) staffOptions.push(b.staff);
   if (b.service && !serviceOptions.some((item: any) => item.id === b.service?.id)) serviceOptions.push(b.service);
+
+  const amount = Number(b.price ?? b.service?.price ?? 0);
+  const paid = ["paid", "success", "completed"].includes((b.payment_status || "").toLowerCase());
+  const canPayNow = b.payment_option === "now" && !paid && amount > 0;
+  const canCollect = b.status === "completed" && b.payment_option === "later" && !paid && amount > 0;
 
   const onDelete = async () => {
     try {
@@ -128,14 +133,30 @@ export default function BookingDetailPage() {
             {(b.status === "confirmed" || b.status === "in_progress") && <Button colorPalette="purple" loading={complete.isPending} onClick={() => act(() => complete.mutateAsync(b.id), "Booking completed")}>Complete</Button>}
             {canCancel && <Button colorPalette="red" variant="outline" loading={cancel.isPending} onClick={() => act(() => cancel.mutateAsync({ id: b.id, reason: "Cancelled by staff" }), "Booking cancelled")}>Cancel</Button>}
             {canNoShow && <Button variant="outline" loading={noShow.isPending} onClick={() => act(() => noShow.mutateAsync({ id: b.id, reason: "Marked as no-show" }), "Marked as no-show")}>No-Show</Button>}
-            {b.status === "completed" && b.payment_status !== "completed" && b.payment_option === "later" && Number(b.price ?? b.service?.price ?? 0) > 0 && <Button colorPalette="green" variant="outline" loading={collectPayment.isPending} onClick={() => act(() => collectPayment.mutateAsync({ id: b.id, payload: { payment_method: "cash", amount: Number(b.price ?? b.service?.price ?? 0) } }), "Payment collected")}>Collect Payment</Button>}
-            {b.payment_option === "now" && !(b.payment_status === "paid" || b.payment_status === "success" || b.payment_status === "completed") && Number(b.price ?? b.service?.price ?? 0) > 0 && <Button colorPalette="green" loading={initializePayment.isPending} onClick={() => act(() => initializePayment.mutateAsync({ amount: Number(b.price ?? b.service?.price ?? 0), customer_email: b.guest_email ?? b.customer?.email ?? "", customer_name: b.is_guest ? (b.guest_name ?? undefined) : (b.customer?.first_name ?? undefined), booking_id: b.id, user_type: "free" }), "Pay now")}>Pay Now</Button>}
+            {canPayNow && <Button colorPalette="green" onClick={() => setPayOpen(true)}><LuCreditCard /> Pay Now</Button>}
+            {canCollect && <Button colorPalette="green" variant="outline" onClick={() => setPayOpen(true)}><LuCreditCard /> Collect Payment</Button>}
             {canManage && <Button colorPalette="red" variant="outline" onClick={() => setDeleteOpen(true)}><LuTrash2 /> Delete booking</Button>}
             <Button variant="ghost" onClick={() => navigate("/bookings")}>Close</Button>
           </Stack>
         </Card.Body>
       </Card.Root>
     </Grid>
+    <PaymentMethodsModal
+      open={payOpen}
+      onClose={() => setPayOpen(false)}
+      booking={{
+        id: b.id,
+        amount,
+        status: b.status,
+        payment_option: (b.payment_option as "now" | "later") || "later",
+        payment_status: b.payment_status,
+        is_guest: b.is_guest,
+        guest_email: b.guest_email,
+        guest_name: b.guest_name,
+        customer: b.customer ? { id: b.customer.id, first_name: b.customer.first_name, last_name: b.customer.last_name, email: b.customer.email } : null,
+      }}
+      onCollected={() => {}}
+    />
     <BookingFormDialog
       open={editOpen}
       onOpenChange={setEditOpen}
