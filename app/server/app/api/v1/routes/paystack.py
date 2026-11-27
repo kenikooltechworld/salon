@@ -226,7 +226,7 @@ async def initialize_payment(
             email=data.customer_email,
             amount_kobo=amount_kobo,
             reference=reference,
-            callback_url=data.callback_url,
+            callback_url=callback_url,
             subaccount=subaccount_code,
             bearer=bearer,
             currency="NGN",
