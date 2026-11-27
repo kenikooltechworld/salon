@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, Button, Card, Container, Heading, Spinner, Stack, Text } from "@chakra-ui/react";
 import { LuCheck, LuX } from "react-icons/lu";
 import { bookingsApi } from "@/features/bookings";
@@ -6,9 +7,15 @@ import { bookingsApi } from "@/features/bookings";
 type PaymentStatus = "success" | "failed" | "cancelled" | "pending" | "unknown";
 
 export default function PaystackCallbackPage() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus>("pending");
   const [reference, setReference] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const bookingIdFromRef = (() => {
+    if (!reference) return null;
+    const parts = reference.split("_");
+    return parts[1] ?? null;
+  })();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -44,6 +51,16 @@ export default function PaystackCallbackPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (status !== "success" || !bookingIdFromRef) return;
+    const t = setTimeout(() => {
+      navigate("/bookings/confirmation", {
+        state: { booking: { id: bookingIdFromRef, status: "confirmed" }, detail: {} },
+      });
+    }, 10000);
+    return () => clearTimeout(t);
+  }, [status, bookingIdFromRef, navigate]);
+
   if (loading) {
     return (
       <Container maxW="sm" py="10" textAlign="center">
@@ -57,7 +74,7 @@ export default function PaystackCallbackPage() {
   const isPending = status === "pending";
   const title = isSuccess ? "Payment Successful" : isPending ? "Payment Processing" : "Payment Not Completed";
   const subtitle = isSuccess
-    ? "Your payment was received. Your booking and invoice are now marked as paid."
+    ? "Your payment was received. Your booking and invoice are now marked as paid. Redirecting to confirmation in 10 seconds…"
     : isPending
       ? "We are still confirming your payment with Paystack. This usually resolves within a minute — check your bookings shortly."
       : "The payment was not completed. If you were charged, contact support with the reference below.";
