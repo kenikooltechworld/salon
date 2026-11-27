@@ -65,6 +65,8 @@ export const bookingsApi = {
       bank_name?: string;
       amount_kobo: number;
       amount: number;
+      base_amount?: number;
+      fee?: number;
       account_expires_at?: string;
       message?: string;
     }>("/paystack/bank-transfer", payload),

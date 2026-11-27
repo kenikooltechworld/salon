@@ -141,6 +141,15 @@ class PaystackService:
             raise ValueError("reference is required")
         return await self._request("GET", f"/charge/{reference}")
 
+    @staticmethod
+    def calculate_local_fee(amount_naira: float) -> float:
+        """Paystack Nigeria local transaction fee (1.5% + NGN 100, capped at 2000; 100 waived under 2500)."""
+        if amount_naira <= 0:
+            return 0.0
+        if amount_naira < 2500:
+            return round(amount_naira * 0.015, 2)
+        return round(min(amount_naira * 0.015 + 100.0, 2000.0), 2)
+
     async def get_transaction(self, transaction_id: int | str) -> dict[str, Any]:
         return await self._request("GET", f"/transaction/{transaction_id}")
 

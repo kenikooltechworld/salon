@@ -385,13 +385,15 @@ async def create_bank_transfer_charge(
 ):
     """Create a Pay with Transfer (bank_transfer) charge — one-time virtual account per transaction.
 
-    Returns account details for the customer to transfer the exact amount.
-    A pending Payment row is created so the webhook can locate it by reference
-    and mark the appointment paid on successful transfer.
+    The amount charged includes the Paystack local transaction fee so the tenant
+    receives 100% of the booking amount. Fee breakdown is shown to the customer.
     """
     pss = PaystackService()
     try:
-        amount_kobo = int(data.amount * 100)
+        base_amount = float(data.amount)
+        fee = pss.calculate_local_fee(base_amount)
+        total_amount = round(base_amount + fee, 2)
+        amount_kobo = int(total_amount * 100)
         reference = f"bt_{data.booking_id}" if data.booking_id else f"bt_{uuid.uuid4().hex[:12]}"
         tx = await pss.create_bank_transfer_charge(email=data.email, amount_kobo=amount_kobo, reference=reference)
     except ValueError as exc:
@@ -400,12 +402,18 @@ async def create_bank_transfer_charge(
     # Persist a pending Payment row so the webhook can locate it by reference.
     payment = PaymentModel(
         tenant_id=current_user.tenant_id,
-        amount=data.amount,
+        amount=base_amount,
         status="pending",
         reference=reference,
         gateway="paystack",
         payment_method="transfer",
-        metadata_={"appointment_id": data.booking_id},
+        metadata_={
+            "appointment_id": data.booking_id,
+            "paystack_fee": fee,
+            "paystack_total": total_amount,
+            "paystack_fee_percent": "1.5%",
+            "paystack_fee_fixed": 100.0 if base_amount >= 2500 else 0.0,
+        },
     )
     session.add(payment)
     await session.flush()
@@ -419,7 +427,14 @@ async def create_bank_transfer_charge(
         "account_number": tx.get("account_number"),
         "bank_name": bank.get("name") if isinstance(bank, dict) else None,
         "amount_kobo": amount_kobo,
-        "amount": float(data.amount),
+        "amount": total_amount,
+        "base_amount": base_amount,
+        "fee": fee,
         "account_expires_at": tx.get("account_expires_at"),
         "message": tx.get("message"),
+        "fee_breakdown": {
+            "base": base_amount,
+            "paystack_fee": fee,
+            "total": total_amount,
+        },
     }

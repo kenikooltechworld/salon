@@ -81,6 +81,8 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
     account_number?: string;
     bank_name?: string;
     amount: number;
+    base_amount?: number;
+    fee?: number;
     account_expires_at?: string;
   } | null>(null);
 
@@ -209,10 +211,18 @@ export default function PaymentMethodsModal({ open, onClose, booking, onCollecte
                         <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Account Number</Text><Text fontWeight="semibold" fontFamily="mono" fontSize="sm">{transferDetails.account_number}</Text></HStack>
                         <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Bank</Text><Text fontWeight="semibold" fontSize="sm">{transferDetails.bank_name}</Text></HStack>
                         <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Amount</Text><Text fontWeight="semibold" fontSize="lg">{formatNaira(transferDetails.amount)}</Text></HStack>
+                        {transferDetails.base_amount && transferDetails.fee && (
+                          <Box h="1px" bg="border" marginY="2" />
+                        )}
+                        {transferDetails.base_amount && transferDetails.fee && (
+                          <Text fontSize="sm" color="fg.muted">
+                            Fee: {formatNaira(transferDetails.fee)} ({transferDetails.base_amount} + {transferDetails.fee})
+                          </Text>
+                        )}
                         <HStack justify="space-between"><Text color="fg.muted" fontSize="sm">Expires</Text><Text fontSize="sm">{formatExpiry(transferDetails.account_expires_at)}</Text></HStack>
                       </VStack>
                       <Text fontSize="xs" color="fg.muted">
-                        Instruct the customer to transfer <strong>exactly {formatNaira(transferDetails.amount)}</strong>. Payment is confirmed automatically via webhook.
+                        Instruct the customer to transfer <strong>exactly {formatNaira(transferDetails.amount)}</strong>. The tenant receives {formatNaira(transferDetails.base_amount)} and the Paystack fee of {formatNaira(transferDetails.fee)} is retained by Paystack.
                       </Text>
                     </Stack>
                   </Card.Root>
