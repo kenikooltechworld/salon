@@ -100,7 +100,6 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
   const [form, setForm] = useState({ business_name: "", settlement_bank: "", account_number: "" });
   const [resolving, setResolving] = useState(false);
   const [resolvedAccountName, setResolvedAccountName] = useState("");
-  const [accountHolderName, setAccountHolderName] = useState("");
 
   const normalized = normalizePaystackSubaccount(data);
   const subaccountCode = normalized.subaccount_code;
@@ -166,12 +165,10 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
 
   // Resolve the account holder name for the saved account (view mode only).
   useEffect(() => {
-    if (!subaccountCode || editing || accountHolderName) return;
+    if (!subaccountCode || editing || resolvedAccountName) return;
     const bankCode = bankCodeFor(normalized.settlement_bank_name || normalized.settlement_bank_code);
     if (bankCode && normalized.account_number && normalized.account_number.length === 10) {
-      resolveNow(normalized.account_number, bankCode).then((name) => {
-        if (name) setAccountHolderName(name);
-      });
+      resolveNow(normalized.account_number, bankCode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subaccountCode, editing, normalized.settlement_bank_name, normalized.account_number, banks.length]);
@@ -195,7 +192,7 @@ function PaystackSubaccountSection({ banks }: { banks: any[] }) {
             <Button size="sm" variant="outline" onClick={startEdit}><LuPencil /> Edit</Button>
           </Flex>
           <Text fontSize="sm">Business Name: <Text as="span" fontWeight="semibold" color="fg">{normalized.business_name || "—"}</Text></Text>
-          <Text fontSize="sm">Account Name: <Text as="span" fontWeight="semibold" color="fg">{accountHolderName || resolvedAccountName || "—"}</Text></Text>
+          <Text fontSize="sm">Account Name: <Text as="span" fontWeight="semibold" color="fg">{resolvedAccountName || "—"}</Text></Text>
           <Text fontSize="sm">Account Number: <Text as="span" fontWeight="semibold" color="fg">{normalized.account_number || "—"}</Text></Text>
           <Text fontSize="sm">Bank: <Text as="span" fontWeight="semibold" color="fg">{normalized.settlement_bank_name || normalized.settlement_bank_code || "—"}</Text></Text>
           <Text fontSize="xs" color="fg.muted">Subaccount: {subaccountCode}</Text>
