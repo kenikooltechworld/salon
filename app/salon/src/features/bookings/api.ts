@@ -38,6 +38,10 @@ export const bookingsApi = {
       access_code?: string;
       message: string;
     }>("/paystack/initialize", payload),
+  verifyPayment: (reference: string) =>
+    apiClient.get<{ status: string; reference: string; gateway: string; amount: number }>("/paystack/verify", {
+      params: { reference },
+    }),
   availableSlots: (params: { staff_id: string; service_id: string; date: string; time_zone?: string }) =>
     apiClient.get<{ date: string; slots: { start_time: string; end_time: string; staff_id: string; duration_minutes: number; isAvailable: boolean }[] }>("/appointments/available-slots", { params }),
 };

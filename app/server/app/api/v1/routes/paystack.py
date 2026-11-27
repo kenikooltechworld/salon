@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.lib.deps import db_session, get_current_user
+from app.models.appointment import Appointment
+from app.models.payment import Payment as PaymentModel
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.services.paystack_service import PaystackService
@@ -205,6 +207,24 @@ async def initialize_payment(
 
     reference = f"salon_{data.booking_id or uuid.uuid4().hex[:12]}_{uuid.uuid4().hex[:8]}"
 
+    # Persist a pending Payment row so the webhook can locate it by reference.
+    payment = PaymentModel(
+        tenant_id=tenant_id,
+        amount=data.amount,
+        status="pending",
+        reference=reference,
+        gateway="paystack",
+        payment_method="paystack",
+        metadata_={
+            "appointment_id": data.booking_id,
+            "user_type": data.user_type,
+            "customer_email": data.customer_email,
+            "customer_name": data.customer_name,
+        },
+    )
+    session.add(payment)
+    await session.flush()
+
     # Default callback_url to configured Paystack callback URL.
     callback_url = data.callback_url or settings.paystack_callback_url
 
@@ -246,3 +266,52 @@ async def initialize_payment(
         access_code=access_code,
         message="Payment initialized successfully",
     )
+
+
+@router.get("/verify")
+async def verify_payment(
+    reference: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(db_session),
+):
+    """Verify a Paystack transaction and update local Payment/Appointment status."""
+    pss = PaystackService()
+    try:
+        tx = await pss.verify_transaction(reference)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    result = await session.execute(
+        select(PaymentModel).where(PaymentModel.reference == reference, PaymentModel.tenant_id == current_user.tenant_id)
+    )
+    payment = result.scalar_one_or_none()
+    if payment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+
+    paystack_status = (tx.get("status") or "").lower()
+    if paystack_status == "success" and payment.status != "success":
+        payment.status = "success"
+        payment.metadata_ = {
+            **(payment.metadata_ or {}),
+            "paystack_transaction_id": tx.get("id") or tx.get("transaction_id"),
+            "paystack_authorization": tx.get("authorization") or tx.get("authorization_url"),
+            "verified_at": str(tx.get("paid_at") or tx.get("transaction_date")),
+        }
+        metadata = payment.metadata_ or {}
+        appointment_id = metadata.get("appointment_id")
+        if appointment_id:
+            try:
+                appt_id = uuid.UUID(str(appointment_id))
+            except (ValueError, TypeError):
+                appt_id = None
+            if appt_id is not None:
+                appt = (
+                    await session.execute(select(Appointment).where(Appointment.id == appt_id))
+                ).scalar_one_or_none()
+                if appt:
+                    appt.payment_status = "paid"
+    elif paystack_status in ("failed", "cancelled", "abandoned") and payment.status not in ("failed", "cancelled"):
+        payment.status = paystack_status
+
+    await session.commit()
+    return tx
