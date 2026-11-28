@@ -11,11 +11,8 @@ export default function PaystackCallbackPage() {
   const [status, setStatus] = useState<PaymentStatus>("pending");
   const [reference, setReference] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const bookingIdFromRef = (() => {
-    if (!reference) return null;
-    const parts = reference.split("_");
-    return parts[1] ?? null;
-  })();
+  const [appointment, setAppointment] = useState<any>(null);
+  const [detail, setDetail] = useState<any>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -31,11 +28,27 @@ export default function PaystackCallbackPage() {
     let active = true;
     bookingsApi
       .verifyPayment(ref)
-      .then((res) => {
+      .then((res: any) => {
         if (!active) return;
         const s = (res.data?.status || "").toLowerCase();
-        if (s === "success") setStatus("success");
-        else if (s === "failed") setStatus("failed");
+        if (s === "success") {
+          setStatus("success");
+          const appt = res.data?.appointment;
+          if (appt) {
+            setAppointment(appt);
+            setDetail({
+              serviceName: appt.service?.name || "",
+              serviceDuration: appt.service?.duration_minutes,
+              servicePrice: Number(appt.service?.price || 0),
+              staffName: [appt.staff?.first_name, appt.staff?.last_name].filter(Boolean).join(" ") || "",
+              addonNames: [],
+              addonPrices: [],
+              packageName: null,
+              packagePrice: null,
+              totalPrice: Number(appt.price || 0),
+            });
+          }
+        } else if (s === "failed") setStatus("failed");
         else if (s === "cancelled" || s === "abandoned") setStatus("cancelled");
         else setStatus("pending");
       })
@@ -52,14 +65,14 @@ export default function PaystackCallbackPage() {
   }, []);
 
   useEffect(() => {
-    if (status !== "success" || !bookingIdFromRef) return;
+    if (status !== "success" || !appointment) return;
     const t = setTimeout(() => {
       navigate("/bookings/confirmation", {
-        state: { booking: { id: bookingIdFromRef, status: "confirmed" }, detail: {} },
+        state: { booking: appointment, detail },
       });
     }, 10000);
     return () => clearTimeout(t);
-  }, [status, bookingIdFromRef, navigate]);
+  }, [status, appointment, detail, navigate]);
 
   if (loading) {
     return (
@@ -74,7 +87,7 @@ export default function PaystackCallbackPage() {
   const isPending = status === "pending";
   const title = isSuccess ? "Payment Successful" : isPending ? "Payment Processing" : "Payment Not Completed";
   const subtitle = isSuccess
-    ? "Your payment was received. Your booking and invoice are now marked as paid. Redirecting to confirmation in 10 seconds…"
+    ? "Your payment was received. Your appointment has been created and is marked as paid. Redirecting to confirmation in 10 seconds…"
     : isPending
       ? "We are still confirming your payment with Paystack. This usually resolves within a minute — check your bookings shortly."
       : "The payment was not completed. If you were charged, contact support with the reference below.";

@@ -41,7 +41,7 @@ export default function BookingCreatePage() {
   const [createdCustomer, setCreatedCustomer] = useState<{ id: string; first_name: string; last_name: string; email: string; phone: string } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [pendingPay, setPendingPay] = useState<ModalBooking | null>(null);
-  const [pendingBooking, setPendingBooking] = useState<any>(null);
+  const [pendingBookingPayload, setPendingBookingPayload] = useState<Record<string, unknown> | null>(null);
   const [pendingDetail, setPendingDetail] = useState<any>(null);
   const [form, setForm] = useState({
     customer_id: "", first_name: "", last_name: "", email: "", phone: "",
@@ -173,7 +173,7 @@ export default function BookingCreatePage() {
       if (selectedPackage) metaParts.push(`Package: ${selectedPackage.name} (${formatNaira(selectedPackage.package_price)})`);
       const notes = [form.notes.trim(), ...metaParts].filter(Boolean).join("\n");
 
-      const res = await create.mutateAsync({
+      const bookingPayload = {
         service_id: form.service_id,
         staff_id: form.staff_id,
         customer_id: customerId,
@@ -188,18 +188,15 @@ export default function BookingCreatePage() {
         guest_phone: customerMode === "guest" ? form.guest_phone || null : null,
         payment_option: form.payment_option,
         payment_status: form.payment_option === "now" ? "pending" : form.payment_status,
-      });
-      const booking = (res as any)?.data ?? res;
+      };
 
       if (form.payment_option === "now") {
-        // Appointment created as pending-payment anchor (required for payment endpoints).
-        // Nothing is "booked" until payment completes.
-        setPendingBooking(booking);
+        setPendingBookingPayload(bookingPayload);
         setPendingDetail(detail);
         setPendingPay({
-          id: booking.id,
+          id: `draft-${Date.now()}`,
           amount: Number(totalPrice),
-          status: booking.status ?? "scheduled",
+          status: "scheduled",
           payment_option: "now",
           payment_status: "pending",
           is_guest: customerMode === "guest",
@@ -219,6 +216,8 @@ export default function BookingCreatePage() {
       }
 
       // pay-later: confirmed immediately
+      const res = await create.mutateAsync(bookingPayload as any);
+      const booking = (res as any)?.data ?? res;
       toaster.create({ title: "Booking created", type: "success" });
       navigate("/bookings/confirmation", { state: { booking, detail } });
     } catch (e: any) {
@@ -337,18 +336,13 @@ export default function BookingCreatePage() {
     {pendingPay && (
       <PaymentMethodsModal
         open={payOpen}
-        onClose={() => { setPayOpen(false); setPendingPay(null); }}
-        onCollected={() => {
-          if (pendingBooking) {
-            toaster.create({ title: "Booking created & payment recorded", type: "success" });
-            navigate("/bookings/confirmation", { state: { booking: pendingBooking, detail: pendingDetail } });
-          }
-          setPayOpen(false);
-          setPendingPay(null);
-          setPendingBooking(null);
-          setPendingDetail(null);
+        onClose={() => { setPayOpen(false); setPendingPay(null); setPendingBookingPayload(null); setPendingDetail(null); }}
+        onCollected={(booking: any) => {
+          toaster.create({ title: "Booking created & payment recorded", type: "success" });
+          navigate("/bookings/confirmation", { state: { booking, detail: pendingDetail } });
         }}
         booking={pendingPay}
+        bookingPayload={pendingBookingPayload}
       />
     )}
   </Stack>;

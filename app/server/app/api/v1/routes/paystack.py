@@ -1,6 +1,7 @@
 """Paystack payment routes (subaccount registration + initialize)."""
 from __future__ import annotations
 
+import logging
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -16,7 +17,11 @@ from app.models.appointment import Appointment
 from app.models.payment import Payment as PaymentModel
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.schemas.appointment import AppointmentRead
+from app.services.payment_service import create_appointment_from_payment_metadata
 from app.services.paystack_service import PaystackService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/paystack", tags=["paystack"])
 
@@ -174,6 +179,7 @@ class InitializePaymentRequest(BaseModel):
     booking_id: str | None = None
     user_type: str = "free"  # "subscriber" or "free"
     method: str = "card"  # "card" or "transfer"
+    booking: dict[str, Any] | None = None  # pending appointment payload (pay now flow)
 
 
 class InitializePaymentResponse(BaseModel):
@@ -216,6 +222,15 @@ async def initialize_payment(
         channels = ["card"]
 
     # Persist a pending Payment row so the webhook can locate it by reference.
+    payment_metadata: dict[str, Any] = {
+        "appointment_id": data.booking_id,
+        "user_type": data.user_type,
+        "customer_email": data.customer_email,
+        "customer_name": data.customer_name,
+        "payment_method": data.method,
+    }
+    if data.booking:
+        payment_metadata["booking_meta"] = {"payload": data.booking}
     payment = PaymentModel(
         tenant_id=tenant_id,
         amount=data.amount,
@@ -223,13 +238,7 @@ async def initialize_payment(
         reference=reference,
         gateway="paystack",
         payment_method=payment_method,
-        metadata_={
-            "appointment_id": data.booking_id,
-            "user_type": data.user_type,
-            "customer_email": data.customer_email,
-            "customer_name": data.customer_name,
-            "payment_method": data.method,
-        },
+        metadata_=payment_metadata,
     )
     session.add(payment)
     await session.commit()
@@ -326,4 +335,17 @@ async def verify_payment(
         payment.status = paystack_status
 
     await session.commit()
-    return tx
+
+    # Deferred booking: create the appointment now that payment succeeded.
+    appointment = None
+    if paystack_status == "success":
+        try:
+            appointment = await create_appointment_from_payment_metadata(current_user.tenant_id, payment, session)
+        except Exception:
+            logger.exception(f"Deferred appointment creation failed for payment {payment.id}")
+
+    return {
+        **tx,
+        "appointment_id": str(appointment.id) if appointment else None,
+        "appointment": AppointmentRead.model_validate(appointment).model_dump() if appointment else None,
+    }

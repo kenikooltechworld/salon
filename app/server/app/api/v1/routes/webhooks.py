@@ -15,6 +15,7 @@ from app.models.appointment import Appointment
 from app.models.invoice import Invoice
 from app.models.payment import Payment as PaymentModel
 from app.services.invoice_service import InvoiceService
+from app.services.payment_service import create_appointment_from_payment_metadata
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -119,6 +120,12 @@ async def _handle_charge_success(
         "webhook_processed_at": str(extracted.get("paid_at")),
     }
     await session.flush()
+
+    # Deferred booking: create the appointment only now that payment succeeded.
+    try:
+        await create_appointment_from_payment_metadata(payment.tenant_id, payment, session)
+    except Exception as exc:  # pragma: no cover
+        logger.error(f"Failed to create appointment for payment {payment.id}: {exc}")
 
     # Mark invoice paid if linked
     if payment.invoice_id:

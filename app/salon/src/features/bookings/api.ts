@@ -32,6 +32,7 @@ export const bookingsApi = {
     booking_id: string;
     user_type: "subscriber" | "free";
     method: "card" | "transfer";
+    booking?: Record<string, unknown> | null;
   }) =>
     apiClient.post<{
       authorization_url: string;
